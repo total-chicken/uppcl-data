@@ -247,6 +247,39 @@ select option{background:#111920;}
     <div class="tab" onclick="st('nearby')">📍 NEARBY</div>
     <div class="tab" onclick="st('dc')">🔴 DISCONNECTED</div>
   </div>
+  <!-- FILTER -->
+  <div class="panel" id="panel-filter">
+    <div class="fg">
+      <div><div class="lbl">SUBSTATION</div><div class="sw"><select id="fs" onchange="onSubChange('fs','ff');af()"><option value="">ALL</option></select></div></div>
+      <div><div class="lbl">FEEDER</div><div class="sw"><select id="ff" onchange="af()"><option value="">ALL</option></select></div></div>
+      <div><div class="lbl">CATEGORY</div><div class="sw"><select id="fc" onchange="af()"><option value="">ALL</option></select></div></div>
+      <div><div class="lbl">LOAD (kW)</div><div style="display:flex;gap:8px"><input type="number" id="fln" placeholder="Min" oninput="af()" style="width:80px;background:var(--card);border:1.5px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-size:13px;outline:none"/><input type="number" id="flx" placeholder="Max" oninput="af()" style="width:80px;background:var(--card);border:1.5px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-size:13px;outline:none"/></div></div>
+    </div>
+    <div class="rc">
+      <div class="rci"><div class="val" id="fc2">0</div><div class="lbl2">MATCHED</div></div>
+      <div class="rci"><div class="val" id="fd">0</div><div class="lbl2">DOMESTIC</div></div>
+      <div class="rci"><div class="val" id="fco">0</div><div class="lbl2">COMMERCIAL</div></div>
+      <div class="rci"><div class="val" id="fi">0</div><div class="lbl2">INDUSTRIAL</div></div>
+      <div class="rci"><div class="val" id="fg2">0</div><div class="lbl2">GOVT</div></div>
+      <div class="rci"><div class="val" id="ftl">0</div><div class="lbl2">TOTAL LOAD kW</div></div>
+    </div>
+    <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+      <button class="btn btn-acc" onclick="expX()">⬇ EXPORT XLSX</button>
+      <button class="btn btn-out" onclick="expC()">⬇ EXPORT CSV</button>
+      <button class="btn" style="background:var(--card);border:1px solid var(--border);color:var(--text)" onclick="rf()">↺ RESET</button>
+    </div>
+    <div class="tw"><table><thead><tr><th>ACCT ID</th><th>NAME</th><th>MOBILE</th><th>CATEGORY</th><th>LOAD</th><th>SUBSTATION</th><th>FEEDER</th><th>MAP</th></tr></thead><tbody id="ftb"></tbody></table></div>
+    <div class="pg" id="fpg"></div>
+  </div>
+
+  <!-- hidden elements needed by ia() -->
+  <span id="rt" style="display:none"></span>
+  <span id="rc" style="display:none"></span>
+  <span id="sup" style="display:none"></span>
+  <input id="si" style="display:none"/>
+  <tbody id="stb" style="display:none"></tbody>
+  <div id="spg" style="display:none"></div>
+
   <!-- NEARBY -->
   <div class="panel" id="panel-nearby">
     <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:flex-end">
@@ -883,19 +916,33 @@ function autoFetch() {
 }
 
 function fastParseCSV(text) {
+  // Parse quoted CSV properly
+  function parseCSVLine(line) {
+    const vals = [];
+    let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (inQ && line[i+1] === '"') { cur += '"'; i++; }
+        else inQ = !inQ;
+      } else if (ch === ',' && !inQ) {
+        vals.push(cur); cur = '';
+      } else { cur += ch; }
+    }
+    vals.push(cur);
+    return vals;
+  }
+
   const lines = text.split(/\r?\n/);
   if (lines.length < 2) return [];
-  const hdrs = lines[0].split(',').map(h => h.replace(/"/g,'').trim());
+  const hdrs = parseCSVLine(lines[0]);
   const rows = [];
   for (let i = 1; i < lines.length; i++) {
-    const line = lines[i];
+    const line = lines[i].trim();
     if (!line) continue;
-    // Simple split - fast for well-formed CSV
-    const vals = line.split(',');
+    const vals = parseCSVLine(line);
     const obj = {};
-    hdrs.forEach((h, j) => {
-      obj[h] = vals[j] ? vals[j].replace(/"/g,'').trim() : '';
-    });
+    hdrs.forEach((h, j) => { obj[h] = vals[j] !== undefined ? vals[j] : ''; });
     if (!obj.ACCT_ID) continue;
     obj.Google_Map_Link = obj['GOOGLE MAP LINK'] || obj['Google_Map_Link'] ||
       (obj.LAT && obj.LON ? 'https://www.google.com/maps?q=' + obj.LAT + ',' + obj.LON : '');
