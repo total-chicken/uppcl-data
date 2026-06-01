@@ -2024,7 +2024,10 @@ function openDcDetail(acctId) {
   // Map button
   const mapBtn = document.getElementById('modal-map-btn');
   if (r.LAT && r.LON) {
-    mapBtn.href = 'https://www.google.com/maps?q=' + r.LAT + ',' + r.LON;
+    mapBtn.href = '#';
+    mapBtn.onclick = (function(id){ return function(e){ e.preventDefault(); openConsumerMap(id); }; })(String(r.ACCT_ID));
+    mapBtn.textContent = '';
+    mapBtn.innerHTML = '📍 VIEW ON MAP WITH NEARBY';
     mapBtn.style.display = 'inline-flex';
   } else { mapBtn.style.display = 'none'; }
 
