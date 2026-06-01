@@ -8,173 +8,190 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
-html,body{height:100%;width:100%;}
-body{font-family:'Segoe UI',sans-serif;background:#0D1117;color:#E6EDF3;display:flex;flex-direction:column;}
-.header{padding:10px 14px;background:#161B22;border-bottom:1px solid #21262D;display:flex;align-items:center;gap:10px;flex-shrink:0;}
-.header-info{flex:1;min-width:0;}
-.header-info h3{font-size:13px;color:#F5A623;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.header-info p{font-size:11px;color:#8B949E;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.close-btn{background:#21262D;border:1px solid #30363D;color:#8B949E;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;flex-shrink:0;}
-.close-btn:hover{border-color:#F5A623;color:#F5A623;}
-#map{flex:1;min-height:0;width:100%;}
-.list-section{height:38vh;overflow-y:auto;flex-shrink:0;}
-.legend{display:flex;gap:14px;padding:6px 14px;background:#161B22;border-top:1px solid #21262D;border-bottom:1px solid #21262D;flex-wrap:wrap;flex-shrink:0;}
-.leg{display:flex;align-items:center;gap:4px;font-size:10px;color:#8B949E;}
-.dot{width:10px;height:10px;border-radius:50%;border:1px solid rgba(255,255,255,0.3);}
-.item{padding:10px 14px;border-bottom:1px solid #21262D;cursor:pointer;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;transition:background .1s;}
-.item:hover{background:#161B22;}
-.item.main-item{border-left:3px solid #F5A623;background:#1C2128;}
-.item.near-item{border-left:3px solid #FF4D4D;}
+html,body{height:100%;width:100%;overflow:hidden;}
+body{font-family:'Google Sans',Roboto,sans-serif;display:flex;flex-direction:column;}
+#map{flex:1;width:100%;}
+
+/* Sidebar */
+.sidebar{position:fixed;right:0;top:0;bottom:0;width:320px;background:#fff;box-shadow:-2px 0 12px rgba(0,0,0,0.15);display:flex;flex-direction:column;z-index:1000;}
+.sidebar-header{padding:14px 16px;background:#fff;border-bottom:1px solid #e8eaed;}
+.sidebar-header h3{font-size:15px;font-weight:600;color:#202124;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sidebar-header p{font-size:12px;color:#5f6368;line-height:1.4;}
+.close-btn{position:absolute;top:10px;right:10px;background:transparent;border:none;cursor:pointer;font-size:18px;color:#5f6368;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:50%;}
+.close-btn:hover{background:#f1f3f4;}
+
+.legend{display:flex;gap:12px;padding:8px 16px;background:#f8f9fa;border-bottom:1px solid #e8eaed;flex-wrap:wrap;}
+.leg{display:flex;align-items:center;gap:5px;font-size:11px;color:#5f6368;}
+.dot{width:10px;height:10px;border-radius:50%;}
+
+.list{overflow-y:auto;flex:1;}
+.item{padding:12px 16px;border-bottom:1px solid #f1f3f4;cursor:pointer;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+.item:hover{background:#f8f9fa;}
+.item.main-item{background:#FFF8E7;border-left:3px solid #F5A623;}
+.item.near-item{border-left:3px solid transparent;}
+.item.near-item:hover{background:#f8f9fa;}
 .item-left{flex:1;min-width:0;}
-.item-name{font-size:12px;font-weight:700;color:#E6EDF3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.item-sub{font-size:10px;color:#8B949E;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.item-name{font-size:13px;font-weight:600;color:#202124;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.item-sub{font-size:11px;color:#5f6368;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .item-right{text-align:right;flex-shrink:0;}
 .item-out{font-size:12px;font-weight:700;}
-.item-atr{font-size:10px;margin-top:2px;}
-.item-dist{font-size:10px;color:#8B949E;margin-top:2px;}
-.no-data{text-align:center;padding:40px;color:#8B949E;}
+.item-atr{font-size:10px;margin-top:2px;padding:1px 6px;border-radius:10px;display:inline-block;}
+.item-dist{font-size:10px;color:#5f6368;margin-top:3px;}
+
+/* Popup styling */
+.leaflet-popup-content-wrapper{border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.2);padding:0;overflow:hidden;}
+.leaflet-popup-content{margin:0;min-width:220px;}
+.popup-inner{padding:12px 14px;}
+.popup-name{font-size:14px;font-weight:700;color:#202124;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid #f1f3f4;}
+.popup-row{display:flex;justify-content:space-between;font-size:12px;color:#5f6368;margin-bottom:3px;}
+.popup-row span:last-child{font-weight:600;color:#202124;}
+.popup-addr{font-size:11px;color:#80868B;margin-top:6px;padding-top:6px;border-top:1px solid #f1f3f4;}
+.popup-dist{font-size:11px;color:#1a73e8;margin-top:4px;font-weight:500;}
+
+/* Mobile: bottom sheet instead of sidebar */
+@media(max-width:600px){
+  .sidebar{width:100%;height:45vh;top:auto;right:0;left:0;box-shadow:0 -4px 16px rgba(0,0,0,.15);border-radius:16px 16px 0 0;}
+  #map{height:55vh;flex:none;}
+  body{flex-direction:column;}
+}
 </style>
 </head>
 <body>
-<div class="header">
-  <div class="header-info">
-    <h3 id="sel-name">📍 UPPCL Consumer Map</h3>
-    <p id="sel-detail">Click any pin or list item to see details</p>
-  </div>
-  <button class="close-btn" onclick="window.close()">✕ Close</button>
-</div>
 <div id="map"></div>
-<div class="legend">
-  <div class="leg"><div class="dot" style="background:#F5A623"></div>Main Consumer</div>
-  <div class="leg"><div class="dot" style="background:#FF4D4D"></div>SM Unrecharge</div>
-  <div class="leg"><div class="dot" style="background:#2ECC71"></div>Paid</div>
-  <div class="leg"><div class="dot" style="background:#AA80FF"></div>Lock</div>
-  <div class="leg"><div class="dot" style="background:#FF4D4D;opacity:0.5"></div>Theft</div>
+
+<div class="sidebar">
+  <button class="close-btn" onclick="window.close()" title="Close">✕</button>
+  <div class="sidebar-header">
+    <h3 id="sel-name">📍 UPPCL Consumer Map</h3>
+    <p id="sel-detail">Click any pin to see consumer details</p>
+  </div>
+  <div class="legend">
+    <div class="leg"><div class="dot" style="background:#F5A623"></div>Main</div>
+    <div class="leg"><div class="dot" style="background:#e53935"></div>SM Unrecharge</div>
+    <div class="leg"><div class="dot" style="background:#43a047"></div>Paid</div>
+    <div class="leg"><div class="dot" style="background:#8e24aa"></div>Lock</div>
+    <div class="leg"><div class="dot" style="background:#e53935;opacity:.5"></div>Theft</div>
+  </div>
+  <div class="list" id="lst"></div>
 </div>
-<div class="list-section" id="lst"></div>
 
 <script>
 var DATA = [], clat = 25.45, clon = 78.57;
-
 try {
   var raw = localStorage.getItem('uppcl_map_data');
-  if (raw) {
-    var p = JSON.parse(raw);
-    DATA = p.data || [];
-    clat = p.lat || 25.45;
-    clon = p.lon || 78.57;
-  }
-} catch(e) { console.error('Parse error:', e); }
+  if (raw) { var p = JSON.parse(raw); DATA = p.data||[]; clat = p.lat||25.45; clon = p.lon||78.57; }
+} catch(e) {}
 
-// Init map
-var map = L.map('map', {zoomControl: true, scrollWheelZoom: true}).setView([clat, clon], 16);
+// Adjust map width for sidebar
+var isMobile = window.innerWidth <= 600;
+var mapEl = document.getElementById('map');
+if (!isMobile) mapEl.style.marginRight = '320px';
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '© OpenStreetMap contributors',
-  maxZoom: 19
+// Light Google Maps-like tile
+var map = L.map('map', {zoomControl:true}).setView([clat, clon], 16);
+
+// Google Maps-style tiles via OSM
+L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+  maxZoom: 20,
+  subdomains: ['mt0','mt1','mt2','mt3'],
+  attribution: '© Google'
 }).addTo(map);
 
-// Fix map size after render
-setTimeout(function() { map.invalidateSize(); }, 100);
+setTimeout(function(){ map.invalidateSize(); }, 200);
 
 function pinColor(d) {
   if (d.main) return '#F5A623';
-  var a = (d.atr || '').toUpperCase();
-  if (a === 'PAID') return '#2ECC71';
-  if (a === 'LOCK') return '#AA80FF';
-  if (a === 'THEFT') return '#FF4D4D';
-  return '#FF6B6B';
+  var a = (d.atr||'').toUpperCase();
+  if (a==='PAID') return '#43a047';
+  if (a==='LOCK') return '#8e24aa';
+  if (a==='THEFT') return '#e53935';
+  return '#e53935';
 }
 
 function showDetail(d) {
-  var dist = d.main ? 'MAIN CONSUMER' : (d.dist < 1 ? (d.dist*1000).toFixed(0)+' m away' : d.dist.toFixed(2)+' km away');
-  document.getElementById('sel-name').textContent = d.name + '  [' + d.acct + ']';
+  var dist = d.main ? '⭐ MAIN CONSUMER' : (d.dist<1?(d.dist*1000).toFixed(0)+' m away':d.dist.toFixed(2)+' km away');
+  document.getElementById('sel-name').textContent = d.name + ' (' + d.acct + ')';
   document.getElementById('sel-detail').textContent =
-    '📱 ' + d.mobile + '  |  ' + d.lmv + '  |  ₹' + d.out.toLocaleString() +
-    '  |  ATR: ' + d.atr + '  |  ' + dist +
-    '  |  ' + d.sub + ' › ' + d.feed;
+    '📱 '+d.mobile+' | '+d.lmv+' | ₹'+d.out.toLocaleString()+' | ATR: '+d.atr+
+    '\n🏛 '+d.sub+' › '+d.feed+'  |  '+dist;
 }
 
-var markers = [];
 var lst = document.getElementById('lst');
 
-if (DATA.length === 0) {
-  lst.innerHTML = '<div class="no-data">No data. Please go back and click MAP button again.</div>';
-} else {
-  DATA.forEach(function(d, i) {
-    var c = pinColor(d);
-    var sz = d.main ? 22 : 14;
+DATA.forEach(function(d) {
+  var c = pinColor(d);
+  var sz = d.main ? 22 : 14;
 
-    var iconHtml = '<div style="' +
-      'width:' + sz + 'px;' +
-      'height:' + sz + 'px;' +
-      'background:' + c + ';' +
-      'border:' + (d.main ? 3 : 2) + 'px solid white;' +
-      'border-radius:50%;' +
-      'box-shadow:0 2px 8px rgba(0,0,0,0.5),0 0 0 ' + (d.main ? 4 : 2) + 'px ' + c + '44;' +
-      '"></div>';
-
+  // Use standard Leaflet markers for main, circle markers for nearby
+  var mk;
+  if (d.main) {
     var ico = L.divIcon({
-      className: '',
-      html: iconHtml,
-      iconSize: [sz, sz],
-      iconAnchor: [sz/2, sz/2],
-      popupAnchor: [0, -sz/2]
+      className:'',
+      html:'<div style="width:'+sz+'px;height:'+sz+'px;background:'+c+';border:3px solid #fff;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,0.4),0 0 0 3px '+c+'44"></div>',
+      iconSize:[sz,sz], iconAnchor:[sz/2,sz/2], popupAnchor:[0,-sz/2]
     });
+    mk = L.marker([d.lat,d.lon],{icon:ico,zIndexOffset:1000}).addTo(map);
+  } else {
+    mk = L.circleMarker([d.lat,d.lon],{
+      radius:7, fillColor:c, color:'#fff', weight:2,
+      opacity:1, fillOpacity:0.9
+    }).addTo(map);
+  }
 
-    var outColor = d.out > 100000 ? '#e53e3e' : d.out > 10000 ? '#dd6b20' : '#276749';
-    var popupContent =
-      '<div style="font-family:sans-serif;font-size:12px;min-width:200px;max-width:260px;line-height:1.6">' +
-      '<div style="font-size:14px;font-weight:700;margin-bottom:4px;border-bottom:1px solid #eee;padding-bottom:4px">' + d.name + '</div>' +
-      '<div><b>Account:</b> ' + d.acct + '</div>' +
-      '<div><b>Mobile:</b> ' + d.mobile + '</div>' +
-      '<div><b>Outstanding:</b> <span style="color:' + outColor + ';font-weight:700">₹' + d.out.toLocaleString() + '</span></div>' +
-      '<div><b>ATR Status:</b> ' + d.atr + '</div>' +
-      '<div><b>LMV Type:</b> ' + d.lmv + '</div>' +
-      '<div><b>Substation:</b> ' + d.sub + '</div>' +
-      '<div><b>Feeder:</b> ' + d.feed + '</div>' +
-      '<div style="font-size:10px;color:#666;margin-top:4px">' + d.addr + '</div>' +
-      (d.main ? '' : '<div style="margin-top:4px;color:#888;font-size:10px">📏 ' + (d.dist < 1 ? (d.dist*1000).toFixed(0)+' m away' : d.dist.toFixed(2)+' km away') + '</div>') +
-      '</div>';
+  var outColor = d.out>100000?'#e53935':d.out>10000?'#ef6c00':'#2e7d32';
+  var popup =
+    '<div class="popup-inner">'+
+    '<div class="popup-name">'+d.name+'</div>'+
+    '<div class="popup-row"><span>Account ID</span><span>'+d.acct+'</span></div>'+
+    '<div class="popup-row"><span>Mobile</span><span>'+d.mobile+'</span></div>'+
+    '<div class="popup-row"><span>Outstanding</span><span style="color:'+outColor+'">₹'+d.out.toLocaleString()+'</span></div>'+
+    '<div class="popup-row"><span>ATR Status</span><span>'+d.atr+'</span></div>'+
+    '<div class="popup-row"><span>LMV Type</span><span>'+d.lmv+'</span></div>'+
+    '<div class="popup-row"><span>Substation</span><span>'+d.sub+'</span></div>'+
+    '<div class="popup-row"><span>Feeder</span><span>'+d.feed+'</span></div>'+
+    '<div class="popup-addr">'+d.addr+'</div>'+
+    (d.main?'':'<div class="popup-dist">📏 '+(d.dist<1?(d.dist*1000).toFixed(0)+' m away':d.dist.toFixed(2)+' km away')+'</div>')+
+    '</div>';
 
-    var mk = L.marker([d.lat, d.lon], {icon: ico, zIndexOffset: d.main ? 1000 : 0}).addTo(map);
-    mk.bindPopup(popupContent, {maxWidth: 280, minWidth: 200});
-    mk.on('click', function() { showDetail(d); });
-    markers.push({mk: mk, d: d});
+  mk.bindPopup(popup,{maxWidth:280,minWidth:220});
+  mk.on('click',function(){ showDetail(d); });
+  if (d.main) setTimeout(function(){ mk.openPopup(); },400);
 
-    if (d.main) setTimeout(function() { mk.openPopup(); }, 300);
+  // Sidebar list item
+  var oc = d.out>100000?'#e53935':d.out>10000?'#ef6c00':'#2e7d32';
+  var ac = d.atr==='PAID'?'#43a047':d.atr==='LOCK'?'#8e24aa':d.atr==='THEFT'?'#e53935':'#e53935';
+  var acBg = d.atr==='PAID'?'#e8f5e9':d.atr==='LOCK'?'#f3e5f5':'#ffebee';
+  var ds = d.main?'⭐ MAIN':(d.dist<1?(d.dist*1000).toFixed(0)+'m':d.dist.toFixed(2)+'km');
 
-    // List row
-    var oc = d.out > 100000 ? '#FF4D4D' : d.out > 10000 ? '#F5A623' : '#2ECC71';
-    var ac = d.atr==='PAID'?'#2ECC71':d.atr==='LOCK'?'#AA80FF':d.atr==='THEFT'?'#FF4D4D':'#FF8080';
-    var ds = d.main ? '⭐ MAIN' : (d.dist<1?(d.dist*1000).toFixed(0)+'m':d.dist.toFixed(2)+'km');
+  var el = document.createElement('div');
+  el.className = 'item '+(d.main?'main-item':'near-item');
+  el.innerHTML =
+    '<div class="item-left">'+
+      '<div class="item-name">'+d.name+'</div>'+
+      '<div class="item-sub">'+d.acct+' | '+d.sub+' › '+d.feed+'</div>'+
+      '<div class="item-sub">'+d.addr.substring(0,55)+'</div>'+
+    '</div>'+
+    '<div class="item-right">'+
+      '<div class="item-out" style="color:'+oc+'">₹'+d.out.toLocaleString()+'</div>'+
+      '<div class="item-atr" style="color:'+ac+';background:'+acBg+'">'+d.atr+'</div>'+
+      '<div class="item-dist">'+ds+'</div>'+
+    '</div>';
 
-    var el = document.createElement('div');
-    el.className = 'item ' + (d.main ? 'main-item' : 'near-item');
-    el.innerHTML =
-      '<div class="item-left">' +
-        '<div class="item-name">' + d.name + '</div>' +
-        '<div class="item-sub">' + d.acct + ' | ' + d.sub + ' › ' + d.feed + '</div>' +
-        '<div class="item-sub">' + d.addr.substring(0,60) + '</div>' +
-      '</div>' +
-      '<div class="item-right">' +
-        '<div class="item-out" style="color:' + oc + '">₹' + d.out.toLocaleString() + '</div>' +
-        '<div class="item-atr" style="color:' + ac + '">' + d.atr + '</div>' +
-        '<div class="item-dist">' + ds + '</div>' +
-      '</div>';
+  el.addEventListener('click',(function(d,mk){
+    return function(){
+      map.setView([d.lat,d.lon],18);
+      mk.openPopup();
+      showDetail(d);
+    };
+  })(d,mk));
 
-    el.addEventListener('click', (function(d, mk) {
-      return function() {
-        map.setView([d.lat, d.lon], 18);
-        mk.openPopup();
-        showDetail(d);
-      };
-    })(d, mk));
+  lst.appendChild(el);
+});
 
-    lst.appendChild(el);
-  });
-
-  showDetail(DATA[0]);
+if (DATA.length>0) showDetail(DATA[0]);
+else {
+  document.getElementById('sel-name').textContent='No data found';
+  document.getElementById('sel-detail').textContent='Please go back and click MAP button again.';
 }
 </script>
 </body>
