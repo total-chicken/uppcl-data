@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>UPPCL Consumer Data Tool v3.2</title>
+<title>UPPCL Consumer Data Tool v3.4</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Noto+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
 <style>
@@ -2049,6 +2049,7 @@ const _origSaveModalAtr = window.saveModalAtr;
 const origOpenDcDetail = window.openDcDetail;
 
 
+
 // ─── MODAL NEARBY DISCONNECTED ───────────────────────────────────────────────
 let modalNearbyLat = null, modalNearbyLon = null;
 
@@ -2058,55 +2059,55 @@ function loadModalNearby(lat, lon) {
 
   const radius = parseFloat(document.getElementById('modal-nb-radius').value);
 
-  // Find nearby DC consumers excluding current one
   const nearby = DC
-    .filter(r => r.LAT && r.LON && String(r.ACCT_ID) !== modalCurrentAcct)
-    .map(r => {
-      let rLat = parseFloat(r.LAT), rLon = parseFloat(r.LON);
-      if (rLat > 50) { const tmp = rLat; rLat = rLon; rLon = tmp; }
-      return { ...r, _lat: rLat, _lon: rLon, _dist: haversine(modalNearbyLat, modalNearbyLon, rLat, rLon) };
+    .filter(function(r) { return r.LAT && r.LON && String(r.ACCT_ID) !== modalCurrentAcct; })
+    .map(function(r) {
+      var rLat = parseFloat(r.LAT), rLon = parseFloat(r.LON);
+      if (rLat > 50) { var tmp = rLat; rLat = rLon; rLon = tmp; }
+      return Object.assign({}, r, {_lat: rLat, _lon: rLon, _dist: haversine(modalNearbyLat, modalNearbyLon, rLat, rLon)});
     })
-    .filter(r => r._dist <= radius)
-    .sort((a, b) => a._dist - b._dist)
-    .slice(0, 10); // show max 10
+    .filter(function(r) { return r._dist <= radius; })
+    .sort(function(a, b) { return a._dist - b._dist; })
+    .slice(0, 10);
 
   document.getElementById('modal-nb-count').textContent = nearby.length + ' NEARBY FOUND';
 
   if (nearby.length === 0) {
     document.getElementById('modal-nb-list').innerHTML =
-      '<div style="text-align:center;padding:16px;color:var(--muted);font-size:12px">No disconnected consumers within ' + (radius < 1 ? radius*1000 + ' metres' : radius + ' km') + '</div>';
+      '<div style="text-align:center;padding:16px;color:var(--muted);font-size:12px">No disconnected consumers within ' +
+      (radius < 1 ? radius*1000 + ' metres' : radius + ' km') + '</div>';
     return;
   }
 
-  document.getElementById('modal-nb-list').innerHTML = `
-    <div style="overflow-x:auto;border-radius:8px;border:1px solid var(--border)">
-      <table style="width:100%;border-collapse:collapse;font-size:12px">
-        <thead><tr style="background:#0E1C25">
-          <th style="padding:8px 12px;text-align:left;font-family:var(--fh);font-size:10px;color:var(--muted);letter-spacing:1px;border-bottom:1px solid var(--border)">DIST</th>
-          <th style="padding:8px 12px;text-align:left;font-family:var(--fh);font-size:10px;color:var(--muted);letter-spacing:1px;border-bottom:1px solid var(--border)">ACCT ID</th>
-          <th style="padding:8px 12px;text-align:left;font-family:var(--fh);font-size:10px;color:var(--muted);letter-spacing:1px;border-bottom:1px solid var(--border)">NAME</th>
-          <th style="padding:8px 12px;text-align:left;font-family:var(--fh);font-size:10px;color:var(--muted);letter-spacing:1px;border-bottom:1px solid var(--border)">OUTSTANDING</th>
-          <th style="padding:8px 12px;text-align:left;font-family:var(--fh);font-size:10px;color:var(--muted);letter-spacing:1px;border-bottom:1px solid var(--border)">ATR</th>
-          <th style="padding:8px 12px;text-align:left;font-family:var(--fh);font-size:10px;color:var(--muted);letter-spacing:1px;border-bottom:1px solid var(--border)">MAP</th>
-        </tr></thead>
-        <tbody>
-          ${nearby.map(r => {
-            const dist = r._dist < 1 ? (r._dist*1000).toFixed(0)+' m' : r._dist.toFixed(2)+' km';
-            const out = Math.round(r.OUTSTANDING || 0);
-            const outColor = out > 100000 ? '#FF4D4D' : out > 10000 ? '#F5A623' : 'var(--text)';
-            const mapUrl = 'https://www.google.com/maps?q=' + r._lat + ',' + r._lon;
-            return \`<tr style="border-bottom:1px solid #0E1A22;cursor:pointer" onclick="closeModal();setTimeout(()=>openDcDetail('\${r.ACCT_ID}'),100)" title="Click to open details">
-              <td style="padding:8px 12px;font-family:var(--fh);color:var(--accent);font-weight:700">\${dist}</td>
-              <td style="padding:8px 12px;font-family:var(--fh);color:var(--accent2)">\${r.ACCT_ID}</td>
-              <td style="padding:8px 12px;font-weight:500;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">\${r.NAME||''}</td>
-              <td style="padding:8px 12px;font-family:var(--fh);font-weight:700;color:\${outColor}">₹\${out.toLocaleString()}</td>
-              <td style="padding:8px 12px">\${atrBadgeFn(r.ATR_STATUS)}</td>
-              <td style="padding:8px 12px"><a class="ml" href="\${mapUrl}" target="_blank" onclick="event.stopPropagation()">📍</a></td>
-            </tr>\`;
-          }).join('')}
-        </tbody>
-      </table>
-    </div>`;
+  var rows = nearby.map(function(r, i) {
+    var dist = r._dist < 1 ? (r._dist*1000).toFixed(0)+' m' : r._dist.toFixed(2)+' km';
+    var out = Math.round(r.OUTSTANDING || 0);
+    var outColor = out > 100000 ? '#FF4D4D' : out > 10000 ? '#F5A623' : 'var(--text)';
+    var mapUrl = 'https://www.google.com/maps?q=' + r._lat + ',' + r._lon;
+    var acct = String(r.ACCT_ID);
+    return '<tr style="border-bottom:1px solid #0E1A22;cursor:pointer" onclick="closeModal();setTimeout(function(){openDcDetail(&quot;'+acct+'&quot;)},100)" title="Click to open details">' +
+      '<td style="padding:8px 12px;font-family:var(--fh);color:var(--muted);font-size:11px">'+(i+1)+'</td>' +
+      '<td style="padding:8px 12px;font-family:var(--fh);color:var(--accent);font-weight:700">'+dist+'</td>' +
+      '<td style="padding:8px 12px;font-family:var(--fh);color:var(--accent2)">'+r.ACCT_ID+'</td>' +
+      '<td style="padding:8px 12px;font-weight:500;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(r.NAME||'')+'</td>' +
+      '<td style="padding:8px 12px;font-family:var(--fh);font-weight:700;color:'+outColor+'">&#8377;'+out.toLocaleString()+'</td>' +
+      '<td style="padding:8px 12px">'+atrBadgeFn(r.ATR_STATUS)+'</td>' +
+      '<td style="padding:8px 12px"><a class="ml" href="'+mapUrl+'" target="_blank" onclick="event.stopPropagation()">&#128205;</a></td>' +
+      '</tr>';
+  }).join('');
+
+  document.getElementById('modal-nb-list').innerHTML =
+    '<div style="overflow-x:auto;border-radius:8px;border:1px solid var(--border)">' +
+    '<table style="width:100%;border-collapse:collapse;font-size:12px">' +
+    '<thead><tr style="background:#0E1C25">' +
+    '<th style="padding:8px 12px;text-align:left;font-family:var(--fh);font-size:10px;color:var(--muted);letter-spacing:1px;border-bottom:1px solid var(--border)">S.NO</th>' +
+    '<th style="padding:8px 12px;text-align:left;font-family:var(--fh);font-size:10px;color:var(--muted);letter-spacing:1px;border-bottom:1px solid var(--border)">DIST</th>' +
+    '<th style="padding:8px 12px;text-align:left;font-family:var(--fh);font-size:10px;color:var(--muted);letter-spacing:1px;border-bottom:1px solid var(--border)">ACCT ID</th>' +
+    '<th style="padding:8px 12px;text-align:left;font-family:var(--fh);font-size:10px;color:var(--muted);letter-spacing:1px;border-bottom:1px solid var(--border)">NAME</th>' +
+    '<th style="padding:8px 12px;text-align:left;font-family:var(--fh);font-size:10px;color:var(--muted);letter-spacing:1px;border-bottom:1px solid var(--border)">OUTSTANDING</th>' +
+    '<th style="padding:8px 12px;text-align:left;font-family:var(--fh);font-size:10px;color:var(--muted);letter-spacing:1px;border-bottom:1px solid var(--border)">ATR</th>' +
+    '<th style="padding:8px 12px;text-align:left;font-family:var(--fh);font-size:10px;color:var(--muted);letter-spacing:1px;border-bottom:1px solid var(--border)">MAP</th>' +
+    '</tr></thead><tbody>' + rows + '</tbody></table></div>';
 }
 
 </script>
