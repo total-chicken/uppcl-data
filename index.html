@@ -691,16 +691,18 @@ function ia(){
   const feeds=[...feedSet].sort();
   const cats=[...catSet].sort();
 
-  document.getElementById('s-tot').textContent=D.length.toLocaleString();
-  document.getElementById('s-sub').textContent=subs.length;
-  document.getElementById('s-feed').textContent=feeds.length;
-  document.getElementById('rt').textContent=D.length.toLocaleString();
+  const sTot = document.getElementById('s-tot'); if(sTot) sTot.textContent=D.length.toLocaleString();
+  const sSub = document.getElementById('s-sub'); if(sSub) sSub.textContent=subs.length;
+  const sFeed = document.getElementById('s-feed'); if(sFeed) sFeed.textContent=feeds.length;
+  const rt = document.getElementById('rt'); if(rt) rt.textContent=D.length.toLocaleString();
 
   // Fast select population using DocumentFragment
   function fastSelect(ids, items){
     ids.forEach(id=>{
       const sel=document.getElementById(id);
       if(!sel) return;
+      // Keep first option (ALL) and remove rest before adding
+      while(sel.options.length > 1) sel.remove(1);
       const frag=document.createDocumentFragment();
       items.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;frag.appendChild(o);});
       sel.appendChild(frag);
@@ -888,11 +890,18 @@ function autoFetch() {
 
   function loadNext() {
     if (fileIdx >= FILES.length) {
-      sl('MERGING DATA…', 90);
-      D = allData.flat().filter(r => r && r.ACCT_ID);
-      sl('BUILDING INDEX…', 96);
-      ia();
-      hl2();
+      try {
+        sl('MERGING DATA…', 90);
+        D = allData.flat().filter(r => r && r.ACCT_ID);
+        console.log('Data loaded:', D.length, 'rows');
+        sl('BUILDING INDEX…', 96);
+        ia();
+        hl2();
+      } catch(e) {
+        console.error('Error after load:', e.message, e.stack);
+        hl2();
+        showFetchError(e.message);
+      }
       return;
     }
     const url = FILES[fileIdx];
@@ -903,13 +912,24 @@ function autoFetch() {
         return res.text();
       })
       .then(text => {
-        sl('PARSING ' + (fileIdx+1) + ' OF ' + FILES.length + '…', 20 + fileIdx * 20);
-        const rows = fastParseCSV(text);
-        allData.push(rows);
-        fileIdx++;
-        loadNext();
+        try {
+          sl('PARSING ' + (fileIdx+1) + ' OF ' + FILES.length + '…', 20 + fileIdx * 20);
+          const rows = fastParseCSV(text);
+          console.log('Parsed file', fileIdx+1, ':', rows.length, 'rows');
+          allData.push(rows);
+          fileIdx++;
+          loadNext();
+        } catch(e) {
+          console.error('Parse error:', e.message);
+          hl2();
+          showFetchError('Parse error in file ' + (fileIdx+1) + ': ' + e.message);
+        }
       })
-      .catch(err => { hl2(); showFetchError(err.message); });
+      .catch(err => { 
+        console.error('Fetch error:', err);
+        hl2(); 
+        showFetchError(err.message); 
+      });
   }
 
   loadNext();
@@ -952,10 +972,10 @@ function fastParseCSV(text) {
 }
 
 function showFetchError(msg) {
-  // Fall back to manual upload with error shown
   document.getElementById('upload-screen').style.display = 'flex';
   const p = document.querySelector('.upload-box p');
-  p.innerHTML = '<span style="color:#FF6B6B;font-size:13px">⚠ Auto-load failed: ' + msg + '</span><br/>You can still upload the file manually below.';
+  if (p) p.innerHTML = '<span style="color:#FF6B6B;font-size:13px">⚠ Auto-load failed: ' + msg + '</span><br/>You can still upload the file manually below.';
+  console.error('AutoFetch error:', msg);
 }
 
 
