@@ -2,155 +2,180 @@
 <html>
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
 <title>UPPCL Consumer Map</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
-body{font-family:sans-serif;background:#050A0E;color:#D4E8F0;display:flex;flex-direction:column;height:100vh;overflow:hidden;}
-#map{flex:1;min-height:55vh;}
-.topbar{padding:10px 14px;background:#111920;border-bottom:1px solid #1E2D38;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
-.topbar-left{flex:1;min-width:0;}
-.topbar-left h3{font-size:14px;color:#F5A623;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.topbar-left p{font-size:11px;color:#8B949E;line-height:1.5;}
-.back-btn{background:transparent;border:1px solid #1E2D38;color:#8B949E;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:11px;white-space:nowrap;flex-shrink:0;}
-.back-btn:hover{border-color:#F5A623;color:#F5A623;}
-.list{overflow-y:auto;max-height:33vh;background:#050A0E;}
-.item{padding:10px 14px;border-bottom:1px solid #1E2D38;cursor:pointer;display:flex;justify-content:space-between;align-items:flex-start;transition:background .15s;}
-.item:hover{background:#0E1C26;}
-.item.main{border-left:3px solid #F5A623;background:#0E1820;}
-.item.near{border-left:3px solid #FF4D4D;}
-.nm{font-size:12px;font-weight:700;}
-.sb{font-size:10px;color:#8B949E;margin-top:2px;}
-.rt{text-align:right;flex-shrink:0;margin-left:8px;}
-.ot{font-size:12px;font-weight:700;}
-.at{font-size:10px;margin-top:2px;}
-.legend{display:flex;gap:12px;padding:6px 14px;background:#0C1419;border-bottom:1px solid #1E2D38;flex-wrap:wrap;}
-.leg-item{display:flex;align-items:center;gap:5px;font-size:10px;color:#8B949E;}
-.dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+html,body{height:100%;width:100%;}
+body{font-family:'Segoe UI',sans-serif;background:#0D1117;color:#E6EDF3;display:flex;flex-direction:column;}
+.header{padding:10px 14px;background:#161B22;border-bottom:1px solid #21262D;display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.header-info{flex:1;min-width:0;}
+.header-info h3{font-size:13px;color:#F5A623;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.header-info p{font-size:11px;color:#8B949E;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.close-btn{background:#21262D;border:1px solid #30363D;color:#8B949E;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;flex-shrink:0;}
+.close-btn:hover{border-color:#F5A623;color:#F5A623;}
+#map{flex:1;min-height:0;width:100%;}
+.list-section{height:38vh;overflow-y:auto;flex-shrink:0;}
+.legend{display:flex;gap:14px;padding:6px 14px;background:#161B22;border-top:1px solid #21262D;border-bottom:1px solid #21262D;flex-wrap:wrap;flex-shrink:0;}
+.leg{display:flex;align-items:center;gap:4px;font-size:10px;color:#8B949E;}
+.dot{width:10px;height:10px;border-radius:50%;border:1px solid rgba(255,255,255,0.3);}
+.item{padding:10px 14px;border-bottom:1px solid #21262D;cursor:pointer;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;transition:background .1s;}
+.item:hover{background:#161B22;}
+.item.main-item{border-left:3px solid #F5A623;background:#1C2128;}
+.item.near-item{border-left:3px solid #FF4D4D;}
+.item-left{flex:1;min-width:0;}
+.item-name{font-size:12px;font-weight:700;color:#E6EDF3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.item-sub{font-size:10px;color:#8B949E;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.item-right{text-align:right;flex-shrink:0;}
+.item-out{font-size:12px;font-weight:700;}
+.item-atr{font-size:10px;margin-top:2px;}
+.item-dist{font-size:10px;color:#8B949E;margin-top:2px;}
+.no-data{text-align:center;padding:40px;color:#8B949E;}
 </style>
 </head>
 <body>
-<div class="topbar">
-  <div class="topbar-left">
-    <h3 id="sel-name">Click a pin for details</h3>
-    <p id="sel-detail">Loading consumer data…</p>
+<div class="header">
+  <div class="header-info">
+    <h3 id="sel-name">📍 UPPCL Consumer Map</h3>
+    <p id="sel-detail">Click any pin or list item to see details</p>
   </div>
-  <button class="back-btn" onclick="window.close()">✕ Close</button>
-</div>
-<div class="legend">
-  <div class="leg-item"><div class="dot" style="background:#F5A623"></div>Main Consumer</div>
-  <div class="leg-item"><div class="dot" style="background:#FF4D4D"></div>SM Unrecharge</div>
-  <div class="leg-item"><div class="dot" style="background:#2ECC71"></div>Paid</div>
-  <div class="leg-item"><div class="dot" style="background:#AA80FF"></div>Lock</div>
+  <button class="close-btn" onclick="window.close()">✕ Close</button>
 </div>
 <div id="map"></div>
-<div class="list" id="lst"></div>
+<div class="legend">
+  <div class="leg"><div class="dot" style="background:#F5A623"></div>Main Consumer</div>
+  <div class="leg"><div class="dot" style="background:#FF4D4D"></div>SM Unrecharge</div>
+  <div class="leg"><div class="dot" style="background:#2ECC71"></div>Paid</div>
+  <div class="leg"><div class="dot" style="background:#AA80FF"></div>Lock</div>
+  <div class="leg"><div class="dot" style="background:#FF4D4D;opacity:0.5"></div>Theft</div>
+</div>
+<div class="list-section" id="lst"></div>
 
 <script>
 var DATA = [], clat = 25.45, clon = 78.57;
 
-// Load from localStorage
 try {
-  var stored = localStorage.getItem('uppcl_map_data');
-  if (stored) {
-    var payload = JSON.parse(stored);
-    DATA = payload.data || [];
-    clat = payload.lat || 25.45;
-    clon = payload.lon || 78.57;
+  var raw = localStorage.getItem('uppcl_map_data');
+  if (raw) {
+    var p = JSON.parse(raw);
+    DATA = p.data || [];
+    clat = p.lat || 25.45;
+    clon = p.lon || 78.57;
   }
-} catch(e) {}
+} catch(e) { console.error('Parse error:', e); }
 
-if (DATA.length === 0) {
-  document.getElementById('sel-name').textContent = 'No data found';
-  document.getElementById('sel-detail').textContent = 'Please go back and click the MAP button again.';
-}
+// Init map
+var map = L.map('map', {zoomControl: true, scrollWheelZoom: true}).setView([clat, clon], 16);
 
-var map = L.map('map').setView([clat, clon], 16);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-  attribution: '© OSM, © CARTO', maxZoom: 19
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap contributors',
+  maxZoom: 19
 }).addTo(map);
 
-function showDet(d) {
-  document.getElementById('sel-name').textContent = d.name + '  (' + d.acct + ')';
-  document.getElementById('sel-detail').textContent =
-    '📱 ' + d.mobile +
-    '  |  ' + d.lmv +
-    '  |  ₹' + d.out.toLocaleString() +
-    '  |  ATR: ' + d.atr +
-    '\n📍 ' + d.sub + ' › ' + d.feed +
-    '  |  ' + d.addr;
+// Fix map size after render
+setTimeout(function() { map.invalidateSize(); }, 100);
+
+function pinColor(d) {
+  if (d.main) return '#F5A623';
+  var a = (d.atr || '').toUpperCase();
+  if (a === 'PAID') return '#2ECC71';
+  if (a === 'LOCK') return '#AA80FF';
+  if (a === 'THEFT') return '#FF4D4D';
+  return '#FF6B6B';
 }
 
-var mainMarker = null;
+function showDetail(d) {
+  var dist = d.main ? 'MAIN CONSUMER' : (d.dist < 1 ? (d.dist*1000).toFixed(0)+' m away' : d.dist.toFixed(2)+' km away');
+  document.getElementById('sel-name').textContent = d.name + '  [' + d.acct + ']';
+  document.getElementById('sel-detail').textContent =
+    '📱 ' + d.mobile + '  |  ' + d.lmv + '  |  ₹' + d.out.toLocaleString() +
+    '  |  ATR: ' + d.atr + '  |  ' + dist +
+    '  |  ' + d.sub + ' › ' + d.feed;
+}
+
+var markers = [];
 var lst = document.getElementById('lst');
 
-DATA.forEach(function(d, i) {
-  var c = d.main ? '#F5A623' : (d.atr === 'PAID' ? '#2ECC71' : d.atr === 'LOCK' ? '#AA80FF' : '#FF4D4D');
-  var sz = d.main ? 20 : 13;
-  var border = d.main ? 3 : 2;
+if (DATA.length === 0) {
+  lst.innerHTML = '<div class="no-data">No data. Please go back and click MAP button again.</div>';
+} else {
+  DATA.forEach(function(d, i) {
+    var c = pinColor(d);
+    var sz = d.main ? 22 : 14;
 
-  var ico = L.divIcon({
-    className: '',
-    html: '<div style="width:' + sz + 'px;height:' + sz + 'px;background:' + c +
-          ';border:' + border + 'px solid #fff;border-radius:50%;box-shadow:0 0 10px ' + c +
-          (d.main ? ';animation:pulse 2s infinite' : '') + '"></div>',
-    iconSize: [sz, sz],
-    iconAnchor: [sz / 2, sz / 2]
+    var iconHtml = '<div style="' +
+      'width:' + sz + 'px;' +
+      'height:' + sz + 'px;' +
+      'background:' + c + ';' +
+      'border:' + (d.main ? 3 : 2) + 'px solid white;' +
+      'border-radius:50%;' +
+      'box-shadow:0 2px 8px rgba(0,0,0,0.5),0 0 0 ' + (d.main ? 4 : 2) + 'px ' + c + '44;' +
+      '"></div>';
+
+    var ico = L.divIcon({
+      className: '',
+      html: iconHtml,
+      iconSize: [sz, sz],
+      iconAnchor: [sz/2, sz/2],
+      popupAnchor: [0, -sz/2]
+    });
+
+    var outColor = d.out > 100000 ? '#e53e3e' : d.out > 10000 ? '#dd6b20' : '#276749';
+    var popupContent =
+      '<div style="font-family:sans-serif;font-size:12px;min-width:200px;max-width:260px;line-height:1.6">' +
+      '<div style="font-size:14px;font-weight:700;margin-bottom:4px;border-bottom:1px solid #eee;padding-bottom:4px">' + d.name + '</div>' +
+      '<div><b>Account:</b> ' + d.acct + '</div>' +
+      '<div><b>Mobile:</b> ' + d.mobile + '</div>' +
+      '<div><b>Outstanding:</b> <span style="color:' + outColor + ';font-weight:700">₹' + d.out.toLocaleString() + '</span></div>' +
+      '<div><b>ATR Status:</b> ' + d.atr + '</div>' +
+      '<div><b>LMV Type:</b> ' + d.lmv + '</div>' +
+      '<div><b>Substation:</b> ' + d.sub + '</div>' +
+      '<div><b>Feeder:</b> ' + d.feed + '</div>' +
+      '<div style="font-size:10px;color:#666;margin-top:4px">' + d.addr + '</div>' +
+      (d.main ? '' : '<div style="margin-top:4px;color:#888;font-size:10px">📏 ' + (d.dist < 1 ? (d.dist*1000).toFixed(0)+' m away' : d.dist.toFixed(2)+' km away') + '</div>') +
+      '</div>';
+
+    var mk = L.marker([d.lat, d.lon], {icon: ico, zIndexOffset: d.main ? 1000 : 0}).addTo(map);
+    mk.bindPopup(popupContent, {maxWidth: 280, minWidth: 200});
+    mk.on('click', function() { showDetail(d); });
+    markers.push({mk: mk, d: d});
+
+    if (d.main) setTimeout(function() { mk.openPopup(); }, 300);
+
+    // List row
+    var oc = d.out > 100000 ? '#FF4D4D' : d.out > 10000 ? '#F5A623' : '#2ECC71';
+    var ac = d.atr==='PAID'?'#2ECC71':d.atr==='LOCK'?'#AA80FF':d.atr==='THEFT'?'#FF4D4D':'#FF8080';
+    var ds = d.main ? '⭐ MAIN' : (d.dist<1?(d.dist*1000).toFixed(0)+'m':d.dist.toFixed(2)+'km');
+
+    var el = document.createElement('div');
+    el.className = 'item ' + (d.main ? 'main-item' : 'near-item');
+    el.innerHTML =
+      '<div class="item-left">' +
+        '<div class="item-name">' + d.name + '</div>' +
+        '<div class="item-sub">' + d.acct + ' | ' + d.sub + ' › ' + d.feed + '</div>' +
+        '<div class="item-sub">' + d.addr.substring(0,60) + '</div>' +
+      '</div>' +
+      '<div class="item-right">' +
+        '<div class="item-out" style="color:' + oc + '">₹' + d.out.toLocaleString() + '</div>' +
+        '<div class="item-atr" style="color:' + ac + '">' + d.atr + '</div>' +
+        '<div class="item-dist">' + ds + '</div>' +
+      '</div>';
+
+    el.addEventListener('click', (function(d, mk) {
+      return function() {
+        map.setView([d.lat, d.lon], 18);
+        mk.openPopup();
+        showDetail(d);
+      };
+    })(d, mk));
+
+    lst.appendChild(el);
   });
 
-  var popup =
-    '<div style="font-family:sans-serif;font-size:12px;min-width:200px;max-width:260px">' +
-    '<b style="font-size:13px;color:#333">' + d.name + '</b><br/>' +
-    '<span style="color:#888;font-size:11px">Acct: ' + d.acct + '</span><br/>' +
-    '<span style="color:#888">📱 ' + d.mobile + '</span><br/>' +
-    '<span>Outstanding: <b style="color:' + (d.out > 50000 ? '#e53e3e' : '#dd6b20') + '">₹' + d.out.toLocaleString() + '</b></span><br/>' +
-    '<span>ATR: <b>' + d.atr + '</b>  |  LMV: ' + d.lmv + '</span><br/>' +
-    '<span style="color:#666">' + d.sub + ' › ' + d.feed + '</span><br/>' +
-    '<span style="font-size:10px;color:#888">' + d.addr + '</span>' +
-    '</div>';
-
-  var mk = L.marker([d.lat, d.lon], { icon: ico }).addTo(map);
-  mk.bindPopup(popup, { maxWidth: 280, className: 'uppcl-popup' });
-  mk.on('click', function() { showDet(d); });
-
-  if (d.main) {
-    mainMarker = mk;
-    setTimeout(function() { mk.openPopup(); }, 500);
-  }
-
-  // List item
-  var oc = d.out > 100000 ? '#FF4D4D' : d.out > 10000 ? '#F5A623' : '#2ECC71';
-  var ac = d.atr === 'PAID' ? '#2ECC71' : d.atr === 'LOCK' ? '#AA80FF' : '#FF8080';
-  var dstr = d.main ? '⭐ MAIN' : (d.dist < 1 ? (d.dist * 1000).toFixed(0) + 'm away' : d.dist.toFixed(2) + 'km away');
-
-  var el = document.createElement('div');
-  el.className = 'item ' + (d.main ? 'main' : 'near');
-  el.innerHTML =
-    '<div style="flex:1;min-width:0;">' +
-      '<div class="nm">' + d.name + '</div>' +
-      '<div class="sb">' + d.acct + ' | ' + d.sub + ' › ' + d.feed + '</div>' +
-      '<div class="sb">' + d.addr.substring(0, 55) + '</div>' +
-    '</div>' +
-    '<div class="rt">' +
-      '<div class="ot" style="color:' + oc + '">₹' + d.out.toLocaleString() + '</div>' +
-      '<div class="at" style="color:' + ac + '">' + d.atr + '</div>' +
-      '<div class="sb">' + dstr + '</div>' +
-    '</div>';
-
-  el.onclick = (function(d, mk) {
-    return function() {
-      map.setView([d.lat, d.lon], 18);
-      mk.openPopup();
-      showDet(d);
-    };
-  })(d, mk);
-
-  lst.appendChild(el);
-});
-
-if (DATA.length > 0) showDet(DATA[0]);
+  showDetail(DATA[0]);
+}
 </script>
 </body>
 </html>

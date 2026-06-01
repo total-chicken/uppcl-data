@@ -2252,12 +2252,13 @@ function loginSuccess(role) {
 
 function applyRoleRestrictions(role) {
   if (role === 'user') {
-    // Only hide Google Sheet sync bar
+    // Hide Google Sheet sync bar
     const syncBar = document.getElementById('sync-bar-panel');
     if (syncBar) syncBar.style.display = 'none';
-    // Hide the sync settings button
+    // Hide sync settings button and KML export
     document.querySelectorAll('button').forEach(btn => {
       if (btn.textContent.includes('SHEET SYNC SETTINGS')) btn.style.display = 'none';
+      if (btn.textContent.includes('EXPORT KML')) btn.style.display = 'none';
     });
   }
 }
