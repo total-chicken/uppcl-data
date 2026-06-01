@@ -167,47 +167,11 @@ select option{background:#111920;}
 </div>
 <div id="app">
   <div class="tabs">
-    <div class="tab active" onclick="st('search')">🔍 SEARCH</div>
+    <div class="tab active" onclick="st('lookup')">🔍 SEARCH</div>
     <div class="tab" onclick="st('filter')">⚙️ FILTER & EXPORT</div>
-    <div class="tab" onclick="st('lookup')">⚡ LOOKUP</div>
     <div class="tab" onclick="st('nearby')">📍 NEARBY</div>
     <div class="tab" onclick="st('dc')">🔴 DISCONNECTED</div>
   </div>
-  <!-- SEARCH -->
-  <div class="panel active" id="panel-search">
-    <div class="search-bar">
-      <div class="siw"><span class="ico">⌕</span><input type="text" id="si" placeholder="Search name, account ID, mobile, address, feeder, substation…" oninput="doSearch()"/></div>
-      <button class="btn btn-out" onclick="copySL()">🔗 COPY LINK</button>
-    </div>
-    <div class="rinfo"><span>Showing <span class="hl" id="rc">0</span> of <span class="hl" id="rt">0</span> records</span><span id="sup" style="font-size:11px;color:var(--muted);word-break:break-all;max-width:600px"></span></div>
-    <div class="tw"><table><thead><tr><th>ACCT ID</th><th>NAME</th><th>MOBILE</th><th>CATEGORY</th><th>SUBSTATION</th><th>FEEDER</th><th>ADDRESS</th><th>MAP</th></tr></thead><tbody id="stb"></tbody></table></div>
-    <div class="pg" id="spg"></div>
-  </div>
-  <!-- FILTER -->
-  <div class="panel" id="panel-filter">
-    <div class="fg">
-      <div><div class="lbl">SUBSTATION</div><div class="sw"><select id="fs" onchange="onSubChange('fs','ff');af()"><option value="">ALL</option></select></div></div>
-      <div><div class="lbl">FEEDER</div><div class="sw"><select id="ff" onchange="af()"><option value="">ALL</option></select></div></div>
-      <div><div class="lbl">CATEGORY</div><div class="sw"><select id="fc" onchange="af()"><option value="">ALL</option></select></div></div>
-      <div><div class="lbl">LOAD (kW)</div><div style="display:flex;gap:8px"><input type="number" id="fln" placeholder="Min" oninput="af()" style="width:80px;background:var(--card);border:1.5px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-size:13px;outline:none"/><input type="number" id="flx" placeholder="Max" oninput="af()" style="width:80px;background:var(--card);border:1.5px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-size:13px;outline:none"/></div></div>
-    </div>
-    <div class="rc">
-      <div class="rci"><div class="val" id="fc2">0</div><div class="lbl2">MATCHED</div></div>
-      <div class="rci"><div class="val" id="fd">0</div><div class="lbl2">DOMESTIC</div></div>
-      <div class="rci"><div class="val" id="fco">0</div><div class="lbl2">COMMERCIAL</div></div>
-      <div class="rci"><div class="val" id="fi">0</div><div class="lbl2">INDUSTRIAL</div></div>
-      <div class="rci"><div class="val" id="fg2">0</div><div class="lbl2">GOVT</div></div>
-      <div class="rci"><div class="val" id="ftl">0</div><div class="lbl2">TOTAL LOAD kW</div></div>
-    </div>
-    <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap">
-      <button class="btn btn-acc" onclick="expX()">⬇ EXPORT XLSX</button>
-      <button class="btn btn-out" onclick="expC()">⬇ EXPORT CSV</button>
-      <button class="btn" style="background:var(--card);border:1px solid var(--border);color:var(--text)" onclick="rf()">↺ RESET</button>
-    </div>
-    <div class="tw"><table><thead><tr><th>ACCT ID</th><th>NAME</th><th>MOBILE</th><th>CATEGORY</th><th>LOAD</th><th>SUBSTATION</th><th>FEEDER</th><th>MAP</th></tr></thead><tbody id="ftb"></tbody></table></div>
-    <div class="pg" id="fpg"></div>
-  </div>
-  
   <!-- NEARBY -->
   <div class="panel" id="panel-nearby">
     <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:flex-end">
@@ -280,7 +244,7 @@ select option{background:#111920;}
     </div>
   </div>
   <!-- LOOKUP -->
-  <div class="panel" id="panel-lookup">
+  <div class="panel active" id="panel-lookup">
     <div class="lw">
       <div class="ls"><input type="text" id="li" placeholder="Enter Account ID or Mobile Number…" oninput="dl()" onkeydown="if(event.key==='Enter')dl()"/><button class="btn btn-acc" onclick="dl()">FIND</button></div>
       <div id="lr"></div>
@@ -313,18 +277,7 @@ select option{background:#111920;}
           <div style="font-family:var(--fh);font-size:24px;font-weight:700;color:var(--accent2)" id="dc-subs-count">0</div>
           <div style="font-size:11px;color:var(--muted)">SUBSTATIONS</div>
         </div>
-        <div style="background:var(--card);border:1px solid #2ECC7133;border-left:3px solid #2ECC71;border-radius:10px;padding:14px 20px">
-          <div style="font-family:var(--fh);font-size:24px;font-weight:700;color:#2ECC71" id="dc-atr-paid">0</div>
-          <div style="font-size:11px;color:var(--muted)">PAID</div>
-        </div>
-        <div style="background:var(--card);border:1px solid #AA80FF33;border-left:3px solid #AA80FF;border-radius:10px;padding:14px 20px">
-          <div style="font-family:var(--fh);font-size:24px;font-weight:700;color:#AA80FF" id="dc-atr-lock">0</div>
-          <div style="font-size:11px;color:var(--muted)">LOCK</div>
-        </div>
-        <div style="background:var(--card);border:1px solid #FF4D4D33;border-left:3px solid #FF4D4D;border-radius:10px;padding:14px 20px">
-          <div style="font-family:var(--fh);font-size:24px;font-weight:700;color:#FF4D4D" id="dc-atr-theft">0</div>
-          <div style="font-size:11px;color:var(--muted)">THEFT</div>
-        </div>
+
       </div>
 
       <!-- Google Sheet Sync Config -->
@@ -502,7 +455,33 @@ select option{background:#111920;}
 
         <!-- ATR Section (only for DC consumers) -->
         <div id="modal-atr-section" style="display:none;background:#0E1C25;border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px">
-          <div style="font-family:var(--fh);font-size:13px;font-weight:700;letter-spacing:1px;color:var(--accent2);margin-bottom:10px">📋 ATR STATUS</div>
+          <div style="font-family:var(--fh);font-size:13px;font-weight:700;letter-spacing:1px;color:var(--accent2);margin-bottom:12px">📋 ATR STATUS — ACTION TAKEN REPORT</div>
+
+          <!-- ATR Mini Summary -->
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px" id="modal-atr-cards">
+            <div style="background:#1A3A2A;border:1px solid #2ECC7133;border-radius:8px;padding:8px 14px;text-align:center">
+              <div style="font-family:var(--fh);font-size:18px;font-weight:700;color:#2ECC71" id="m-atr-paid">0</div>
+              <div style="font-size:10px;color:var(--muted)">PAID</div>
+            </div>
+            <div style="background:#2A1A3A;border:1px solid #AA80FF33;border-radius:8px;padding:8px 14px;text-align:center">
+              <div style="font-family:var(--fh);font-size:18px;font-weight:700;color:#AA80FF" id="m-atr-lock">0</div>
+              <div style="font-size:10px;color:var(--muted)">LOCK</div>
+            </div>
+            <div style="background:#3A1A1A;border:1px solid #FF4D4D33;border-radius:8px;padding:8px 14px;text-align:center">
+              <div style="font-family:var(--fh);font-size:18px;font-weight:700;color:#FF4D4D" id="m-atr-theft">0</div>
+              <div style="font-size:10px;color:var(--muted)">THEFT</div>
+            </div>
+            <div style="background:#2A1A1A;border:1px solid #FF808033;border-radius:8px;padding:8px 14px;text-align:center">
+              <div style="font-family:var(--fh);font-size:18px;font-weight:700;color:#FF8080" id="m-atr-dc">0</div>
+              <div style="font-size:10px;color:var(--muted)">DISCONNECTED</div>
+            </div>
+            <div style="background:#1A1A2A;border:1px solid #8888FF33;border-radius:8px;padding:8px 14px;text-align:center">
+              <div style="font-family:var(--fh);font-size:18px;font-weight:700;color:#8888FF" id="m-atr-other">0</div>
+              <div style="font-size:10px;color:var(--muted)">OTHER</div>
+            </div>
+          </div>
+
+          <div style="font-family:var(--fh);font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:8px">UPDATE STATUS FOR THIS CONSUMER:</div>
           <select class="atr-big-select atr-big-dc" id="modal-atr-select" onchange="updateModalAtrStyle()">
             <option value="DISCONNECTED">🔴 DISCONNECTED</option>
             <option value="PAID">✅ PAID</option>
@@ -640,7 +619,7 @@ function ps(id,items){
 
 // TABS
 function st(name){
-  ['search','filter','lookup','nearby','dc'].forEach((n,i)=>{
+  ['lookup','filter','nearby','dc'].forEach((n,i)=>{
     document.querySelectorAll('.tab')[i].classList.toggle('active',n===name);
     document.getElementById('panel-'+n).classList.toggle('active',n===name);
   });
@@ -1270,9 +1249,20 @@ function atrBadgeFn(status) {
 }
 
 function dcUpdateAtrCards() {
-  document.getElementById('dc-atr-paid').textContent = DC.filter(r => r.ATR_STATUS === 'PAID').length.toLocaleString();
-  document.getElementById('dc-atr-lock').textContent = DC.filter(r => r.ATR_STATUS === 'LOCK').length.toLocaleString();
-  document.getElementById('dc-atr-theft').textContent = DC.filter(r => r.ATR_STATUS === 'THEFT').length.toLocaleString();
+  const paid  = DC.filter(r => r.ATR_STATUS === 'PAID').length;
+  const lock  = DC.filter(r => r.ATR_STATUS === 'LOCK').length;
+  const theft = DC.filter(r => r.ATR_STATUS === 'THEFT').length;
+  const other = DC.filter(r => r.ATR_STATUS === 'OTHER').length;
+  const dc    = DC.filter(r => !r.ATR_STATUS || r.ATR_STATUS === 'DISCONNECTED').length;
+  // Update modal mini-cards if open
+  const mp = document.getElementById('m-atr-paid');
+  if (mp) {
+    mp.textContent = paid;
+    document.getElementById('m-atr-lock').textContent = lock;
+    document.getElementById('m-atr-theft').textContent = theft;
+    document.getElementById('m-atr-dc').textContent = dc;
+    document.getElementById('m-atr-other').textContent = other;
+  }
 }
 
 function dcFilter() {
@@ -1594,6 +1584,7 @@ function openDcDetail(acctId) {
   updateModalAtrStyle();
   document.getElementById('modal-atr-section').style.display = 'block';
   document.getElementById('modal-save-ind').textContent = '';
+  dcUpdateAtrCards(); // refresh mini summary cards
 
   // Map button
   const mapBtn = document.getElementById('modal-map-btn');
