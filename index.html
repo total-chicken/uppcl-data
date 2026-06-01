@@ -1757,8 +1757,7 @@ function renderDcTable(page) {
   document.getElementById('dc-tbody').innerHTML = slice.map(r => {
     var mapLat = parseFloat(r.LAT), mapLon = parseFloat(r.LON);
     if (mapLat > 50) { var t = mapLat; mapLat = mapLon; mapLon = t; }
-    var mapQuery = encodeURIComponent((r.NAME||'Consumer') + ', ' + (r.ADDRESS||'Jhansi') + ', UP');
-    const mapUrl = (r.LAT && r.LON) ? 'https://www.google.com/maps/search/' + mapQuery + '/@' + mapLat + ',' + mapLon + ',17z' : '';
+    const mapUrl = (mapLat && mapLon) ? 'https://www.google.com/maps?q=' + mapLat + ',' + mapLon + '&z=17' : '';
     const date = (() => {
       if (!r.DATE_DC) return '';
       const v = r.DATE_DC;
