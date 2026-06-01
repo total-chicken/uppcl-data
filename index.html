@@ -1657,9 +1657,41 @@ function saveModalAtr() {
     saveAtrToStorage(rec);
     dcUpdateAtrCards();
 
-    ind.textContent = '✅ ATR saved — ' + newStatus;
-    ind.style.color = '#2ECC71';
-    setTimeout(() => ind.textContent = '', 3000);
+    ind.textContent = '💾 Saving…';
+    ind.style.color = '#F5A623';
+
+    // Auto-sync from sheet after save to confirm
+    if (ATR_SCRIPT_URL) {
+      setTimeout(() => {
+        ind.textContent = '🔄 Syncing…';
+        ind.style.color = '#00C4FF';
+        fetch(ATR_SCRIPT_URL + '?action=getAll')
+          .then(res => res.json())
+          .then(d => {
+            if (d.status === 'ok' && d.data) {
+              DC.forEach(r => { const v = d.data[String(r.ACCT_ID)]; if (v) r.ATR_STATUS = v; });
+              try { localStorage.setItem('uppcl_atr', JSON.stringify(d.data)); } catch(e) {}
+              dcUpdateAtrCards();
+              renderDcTable(dcPage || 1);
+              ind.textContent = '✅ Saved & Synced — ' + newStatus;
+              ind.style.color = '#2ECC71';
+              // Also update sync indicator in header
+              const si = document.getElementById('atr-sync-ind');
+              if (si) { si.textContent = '✅ Synced'; si.style.color = '#2ECC71'; setTimeout(() => si.textContent = '', 3000); }
+            }
+            setTimeout(() => ind.textContent = '', 4000);
+          })
+          .catch(() => {
+            ind.textContent = '✅ Saved locally (sheet sync failed)';
+            ind.style.color = '#F5A623';
+            setTimeout(() => ind.textContent = '', 3000);
+          });
+      }, 800);
+    } else {
+      ind.textContent = '✅ ATR saved — ' + newStatus;
+      ind.style.color = '#2ECC71';
+      setTimeout(() => ind.textContent = '', 3000);
+    }
   }
 }
 
