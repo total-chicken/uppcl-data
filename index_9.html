@@ -1,0 +1,1927 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>UPPCL Consumer Data Tool</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Noto+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+:root{--bg:#050A0E;--surface:#0C1419;--card:#111920;--border:#1E2D38;--accent:#F5A623;--accent2:#00C4FF;--green:#2ECC71;--text:#D4E8F0;--muted:#5A7A8A;--fh:'Rajdhani',sans-serif;--fb:'Noto Sans',sans-serif;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--fb);min-height:100vh;}
+.header{background:linear-gradient(90deg,#0C1419,#0A1820);border-bottom:1px solid var(--border);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.logo{display:flex;align-items:center;gap:12px;}
+.logo-icon{width:36px;height:36px;background:var(--accent);clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);display:flex;align-items:center;justify-content:center;font-size:16px;color:#000;font-weight:700;font-family:var(--fh);}
+.logo-text{font-family:var(--fh);font-size:22px;font-weight:700;letter-spacing:2px;}
+.logo-text span{color:var(--accent);}
+.logo-sub{font-size:11px;color:var(--muted);letter-spacing:1px;margin-top:2px;}
+.stats-bar{display:flex;gap:20px;}
+.stat-chip{font-family:var(--fh);font-size:13px;font-weight:600;color:var(--muted);display:flex;align-items:center;gap:6px;}
+.stat-chip .val{color:var(--accent2);font-size:16px;}
+#upload-screen{display:flex;align-items:center;justify-content:center;min-height:calc(100vh - 65px);padding:40px;}
+.upload-box{background:var(--card);border:2px dashed var(--border);border-radius:16px;padding:60px 80px;text-align:center;max-width:560px;width:100%;transition:border-color .2s,background .2s;cursor:pointer;}
+.upload-box:hover,.upload-box.drag{border-color:var(--accent);background:#111920;}
+.upload-icon{font-size:56px;margin-bottom:20px;}
+.upload-box h2{font-family:var(--fh);font-size:28px;font-weight:700;letter-spacing:1px;margin-bottom:10px;}
+.upload-box p{color:var(--muted);font-size:14px;line-height:1.6;}
+.upload-btn{display:inline-block;margin-top:28px;background:var(--accent);color:#000;font-family:var(--fh);font-size:15px;font-weight:700;letter-spacing:1.5px;padding:12px 32px;border-radius:8px;cursor:pointer;border:none;transition:opacity .2s;}
+.upload-btn:hover{opacity:.85;}
+#file-input{display:none;}
+#app{display:none;}
+.tabs{display:flex;gap:0;background:var(--surface);border-bottom:1px solid var(--border);padding:0 28px;overflow-x:auto;}
+.tab{font-family:var(--fh);font-size:14px;font-weight:600;letter-spacing:1px;padding:14px 24px;border-bottom:3px solid transparent;cursor:pointer;color:var(--muted);white-space:nowrap;transition:color .2s,border-color .2s;}
+.tab:hover{color:var(--text);}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.panel{display:none;padding:28px;}
+.panel.active{display:block;}
+.search-bar{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;}
+.siw{flex:1;min-width:220px;position:relative;}
+.siw input{width:100%;background:var(--card);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px 12px 40px;color:var(--text);font-family:var(--fb);font-size:13px;outline:none;transition:border-color .2s;}
+.siw input:focus{border-color:var(--accent2);}
+.siw .ico{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:15px;pointer-events:none;}
+.btn{font-family:var(--fh);font-size:13px;font-weight:700;letter-spacing:1px;padding:11px 20px;border-radius:10px;cursor:pointer;border:none;transition:opacity .2s;white-space:nowrap;}
+.btn-acc{background:var(--accent);color:#000;}
+.btn-out{background:transparent;color:var(--accent2);border:1.5px solid var(--accent2);}
+.btn:hover{opacity:.82;}
+.rinfo{font-size:12px;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+.rinfo .hl{color:var(--accent2);font-weight:600;}
+.tw{overflow-x:auto;border-radius:12px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:12.5px;}
+thead tr{background:#0E1C25;}
+th{padding:11px 14px;text-align:left;font-family:var(--fh);font-size:11px;font-weight:600;letter-spacing:1.2px;color:var(--muted);white-space:nowrap;border-bottom:1px solid var(--border);}
+td{padding:10px 14px;border-bottom:1px solid #0E1A22;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;}
+tr:hover td{background:#0E1C26;}
+tr:last-child td{border-bottom:none;}
+.ml{display:inline-flex;align-items:center;gap:4px;color:var(--accent2);text-decoration:none;font-weight:500;font-size:11px;padding:3px 8px;border-radius:5px;border:1px solid #00C4FF33;transition:background .15s;}
+.ml:hover{background:#00C4FF18;}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;letter-spacing:.5px;font-family:var(--fh);}
+.b-dom{background:#1A3A2A;color:#2ECC71;}
+.b-com{background:#3A2A10;color:#F5A623;}
+.b-ind{background:#2A1A3A;color:#AA80FF;}
+.b-gov{background:#1A2A3A;color:#00C4FF;}
+.b-oth{background:#2A1A1A;color:#FF8080;}
+mark{background:#F5A62344;color:var(--accent);border-radius:2px;}
+#map{width:100%;height:520px;}
+#map-cont{border-radius:12px;overflow:hidden;border:1px solid var(--border);}
+.mc{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:flex-end;}
+.sw{position:relative;min-width:180px;}
+.sw select{width:100%;background:var(--card);border:1.5px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--text);font-family:var(--fb);font-size:13px;outline:none;appearance:none;cursor:pointer;transition:border-color .2s;}
+.sw select:focus{border-color:var(--accent2);}
+.sw::after{content:'▾';position:absolute;right:12px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--muted);}
+.lbl{font-size:11px;color:var(--muted);margin-bottom:5px;font-family:var(--fh);letter-spacing:1px;}
+.mleg{display:flex;gap:16px;flex-wrap:wrap;padding:10px 16px;background:#0C1419CC;border-radius:8px;margin-bottom:12px;font-size:11px;align-items:center;}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block;}
+.fg{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin-bottom:20px;}
+.rc{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 20px;display:flex;gap:24px;margin-bottom:20px;flex-wrap:wrap;}
+.rci .val{font-family:var(--fh);font-size:22px;font-weight:700;color:var(--accent);}
+.rci .lbl2{font-size:11px;color:var(--muted);margin-top:2px;}
+.lw{max-width:700px;}
+.ls{display:flex;gap:10px;margin-bottom:24px;}
+.ls input{flex:1;background:var(--card);border:1.5px solid var(--border);border-radius:10px;padding:13px 16px;color:var(--text);font-family:var(--fh);font-size:16px;letter-spacing:1px;outline:none;transition:border-color .2s;}
+.ls input:focus{border-color:var(--accent);}
+.dc{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
+.dh{background:linear-gradient(135deg,#0E1C25,#111920);padding:20px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;}
+.dn{font-family:var(--fh);font-size:24px;font-weight:700;}
+.da{color:var(--accent);font-family:var(--fh);font-size:14px;letter-spacing:1px;}
+.db{padding:20px 24px;}
+.dgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.df .lbl{font-size:10px;color:var(--muted);font-family:var(--fh);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;}
+.df .val{font-size:14px;color:var(--text);}
+.mb{display:inline-flex;align-items:center;gap:8px;background:var(--accent2);color:#000;font-family:var(--fh);font-size:14px;font-weight:700;letter-spacing:1px;padding:12px 24px;border-radius:10px;text-decoration:none;margin-top:20px;transition:opacity .2s;}
+.mb:hover{opacity:.82;}
+.clb{background:transparent;border:1.5px solid var(--accent);color:var(--accent);font-family:var(--fh);font-size:13px;font-weight:600;letter-spacing:1px;padding:10px 18px;border-radius:8px;cursor:pointer;transition:background .2s;margin-top:20px;margin-left:10px;}
+.clb:hover{background:#F5A62318;}
+.nf{text-align:center;padding:60px 20px;color:var(--muted);font-family:var(--fh);font-size:18px;}
+.nf .ico{font-size:48px;margin-bottom:12px;}
+#loading{position:fixed;inset:0;background:#050A0Eee;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;}
+.spinner{width:48px;height:48px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.lt{margin-top:16px;font-family:var(--fh);font-size:16px;color:var(--muted);letter-spacing:2px;}
+.pb{width:200px;height:3px;background:var(--border);border-radius:2px;margin-top:12px;overflow:hidden;}
+.pf{height:100%;background:var(--accent);border-radius:2px;transition:width .3s;}
+.pg{display:flex;gap:8px;margin-top:14px;align-items:center;flex-wrap:wrap;}
+.pgb{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:6px 12px;cursor:pointer;font-family:var(--fh);font-size:12px;color:var(--text);transition:border-color .15s;}
+.pgb:hover,.pgb.active{border-color:var(--accent2);color:var(--accent2);}
+.pgi{font-size:12px;color:var(--muted);margin-left:8px;}
+.toast{position:fixed;bottom:30px;right:30px;background:var(--green);color:#000;font-family:var(--fh);font-size:13px;font-weight:700;padding:12px 24px;border-radius:8px;z-index:9999;opacity:0;transform:translateY(10px);transition:opacity .3s,transform .3s;pointer-events:none;}
+.toast.show{opacity:1;transform:translateY(0);}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:#1E2D38;border-radius:3px;}
+input::placeholder{color:var(--muted);}
+select option{background:#111920;}
+.atr-select{font-family:var(--fh);font-size:11px;font-weight:700;letter-spacing:.5px;padding:4px 8px;border-radius:6px;border:1.5px solid var(--border);cursor:pointer;outline:none;transition:all .15s;}
+.atr-dc{background:#2A1A1A;color:#FF8080;border-color:#FF4D4D55;}
+.atr-paid{background:#1A3A2A;color:#2ECC71;border-color:#2ECC7155;}
+.atr-lock{background:#2A1A3A;color:#AA80FF;border-color:#AA80FF55;}
+.atr-theft{background:#3A1A1A;color:#FF4D4D;border-color:#FF4D4D88;}
+.atr-other{background:#1A1A2A;color:#8888FF;border-color:#8888FF55;}
+.atr-saved{animation:atrpop .3s ease;}
+@keyframes atrpop{0%{transform:scale(1.2);}100%{transform:scale(1);}}
+/* Login Screen */
+#login-screen{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;}
+.login-box{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:48px 40px;width:100%;max-width:420px;text-align:center;}
+.login-logo{width:56px;height:56px;background:var(--accent);clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 20px;}
+.login-title{font-family:var(--fh);font-size:28px;font-weight:700;letter-spacing:2px;margin-bottom:4px;}
+.login-sub{font-size:12px;color:var(--muted);letter-spacing:1px;margin-bottom:32px;}
+.role-tabs{display:flex;gap:0;background:#0C1419;border-radius:10px;padding:4px;margin-bottom:24px;}
+.role-tab{flex:1;font-family:var(--fh);font-size:13px;font-weight:600;letter-spacing:1px;padding:10px;border-radius:8px;cursor:pointer;color:var(--muted);transition:all .2s;border:none;background:transparent;}
+.role-tab.active{background:var(--card);color:var(--text);box-shadow:0 2px 8px #00000044;}
+.pin-display{display:flex;justify-content:center;gap:10px;margin-bottom:20px;}
+.pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--border);transition:all .2s;}
+.pin-dot.filled{background:var(--accent);border-color:var(--accent);}
+.pin-dot.error{background:#FF4D4D;border-color:#FF4D4D;animation:shake .3s;}
+@keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-4px);}75%{transform:translateX(4px);}}
+.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;}
+.pin-btn{background:#0C1419;border:1px solid var(--border);border-radius:12px;padding:16px;font-family:var(--fh);font-size:20px;font-weight:700;color:var(--text);cursor:pointer;transition:all .15s;}
+.pin-btn:hover{background:var(--border);border-color:var(--accent);}
+.pin-btn:active{transform:scale(.95);}
+.pin-clear{background:transparent;border:1px solid var(--border);border-radius:12px;padding:16px;font-family:var(--fh);font-size:13px;color:var(--muted);cursor:pointer;transition:all .15s;}
+.pin-clear:hover{border-color:#FF4D4D;color:#FF4D4D;}
+.login-error{color:#FF4D4D;font-size:12px;font-family:var(--fh);letter-spacing:1px;min-height:18px;margin-bottom:8px;}
+.role-badge{display:inline-block;padding:3px 10px;border-radius:5px;font-size:10px;font-weight:700;font-family:var(--fh);letter-spacing:1px;margin-left:8px;}
+.badge-admin{background:#F5A62322;color:var(--accent);}
+.badge-user{background:#00C4FF22;color:var(--accent2);}
+
+/* Detail Modal */
+.modal-overlay{position:fixed;inset:0;background:#000000CC;z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);}
+.modal-box{background:var(--card);border:1px solid var(--border);border-radius:16px;width:100%;max-width:640px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px #000;}
+.modal-header{background:linear-gradient(135deg,#0E1C25,#111920);padding:20px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
+.modal-close{background:transparent;border:1px solid var(--border);color:var(--muted);width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;}
+.modal-close:hover{border-color:#FF4D4D;color:#FF4D4D;}
+.modal-body{padding:20px 24px;}
+.modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;}
+.modal-field .lbl{font-size:10px;color:var(--muted);font-family:var(--fh);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;}
+.modal-field .val{font-size:13px;color:var(--text);}
+.atr-big-select{font-family:var(--fh);font-size:14px;font-weight:700;letter-spacing:1px;padding:12px 16px;border-radius:10px;border:2px solid var(--border);cursor:pointer;outline:none;width:100%;transition:all .2s;margin-top:6px;}
+.atr-big-dc{background:#2A1A1A;color:#FF8080;border-color:#FF4D4D88;}
+.atr-big-paid{background:#1A3A2A;color:#2ECC71;border-color:#2ECC7188;}
+.atr-big-lock{background:#2A1A3A;color:#AA80FF;border-color:#AA80FF88;}
+.atr-big-theft{background:#3A1A1A;color:#FF4D4D;border-color:#FF4D4D88;}
+.atr-big-other{background:#1A1A2A;color:#8888FF;border-color:#8888FF88;}
+.save-atr-btn{width:100%;background:var(--accent);color:#000;font-family:var(--fh);font-size:15px;font-weight:700;letter-spacing:1.5px;padding:13px;border-radius:10px;border:none;cursor:pointer;margin-top:12px;transition:opacity .2s;}
+.save-atr-btn:hover{opacity:.85;}
+.save-indicator{text-align:center;font-family:var(--fh);font-size:12px;margin-top:8px;min-height:18px;}
+</style>
+</head>
+<body>
+<div id="loading" style="display:none"><div class="spinner"></div><div class="lt" id="lt">LOADING…</div><div class="pb"><div class="pf" id="pf" style="width:0%"></div></div></div>
+<div class="toast" id="toast">✓ Link Copied!</div>
+<!-- LOGIN SCREEN -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">⚡</div>
+    <div class="login-title">UPP<span style="color:var(--accent)">CL</span> TOOL</div>
+    <div class="login-sub">CONSUMER DATA INTELLIGENCE · JHANSI</div>
+
+    <!-- Role selector -->
+    <div class="role-tabs">
+      <button class="role-tab active" onclick="setLoginRole('admin')" id="tab-admin">👑 ADMIN</button>
+      <button class="role-tab" onclick="setLoginRole('user')" id="tab-user">👤 USER</button>
+    </div>
+
+    <!-- PIN dots -->
+    <div class="pin-display" id="pin-display">
+      <div class="pin-dot" id="pd0"></div>
+      <div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div>
+      <div class="pin-dot" id="pd3"></div>
+    </div>
+
+    <!-- Error message -->
+    <div class="login-error" id="login-error"></div>
+
+    <!-- PIN pad -->
+    <div class="pin-pad">
+      <button class="pin-btn" onclick="pinPress('1')">1</button>
+      <button class="pin-btn" onclick="pinPress('2')">2</button>
+      <button class="pin-btn" onclick="pinPress('3')">3</button>
+      <button class="pin-btn" onclick="pinPress('4')">4</button>
+      <button class="pin-btn" onclick="pinPress('5')">5</button>
+      <button class="pin-btn" onclick="pinPress('6')">6</button>
+      <button class="pin-btn" onclick="pinPress('7')">7</button>
+      <button class="pin-btn" onclick="pinPress('8')">8</button>
+      <button class="pin-btn" onclick="pinPress('9')">9</button>
+      <button class="pin-clear" onclick="pinClear()">CLR</button>
+      <button class="pin-btn" onclick="pinPress('0')">0</button>
+      <button class="pin-btn" onclick="pinBackspace()">⌫</button>
+    </div>
+
+    <div style="font-size:11px;color:var(--muted);line-height:1.8">
+      👑 Admin: Full access · ATR update · Export<br/>
+      👤 User: View only · No export · No ATR edit
+    </div>
+  </div>
+</div>
+
+<div class="header">
+  <div class="logo">
+    <div class="logo-icon">⚡</div>
+    <div><div class="logo-text">UPP<span>CL</span> TOOL</div><div class="logo-sub">CONSUMER DATA INTELLIGENCE &nbsp;<span class="role-badge" id="role-indicator"></span></div></div>
+  </div>
+  <div style="display:flex;align-items:center;gap:16px">
+  <button onclick="logout()" style="background:transparent;border:1px solid var(--border);color:var(--muted);font-family:var(--fh);font-size:11px;font-weight:600;padding:6px 14px;border-radius:6px;cursor:pointer;letter-spacing:1px;transition:all .2s" onmouseover="this.style.borderColor='#FF4D4D';this.style.color='#FF4D4D'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">⎋ LOGOUT</button>
+  <div class="stats-bar" id="sbar" style="display:none">
+    <div class="stat-chip">RECORDS <span class="val" id="s-tot">0</span></div>
+    <div class="stat-chip">SUBSTATIONS <span class="val" id="s-sub">0</span></div>
+    <div class="stat-chip">FEEDERS <span class="val" id="s-feed">0</span></div>
+  </div>
+</div>
+</div>
+<div id="upload-screen">
+  <label for="file-input">
+    <div class="upload-box" id="ub">
+      <div class="upload-icon">📊</div>
+      <h2>UPLOAD YOUR DATA FILE</h2>
+      <p>Drop your <strong>123_map_links.csv</strong> here<br/>Activates all 4 features instantly</p>
+      <div class="upload-btn">CHOOSE FILE</div>
+    </div>
+  </label>
+  <input type="file" id="file-input" accept=".xlsx,.xls,.csv"/>
+</div>
+<div id="app">
+  <div class="tabs">
+    <div class="tab active" onclick="st('lookup')">🔍 SEARCH</div>
+    <div class="tab" onclick="st('filter')">⚙️ FILTER & EXPORT</div>
+    <div class="tab" onclick="st('nearby')">📍 NEARBY</div>
+    <div class="tab" onclick="st('dc')">🔴 DISCONNECTED</div>
+  </div>
+  <!-- NEARBY -->
+  <div class="panel" id="panel-nearby">
+    <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:flex-end">
+      <div>
+        <div class="lbl">SEARCH RADIUS</div>
+        <div class="sw" style="min-width:140px">
+          <select id="nb-radius">
+            <option value="0.25">250 metres</option>
+            <option value="0.5" selected>500 metres</option>
+            <option value="1">1 km</option>
+            <option value="2">2 km</option>
+            <option value="5">5 km</option>
+            <option value="10">10 km</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <div class="lbl">CATEGORY</div>
+        <div class="sw"><select id="nb-cat" onchange="reapplyNearby()"><option value="">ALL CATEGORIES</option></select></div>
+      </div>
+      <div>
+        <div class="lbl">SUBSTATION</div>
+        <div class="sw"><select id="nb-sub" onchange="onSubChange('nb-sub','nb-feed');reapplyNearby()"><option value="">ALL SUBSTATIONS</option></select></div>
+      </div>
+      <div>
+        <div class="lbl">FEEDER</div>
+        <div class="sw"><select id="nb-feed" onchange="reapplyNearby()"><option value="">ALL FEEDERS</option></select></div>
+      </div>
+      <button class="btn btn-acc" onclick="useMyLocation()">📡 USE MY GPS LOCATION</button>
+      <button class="btn btn-out" onclick="pickOnMap()">🗺️ CLICK ON MAP TO PICK LOCATION</button>
+      <button class="btn" style="background:var(--card);border:1px solid var(--border);color:var(--text)" onclick="clearNearby()">↺ CLEAR</button>
+    </div>
+
+    <!-- Coordinates display -->
+    <div id="nb-coords" style="display:none;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 16px;margin-bottom:14px;font-size:12px;display:none;align-items:center;gap:16px;flex-wrap:wrap">
+      <span style="color:var(--muted);font-family:var(--fh);letter-spacing:1px">📍 SELECTED LOCATION:</span>
+      <span id="nb-lat-display" style="color:var(--accent2)"></span>
+      <span id="nb-lon-display" style="color:var(--accent2)"></span>
+      <span id="nb-count-display" style="color:var(--accent);font-family:var(--fh);font-weight:700;margin-left:auto"></span>
+    </div>
+
+    <!-- Mini map for nearby -->
+    <div id="nb-map-cont" style="border-radius:12px;overflow:hidden;border:1px solid var(--border);margin-bottom:16px;display:none">
+      <div id="nb-map" style="width:100%;height:380px"></div>
+    </div>
+
+    <!-- Instruction box -->
+    <div id="nb-instruction" style="text-align:center;padding:60px 20px;color:var(--muted)">
+      <div style="font-size:52px;margin-bottom:16px">📡</div>
+      <div style="font-family:var(--fh);font-size:20px;letter-spacing:1px;margin-bottom:8px">FIND NEARBY CONSUMERS</div>
+      <div style="font-size:13px;line-height:1.8">
+        Click <strong style="color:var(--accent)">USE MY GPS LOCATION</strong> to find consumers near you<br/>
+        or <strong style="color:var(--accent2)">CLICK ON MAP TO PICK LOCATION</strong> to select any point
+      </div>
+    </div>
+
+    <!-- Results table -->
+    <div id="nb-results" style="display:none">
+      <div class="tw">
+        <table>
+          <thead><tr><th>DIST</th><th>ACCT ID</th><th>NAME</th><th>MOBILE</th><th>CATEGORY</th><th>SUBSTATION</th><th>FEEDER</th><th>ADDRESS</th><th>MAP</th></tr></thead>
+          <tbody id="nb-tbody"></tbody>
+        </table>
+      </div>
+      <div class="pg" id="nb-pg"></div>
+      <div style="display:flex;gap:12px;margin-top:14px;flex-wrap:wrap">
+        <button class="btn btn-acc" onclick="expNearbyX()">⬇ EXPORT XLSX</button>
+        <button class="btn btn-out" onclick="expNearbyC()">⬇ EXPORT CSV</button>
+      </div>
+    </div>
+  </div>
+  <!-- LOOKUP -->
+  <div class="panel active" id="panel-lookup">
+    <div class="lw">
+      <div class="ls"><input type="text" id="li" placeholder="Enter Account ID or Mobile Number…" oninput="dl()" onkeydown="if(event.key==='Enter')dl()"/><button class="btn btn-acc" onclick="dl()">FIND</button></div>
+      <div id="lr"></div>
+    </div>
+  </div>
+
+  <!-- DISCONNECTED -->
+  <div class="panel" id="panel-dc">
+    <!-- Stats bar -->
+    <div id="dc-loading" style="text-align:center;padding:40px;color:var(--muted)">
+      <div style="font-size:36px;margin-bottom:12px">🔴</div>
+      <div style="font-family:var(--fh);font-size:16px;letter-spacing:1px" id="dc-load-msg">LOADING DISCONNECTED DATA…</div>
+      <div style="width:200px;height:3px;background:var(--border);border-radius:2px;margin:12px auto;overflow:hidden">
+        <div id="dc-pbar" style="height:100%;background:#FF4D4D;border-radius:2px;width:0%;transition:width .3s"></div>
+      </div>
+    </div>
+
+    <div id="dc-content" style="display:none">
+      <!-- Summary cards -->
+      <div style="display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap">
+        <div style="background:var(--card);border:1px solid #FF4D4D33;border-left:3px solid #FF4D4D;border-radius:10px;padding:14px 20px">
+          <div style="font-family:var(--fh);font-size:24px;font-weight:700;color:#FF4D4D" id="dc-total">0</div>
+          <div style="font-size:11px;color:var(--muted)">TOTAL DISCONNECTED</div>
+        </div>
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 20px">
+          <div style="font-family:var(--fh);font-size:24px;font-weight:700;color:var(--accent)" id="dc-outstanding">0</div>
+          <div style="font-size:11px;color:var(--muted)">TOTAL OUTSTANDING (₹)</div>
+        </div>
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 20px">
+          <div style="font-family:var(--fh);font-size:24px;font-weight:700;color:var(--accent2)" id="dc-subs-count">0</div>
+          <div style="font-size:11px;color:var(--muted)">SUBSTATIONS</div>
+        </div>
+
+      </div>
+
+      <!-- Google Sheet Sync Config (collapsible) -->
+      <div style="margin-bottom:14px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span id="atr-sync-ind" style="font-size:12px;font-family:var(--fh)"></span>
+          <span id="atr-url-status" style="font-size:12px;font-family:var(--fh)"></span>
+          <button onclick="toggleSyncBar()" style="background:transparent;border:1px solid var(--border);color:var(--muted);font-family:var(--fh);font-size:11px;font-weight:600;padding:5px 12px;border-radius:6px;cursor:pointer;letter-spacing:1px;margin-left:auto">
+            ☁️ SHEET SYNC SETTINGS
+          </button>
+        </div>
+        <div id="sync-bar-panel" style="display:none;background:var(--card);border:1px solid #00C4FF33;border-left:3px solid #00C4FF;border-radius:10px;padding:12px 16px;margin-top:10px;display:none;align-items:center;gap:12px;flex-wrap:wrap">
+          <input id="atr-url-input" type="text" placeholder="Paste your Apps Script Web App URL here…"
+            style="flex:1;min-width:220px;background:#0C1419;border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:12px;outline:none"
+            value=""/>
+          <button onclick="setScriptUrl(document.getElementById('atr-url-input').value)"
+            style="background:#00C4FF22;border:1px solid #00C4FF55;color:var(--accent2);font-family:var(--fh);font-size:12px;font-weight:700;padding:8px 14px;border-radius:6px;cursor:pointer;white-space:nowrap">
+            CONNECT
+          </button>
+          <button onclick="loadAtrFromStorage()"
+            style="background:#1A2A3A;border:1px solid #00C4FF33;color:var(--accent2);font-family:var(--fh);font-size:12px;font-weight:700;padding:8px 14px;border-radius:6px;cursor:pointer;white-space:nowrap">
+            🔄 SYNC NOW
+          </button>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px;margin-bottom:16px">
+        <div>
+          <div class="lbl">SEARCH</div>
+          <div class="siw"><span class="ico">⌕</span>
+            <input type="text" id="dc-search" placeholder="Name, Acct, Mobile…" oninput="dcFilter()"/>
+          </div>
+        </div>
+        <div>
+          <div class="lbl">SUBSTATION</div>
+          <div class="sw"><select id="dc-sub" onchange="onDcSubChange();dcFilter()"><option value="">ALL SUBSTATIONS</option></select></div>
+        </div>
+        <div>
+          <div class="lbl">FEEDER</div>
+          <div class="sw"><select id="dc-feed" onchange="dcFilter()"><option value="">ALL FEEDERS</option></select></div>
+        </div>
+        <div>
+          <div class="lbl">LMV TYPE</div>
+          <div class="sw"><select id="dc-lmv" onchange="dcFilter()"><option value="">ALL</option></select></div>
+        </div>
+        <div>
+          <div class="lbl">OUTSTANDING (₹)</div>
+          <div style="display:flex;gap:8px">
+            <input type="number" id="dc-amt-min" placeholder="Min" oninput="dcFilter()" style="width:80px;background:var(--card);border:1.5px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-size:13px;outline:none"/>
+            <input type="number" id="dc-amt-max" placeholder="Max" oninput="dcFilter()" style="width:80px;background:var(--card);border:1.5px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-size:13px;outline:none"/>
+          </div>
+        </div>
+        <div>
+          <div class="lbl">ATR STATUS</div>
+          <div class="sw">
+            <select id="dc-atr" onchange="dcFilter()">
+              <option value="">ALL STATUS</option>
+              <option value="DISCONNECTED">🔴 DISCONNECTED</option>
+              <option value="PAID">✅ PAID</option>
+              <option value="LOCK">🔒 LOCK</option>
+              <option value="THEFT">⚠️ THEFT</option>
+              <option value="OTHER">📋 OTHER</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Result info + export -->
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:12px">
+        <div style="font-size:12px;color:var(--muted)">
+          Showing <span style="color:var(--accent2);font-weight:600" id="dc-shown">0</span> of 
+          <span style="color:var(--accent2);font-weight:600" id="dc-total2">0</span> records
+          &nbsp;·&nbsp; Outstanding: <span style="color:var(--accent);font-weight:600" id="dc-filt-amt">₹0</span>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn btn-acc" onclick="expDcX()">⬇ EXPORT XLSX</button>
+          <button class="btn btn-out" onclick="expDcC()">⬇ EXPORT CSV</button>
+          <button class="btn" style="background:#1A3A2A;border:1px solid #2ECC7155;color:#2ECC71;font-family:var(--fh);font-size:13px;font-weight:700;letter-spacing:1px;padding:11px 20px;border-radius:10px;cursor:pointer" onclick="exportAtrXlsx()">📋 EXPORT ATR REPORT</button>
+          <button class="btn" style="background:var(--card);border:1px solid var(--border);color:var(--text)" onclick="resetDcFilters()">↺ RESET</button>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>DATE OF DC</th><th>ACCT ID</th><th>NAME</th><th>MOBILE</th>
+              <th>METER NO</th><th>LMV</th><th>OUTSTANDING</th><th>SUBSTATION</th><th>FEEDER</th><th>MAP</th>
+            </tr>
+          </thead>
+          <tbody id="dc-tbody"></tbody>
+        </table>
+      </div>
+      <div class="pg" id="dc-pg"></div>
+
+      <!-- DC Nearby Section -->
+      <div style="margin-top:24px;border-top:1px solid var(--border);padding-top:20px">
+        <div style="font-family:var(--fh);font-size:16px;font-weight:700;letter-spacing:1px;margin-bottom:14px;display:flex;align-items:center;gap:10px">
+          <span>📍 NEARBY DISCONNECTED CONSUMERS</span>
+        </div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px">
+          <div>
+            <div class="lbl">RADIUS</div>
+            <div class="sw" style="min-width:130px">
+              <select id="dc-nb-radius">
+                <option value="0.25">250 metres</option>
+                <option value="0.5" selected>500 metres</option>
+                <option value="1">1 km</option>
+                <option value="2">2 km</option>
+                <option value="5">5 km</option>
+                <option value="10">10 km</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <div class="lbl">ATR STATUS</div>
+            <div class="sw">
+              <select id="dc-nb-atr">
+                <option value="">ALL</option>
+                <option value="DISCONNECTED">🔴 DISCONNECTED</option>
+                <option value="PAID">✅ PAID</option>
+                <option value="LOCK">🔒 LOCK</option>
+                <option value="THEFT">⚠️ THEFT</option>
+                <option value="OTHER">📋 OTHER</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn btn-acc" onclick="dcUseMyLocation()">📡 USE MY GPS</button>
+          <button class="btn btn-out" onclick="dcPickOnMap()">🗺️ PICK ON MAP</button>
+          <button class="btn" style="background:var(--card);border:1px solid var(--border);color:var(--text)" onclick="clearDcNearby()">↺ CLEAR</button>
+        </div>
+        <div id="dc-nb-coords" style="display:none;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 16px;margin-bottom:12px;font-size:12px;align-items:center;gap:16px;flex-wrap:wrap">
+          <span style="color:var(--muted);font-family:var(--fh);letter-spacing:1px">📍 LOCATION:</span>
+          <span id="dc-nb-lat" style="color:var(--accent2)"></span>
+          <span id="dc-nb-lon" style="color:var(--accent2)"></span>
+          <span id="dc-nb-found" style="color:var(--accent);font-family:var(--fh);font-weight:700;margin-left:auto"></span>
+        </div>
+        <div id="dc-nb-map-cont" style="border-radius:12px;overflow:hidden;border:1px solid var(--border);margin-bottom:14px;display:none">
+          <div id="dc-nb-map" style="width:100%;height:360px"></div>
+        </div>
+        <div id="dc-nb-instruction" style="text-align:center;padding:40px;color:var(--muted)">
+          <div style="font-size:40px;margin-bottom:10px">📡</div>
+          <div style="font-family:var(--fh);font-size:15px;letter-spacing:1px">Use GPS or pick on map to find nearby disconnected consumers</div>
+        </div>
+        <div id="dc-nb-results" style="display:none">
+          <div class="tw">
+            <table>
+              <thead><tr><th>DIST</th><th>ACCT ID</th><th>NAME</th><th>MOBILE</th><th>OUTSTANDING</th><th>ATR</th><th>SUBSTATION</th><th>FEEDER</th><th>MAP</th></tr></thead>
+              <tbody id="dc-nb-tbody"></tbody>
+            </table>
+          </div>
+          <div class="pg" id="dc-nb-pg"></div>
+          <div style="display:flex;gap:10px;margin-top:12px">
+            <button class="btn btn-acc" onclick="expDcNbX()">⬇ EXPORT XLSX</button>
+            <button class="btn btn-out" onclick="expDcNbC()">⬇ EXPORT CSV</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Consumer Detail Modal -->
+  <div class="modal-overlay" id="detail-modal" style="display:none" onclick="if(event.target===this)closeModal()">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div>
+          <div style="font-family:var(--fh);font-size:22px;font-weight:700" id="modal-name">—</div>
+          <div style="margin-top:4px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <span style="color:var(--accent);font-family:var(--fh);font-size:13px;letter-spacing:1px" id="modal-acct">—</span>
+            <span id="modal-cat-badge"></span>
+            <span id="modal-dc-badge"></span>
+          </div>
+        </div>
+        <button class="modal-close" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <!-- Fields grid -->
+        <div class="modal-grid" id="modal-grid"></div>
+
+        <!-- ATR Section (only for DC consumers) -->
+        <div id="modal-atr-section" style="display:none;background:#0E1C25;border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px">
+          <div style="font-family:var(--fh);font-size:13px;font-weight:700;letter-spacing:1px;color:var(--accent2);margin-bottom:12px">📋 ATR STATUS — ACTION TAKEN REPORT</div>
+
+          <!-- ATR Mini Summary -->
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px" id="modal-atr-cards">
+            <div style="background:#1A3A2A;border:1px solid #2ECC7133;border-radius:8px;padding:8px 14px;text-align:center">
+              <div style="font-family:var(--fh);font-size:18px;font-weight:700;color:#2ECC71" id="m-atr-paid">0</div>
+              <div style="font-size:10px;color:var(--muted)">PAID</div>
+            </div>
+            <div style="background:#2A1A3A;border:1px solid #AA80FF33;border-radius:8px;padding:8px 14px;text-align:center">
+              <div style="font-family:var(--fh);font-size:18px;font-weight:700;color:#AA80FF" id="m-atr-lock">0</div>
+              <div style="font-size:10px;color:var(--muted)">LOCK</div>
+            </div>
+            <div style="background:#3A1A1A;border:1px solid #FF4D4D33;border-radius:8px;padding:8px 14px;text-align:center">
+              <div style="font-family:var(--fh);font-size:18px;font-weight:700;color:#FF4D4D" id="m-atr-theft">0</div>
+              <div style="font-size:10px;color:var(--muted)">THEFT</div>
+            </div>
+            <div style="background:#2A1A1A;border:1px solid #FF808033;border-radius:8px;padding:8px 14px;text-align:center">
+              <div style="font-family:var(--fh);font-size:18px;font-weight:700;color:#FF8080" id="m-atr-dc">0</div>
+              <div style="font-size:10px;color:var(--muted)">DISCONNECTED</div>
+            </div>
+            <div style="background:#1A1A2A;border:1px solid #8888FF33;border-radius:8px;padding:8px 14px;text-align:center">
+              <div style="font-family:var(--fh);font-size:18px;font-weight:700;color:#8888FF" id="m-atr-other">0</div>
+              <div style="font-size:10px;color:var(--muted)">OTHER</div>
+            </div>
+          </div>
+
+          <div style="font-family:var(--fh);font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:8px">UPDATE STATUS FOR THIS CONSUMER:</div>
+          <select class="atr-big-select atr-big-dc" id="modal-atr-select" onchange="updateModalAtrStyle()">
+            <option value="DISCONNECTED">🔴 DISCONNECTED</option>
+            <option value="PAID">✅ PAID</option>
+            <option value="LOCK">🔒 LOCK</option>
+            <option value="THEFT">⚠️ THEFT</option>
+            <option value="OTHER">📋 OTHER</option>
+          </select>
+          <button class="save-atr-btn" onclick="saveModalAtr()">💾 SAVE ATR STATUS</button>
+          <div class="save-indicator" id="modal-save-ind"></div>
+        </div>
+
+        <!-- Action buttons -->
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <a id="modal-map-btn" href="#" target="_blank" class="mb" style="display:none">📍 OPEN IN GOOGLE MAPS</a>
+          <button class="clb" onclick="copyModalLink()">🔗 COPY LINK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+let D=[],FD=[],MAP=null,ML=null,SUB_FEED_MAP={};
+let DC=[], DC_SUB_FEED_MAP={};  // Disconnected consumers data
+
+const DC_FILES = [
+  'https://raw.githubusercontent.com/anshu10kumar04-pixel/uppcl-data/main/DISCONNECTED.xlsx'
+];
+const PS=50;
+
+// Upload
+const fi=document.getElementById('file-input'),ub=document.getElementById('ub');
+ub.addEventListener('dragover',e=>{e.preventDefault();ub.classList.add('drag');});
+ub.addEventListener('dragleave',()=>ub.classList.remove('drag'));
+ub.addEventListener('drop',e=>{e.preventDefault();ub.classList.remove('drag');hf(e.dataTransfer.files[0]);});
+fi.addEventListener('change',e=>hf(e.target.files[0]));
+
+function hf(file){
+  if(!file)return;
+  sl('READING FILE…',10);
+  const r=new FileReader();
+  r.onload=e=>{
+    sl('PARSING DATA…',40);
+    setTimeout(()=>{
+      try{
+        const wb=XLSX.read(e.target.result,{type:'binary'});
+        const ws=wb.Sheets[wb.SheetNames[0]];
+        sl('PROCESSING ROWS…',70);
+        setTimeout(()=>{
+          D=XLSX.utils.sheet_to_json(ws,{defval:''});
+            // Auto-generate Google Maps links from LAT/LON
+            D=D.map(r=>{if(!r.Google_Map_Link&&r.LAT&&r.LON){r.Google_Map_Link='https://www.google.com/maps?q='+r.LAT+','+r.LON;}return r;});
+            // Auto-generate Google Maps links from LAT/LON if not present
+            D=D.map(r=>{
+              if(!r.Google_Map_Link && r.LAT && r.LON){
+                r.Google_Map_Link='https://www.google.com/maps?q='+r.LAT+','+r.LON;
+              }
+              return r;
+            });
+          sl('BUILDING INDEX…',90);
+          setTimeout(()=>{ia();hl2();},100);
+        },50);
+      }catch(err){hl2();alert('Error: '+err.message);}
+    },50);
+  };
+  r.readAsBinaryString(file);
+}
+function sl(m,p){const ld=document.getElementById('loading');if(ld)ld.style.display='flex';const lt=document.getElementById('lt');if(lt)lt.textContent=m;const pf=document.getElementById('pf');if(pf)pf.style.width=p+'%';}
+function hl2(){document.getElementById('loading').style.display='none';}
+
+function ia(){
+  document.getElementById('upload-screen').style.display='none';
+  document.getElementById('app').style.display='block';
+  document.getElementById('sbar').style.display='flex';
+
+  // Single pass to collect all unique values + substation->feeder map
+  const subSet=new Set(), feedSet=new Set(), catSet=new Set();
+  SUB_FEED_MAP={};
+  for(let i=0;i<D.length;i++){
+    const r=D[i];
+    if(r.SUBSTATION){
+      subSet.add(r.SUBSTATION);
+      if(r.FEEDER){
+        if(!SUB_FEED_MAP[r.SUBSTATION]) SUB_FEED_MAP[r.SUBSTATION]=new Set();
+        SUB_FEED_MAP[r.SUBSTATION].add(r.FEEDER);
+      }
+    }
+    if(r.FEEDER) feedSet.add(r.FEEDER);
+    if(r.CATEGORY) catSet.add(r.CATEGORY);
+  }
+  const subs=[...subSet].sort();
+  const feeds=[...feedSet].sort();
+  const cats=[...catSet].sort();
+
+  document.getElementById('s-tot').textContent=D.length.toLocaleString();
+  document.getElementById('s-sub').textContent=subs.length;
+  document.getElementById('s-feed').textContent=feeds.length;
+  document.getElementById('rt').textContent=D.length.toLocaleString();
+
+  // Fast select population using DocumentFragment
+  function fastSelect(ids, items){
+    ids.forEach(id=>{
+      const sel=document.getElementById(id);
+      if(!sel) return;
+      const frag=document.createDocumentFragment();
+      items.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;frag.appendChild(o);});
+      sel.appendChild(frag);
+    });
+  }
+  fastSelect(['fs'], subs);
+  fastSelect(['ff'], feeds);
+  fastSelect(['fc','nb-cat'], cats);
+  fastSelect(['nb-sub'], subs);
+  fastSelect(['nb-feed'], feeds);
+
+  // Handle URL hash params
+  const hash=window.location.hash;
+  const sm=hash.match(/search=([^&]*)/);
+  if(sm){document.getElementById('si').value=decodeURIComponent(sm[1]);}
+  const lm=hash.match(/lookup=([^&]*)/);
+  if(lm){st('lookup');document.getElementById('li').value=decodeURIComponent(lm[1]);dl();}
+
+  // Defer heavy renders to next tick so UI shows first
+  FD=D;
+  setTimeout(()=>{ rs(1); af(); }, 0);
+}
+function ps(id,items){
+  const sel=document.getElementById(id);
+  const frag=document.createDocumentFragment();
+  items.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;frag.appendChild(o);});
+  sel.appendChild(frag);
+}
+
+// TABS
+function st(name){
+  ['lookup','filter','nearby','dc'].forEach((n,i)=>{
+    document.querySelectorAll('.tab')[i].classList.toggle('active',n===name);
+    document.getElementById('panel-'+n).classList.toggle('active',n===name);
+  });
+  if(name==='nearby'&&!NBM)initNearbyMap();
+  if(name==='dc'&&DC.length===0)loadDC();
+  if(name==='dc'&&!DC_NBM)setTimeout(()=>initDcNearbyMap(),500);
+}
+
+// SEARCH
+let sp=1;
+function doSearch(){sp=1;const q=document.getElementById('si').value.trim();window.location.hash=q?'search='+encodeURIComponent(q):'';rs(1);document.getElementById('sup').textContent=q?'🔗 '+window.location.href:'';}
+function gr(){
+  const q=document.getElementById('si').value.trim().toLowerCase();
+  if(!q)return D;
+  return D.filter(r=>{
+    const acct=String(r.ACCT_ID||'');
+    const mob=String(r.MOBILE_NO||'');
+    if(acct.includes(q)||mob.includes(q)) return true;
+    const name=(r.NAME||'').toLowerCase();
+    const sub=(r.SUBSTATION||'').toLowerCase();
+    const feed=(r.FEEDER||'').toLowerCase();
+    if(name.includes(q)||sub.includes(q)||feed.includes(q)) return true;
+    const addr=(r.ADDRESS||'').toLowerCase();
+    const cat=(r.CATEGORY||'').toLowerCase();
+    return addr.includes(q)||cat.includes(q);
+  });
+}
+function rs(page){
+  const res=gr();const q=document.getElementById('si').value.trim().toLowerCase();
+  document.getElementById('rc').textContent=res.length.toLocaleString();
+  const sl2=res.slice((page-1)*PS,page*PS);
+  document.getElementById('stb').innerHTML=sl2.map(r=>`<tr><td style="font-family:var(--fh);color:var(--accent2);cursor:pointer;text-decoration:underline;text-underline-offset:3px" onclick="openMainDetail('${String(r.ACCT_ID)}')" title="Click to view details">${h(String(r.ACCT_ID),q)}</td><td style="font-weight:500;cursor:pointer" onclick="openMainDetail('${String(r.ACCT_ID)}')">${h(r.NAME||'',q)}</td><td>${h(String(r.MOBILE_NO||''),q)}</td><td>${cb(r.CATEGORY)}</td><td>${h(r.SUBSTATION||'',q)}</td><td>${h(r.FEEDER||'',q)}</td><td title="${r.ADDRESS||''}">${h(r.ADDRESS||'',q)}</td><td>${(r.LAT&&r.LON)?`<a class="ml" href="https://www.google.com/maps?q=${r.LAT},${r.LON}" target="_blank">📍 MAP</a>`:''}</td></tr>`).join('');
+  rp('spg',page,Math.ceil(res.length/PS),p=>rs(p));
+}
+function h(t,q){if(!q||!t)return t;const i=t.toLowerCase().indexOf(q);if(i<0)return t;return t.slice(0,i)+'<mark>'+t.slice(i,i+q.length)+'</mark>'+t.slice(i+q.length);}
+function copySL(){navigator.clipboard.writeText(window.location.href).then(()=>toast());}
+
+// MAP
+function cc(cat){
+  if(!cat)return '#888';const c=String(cat).toUpperCase();
+  if(c.includes('DOMESTIC'))return '#2ECC71';
+  if(c.includes('COMMERCIAL'))return '#F5A623';
+  if(c.includes('INDUSTRI'))return '#AA80FF';
+  if(c.includes('GOVT')||c.includes('GOV')||c.includes('CENTRAL')||c.includes('DEPARTMENTAL'))return '#00C4FF';
+  return '#FF6B6B';
+}
+
+// FILTER
+let fp=1;
+function onSubChange(subId, feedId){
+  const sub = document.getElementById(subId).value;
+  const feedSel = document.getElementById(feedId);
+  const prevVal = feedSel.value;
+  // Clear and repopulate feeder dropdown
+  feedSel.innerHTML = '<option value="">ALL FEEDERS</option>';
+  const feeds = sub && SUB_FEED_MAP[sub]
+    ? [...SUB_FEED_MAP[sub]].sort()
+    : [...new Set(D.map(r=>r.FEEDER).filter(Boolean))].sort();
+  const frag = document.createDocumentFragment();
+  feeds.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;frag.appendChild(o);});
+  feedSel.appendChild(frag);
+  // Restore previous selection if still valid
+  if(feeds.includes(prevVal)) feedSel.value = prevVal;
+}
+
+function af(){
+  fp=1;
+  const sub=document.getElementById('fs').value,feed=document.getElementById('ff').value,cat=document.getElementById('fc').value;
+  const lmin=parseFloat(document.getElementById('fln').value)||0,lmax=parseFloat(document.getElementById('flx').value)||Infinity;
+  FD=D.filter(r=>{
+    if(sub&&r.SUBSTATION!==sub)return false;
+    if(feed&&r.FEEDER!==feed)return false;
+    if(cat&&r.CATEGORY!==cat)return false;
+    const ld=parseFloat(r.LOAD)||0;
+    return ld>=lmin&&ld<=lmax;
+  });
+  document.getElementById('fc2').textContent=FD.length.toLocaleString();
+  document.getElementById('fd').textContent=FD.filter(r=>(r.CATEGORY||'').toUpperCase().includes('DOMESTIC')).length.toLocaleString();
+  document.getElementById('fco').textContent=FD.filter(r=>(r.CATEGORY||'').toUpperCase().includes('COMMERCIAL')).length.toLocaleString();
+  document.getElementById('fi').textContent=FD.filter(r=>(r.CATEGORY||'').toUpperCase().includes('INDUSTRI')).length.toLocaleString();
+  document.getElementById('fg2').textContent=FD.filter(r=>(r.CATEGORY||'').toUpperCase().includes('GOVT')||(r.CATEGORY||'').toUpperCase().includes('GOV')).length.toLocaleString();
+  document.getElementById('ftl').textContent=FD.reduce((s,r)=>s+(parseFloat(r.LOAD)||0),0).toLocaleString();
+  rft(1);
+}
+function rft(page){
+  const sl2=FD.slice((page-1)*PS,page*PS);
+  document.getElementById('ftb').innerHTML=sl2.map(r=>`<tr><td style="font-family:var(--fh);color:var(--accent2)">${r.ACCT_ID}</td><td style="font-weight:500">${r.NAME||''}</td><td>${r.MOBILE_NO||''}</td><td>${cb(r.CATEGORY)}</td><td style="color:var(--accent);font-family:var(--fh)">${r.LOAD||''}</td><td>${r.SUBSTATION||''}</td><td>${r.FEEDER||''}</td><td>${(r.LAT&&r.LON)?`<a class="ml" href="https://www.google.com/maps?q=${r.LAT},${r.LON}" target="_blank">📍 MAP</a>`:''}</td></tr>`).join('');
+  rp('fpg',page,Math.ceil(FD.length/PS),p=>rft(p));
+}
+function rf(){document.getElementById('fs').value='';document.getElementById('ff').value='';document.getElementById('fc').value='';document.getElementById('fln').value='';document.getElementById('flx').value='';af();}
+function expX(){if(!FD.length)return alert('No data.');const ws=XLSX.utils.json_to_sheet(FD);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Filtered');XLSX.writeFile(wb,'uppcl_filtered_'+Date.now()+'.xlsx');}
+function expC(){if(!FD.length)return alert('No data.');const ws=XLSX.utils.json_to_sheet(FD);const csv=XLSX.utils.sheet_to_csv(ws);const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='uppcl_filtered_'+Date.now()+'.csv';a.click();}
+
+// LOOKUP
+function dl(){
+  const q=document.getElementById('li').value.trim();const div=document.getElementById('lr');
+  if(!q){div.innerHTML='';return;}
+  window.location.hash='lookup='+encodeURIComponent(q);
+  const r=D.find(row=>String(row.ACCT_ID)===q||String(row.MOBILE_NO)===q||String(row.SERIAL_NBR)===q);
+  if(!r){div.innerHTML=`<div class="nf"><div class="ico">🔎</div>No record found for "<strong>${q}</strong>"<br/><small style="font-size:13px;color:var(--muted)">Try Account ID, Mobile Number, or Serial Number</small></div>`;return;}
+  div.innerHTML=`<div class="dc"><div class="dh"><div><div class="dn">${r.NAME||'Unknown'}</div><div style="margin-top:4px"><span class="da">ACCT: ${r.ACCT_ID}</span> &nbsp;&nbsp;${cb(r.CATEGORY)}</div></div><div style="text-align:right"><div style="color:var(--muted);font-size:11px;font-family:var(--fh);letter-spacing:1px">LOAD</div><div style="font-family:var(--fh);font-size:28px;font-weight:700;color:var(--accent)">${r.LOAD||'-'} <span style="font-size:14px;color:var(--muted)">kW</span></div></div></div><div class="db"><div class="dgrid"><div class="df"><div class="lbl">FATHER'S NAME</div><div class="val">${r.FATHER_NAME||'-'}</div></div><div class="df"><div class="lbl">MOBILE</div><div class="val">${r.MOBILE_NO||'-'}</div></div><div class="df"><div class="lbl">SUBSTATION</div><div class="val">${r.SUBSTATION||'-'}</div></div><div class="df"><div class="lbl">FEEDER</div><div class="val">${r.FEEDER||'-'}</div></div><div class="df"><div class="lbl">SERIAL NUMBER</div><div class="val">${r.SERIAL_NBR||'-'}</div></div><div class="df"><div class="lbl">ST CODE</div><div class="val">${r.ST||'-'}</div></div><div class="df" style="grid-column:span 2"><div class="lbl">ADDRESS</div><div class="val">${r.ADDRESS||'-'}</div></div><div class="df"><div class="lbl">LATITUDE</div><div class="val">${r.LAT||'-'}</div></div><div class="df"><div class="lbl">LONGITUDE</div><div class="val">${r.LON||'-'}</div></div></div><div>${(r.LAT&&r.LON)?`<a class="mb" href="https://www.google.com/maps?q=${r.LAT},${r.LON}" target="_blank">📍 OPEN IN GOOGLE MAPS</a>`:''}<button class="clb" onclick="clk('${r.ACCT_ID}')">🔗 COPY LINK</button></div></div></div>`;
+}
+function clk(id){navigator.clipboard.writeText(location.origin+location.pathname+'#lookup='+id).then(()=>toast());}
+
+// HELPERS
+function cb(cat){
+  if(!cat)return '';const c=String(cat).toUpperCase();
+  let cls='b-oth';
+  if(c.includes('DOMESTIC'))cls='b-dom';
+  else if(c.includes('COMMERCIAL'))cls='b-com';
+  else if(c.includes('INDUSTRI'))cls='b-ind';
+  else if(c.includes('GOVT')||c.includes('GOV')||c.includes('CENTRAL')||c.includes('DEPARTMENTAL'))cls='b-gov';
+  return `<span class="badge ${cls}">${cat}</span>`;
+}
+function rp(cid,cur,tot,onP){
+  const el=document.getElementById(cid);
+  if(tot<=1){el.innerHTML='';return;}
+  const pages=[];
+  if(cur>1)pages.push({l:'‹ PREV',p:cur-1});
+  const s=Math.max(1,cur-2),e=Math.min(tot,cur+2);
+  if(s>1)pages.push({l:'1',p:1});
+  if(s>2)pages.push({l:'…',p:null});
+  for(let i=s;i<=e;i++)pages.push({l:String(i),p:i});
+  if(e<tot-1)pages.push({l:'…',p:null});
+  if(e<tot)pages.push({l:String(tot),p:tot});
+  if(cur<tot)pages.push({l:'NEXT ›',p:cur+1});
+  el.innerHTML=pages.map(pg=>pg.p===null?`<span class="pgb" style="cursor:default;color:var(--muted)">…</span>`:`<button class="pgb ${pg.p===cur?'active':''}" onclick="(${onP.toString()})(${pg.p})">${pg.l}</button>`).join('')+`<span class="pgi">Page ${cur} of ${tot}</span>`;
+}
+function toast(){const t=document.getElementById('toast');t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000);}
+
+// ─── AUTO FETCH FROM GITHUB ─────────────────────────────────────────────────
+// 4 split files from GitHub
+const FILES = [
+  'https://raw.githubusercontent.com/anshu10kumar04-pixel/uppcl-data/main/JE%20AJAY%20DATA.xlsx',
+  'https://raw.githubusercontent.com/anshu10kumar04-pixel/uppcl-data/main/LN.xlsx',
+  'https://raw.githubusercontent.com/anshu10kumar04-pixel/uppcl-data/main/RAVI%20DATA.xlsx',
+  'https://raw.githubusercontent.com/anshu10kumar04-pixel/uppcl-data/main/SUMAN.xlsx'
+];
+
+window.addEventListener('DOMContentLoaded', () => {
+  // Data loads after login, not on page load
+  const saved = sessionStorage.getItem('uppcl_role');
+  if (saved) autoFetch(); // Only if already logged in
+});
+
+function autoFetch() {
+  document.getElementById('loading').style.display = 'flex';
+  sl('CONNECTING TO GITHUB…', 10);
+
+  let completed = 0;
+  const allData = [];
+
+  const promises = FILES.map((url, idx) => {
+    return fetch(url)
+      .then(res => {
+        if (!res.ok) throw new Error('Failed: ' + url);
+        return res.arrayBuffer();
+      })
+      .then(buf => {
+        completed++;
+        sl('LOADING FILE ' + completed + ' OF ' + FILES.length + '…', 10 + Math.round((completed / FILES.length) * 70));
+        const wb = XLSX.read(buf, { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        // Fast parse: raw values, only needed columns
+        const jsonOpts = { defval: '', raw: true, header: 1 };
+        const rawRows = XLSX.utils.sheet_to_json(ws, jsonOpts);
+        if (rawRows.length < 2) { allData[idx] = []; return; }
+        const hdrs = rawRows[0].map(h => String(h || '').trim());
+        const colMap = {};
+        ['ACCT_ID','MOBILE_NO','NAME','FATHER_NAME','ADDRESS','ST','CATEGORY','LOAD','LAT','LON','SERIAL_NBR','SUBSTATION','FEEDER'].forEach(k => {
+          const i = hdrs.findIndex(h => h.toUpperCase() === k.toUpperCase() || h.toUpperCase().replace(/[\s_]/g,'') === k.toUpperCase().replace(/[\s_]/g,''));
+          if (i >= 0) colMap[k] = i;
+        });
+        allData[idx] = rawRows.slice(1).map(row => {
+          const obj = {};
+          for (const k in colMap) obj[k] = row[colMap[k]] !== undefined ? String(row[colMap[k]]) : '';
+          if (obj.LAT && obj.LON) obj.Google_Map_Link = 'https://www.google.com/maps?q=' + obj.LAT + ',' + obj.LON;
+          return obj;
+        });
+      });
+  });
+
+  Promise.all(promises)
+    .then(() => {
+      sl('MERGING ALL DATA…', 88);
+      D = allData.flat();
+      sl('READY…', 98);
+      requestAnimationFrame(() => { ia(); hl2(); });
+    })
+    .catch(err => { hl2(); showFetchError(err.message); });
+}
+
+function showFetchError(msg) {
+  // Fall back to manual upload with error shown
+  document.getElementById('upload-screen').style.display = 'flex';
+  const p = document.querySelector('.upload-box p');
+  p.innerHTML = '<span style="color:#FF6B6B;font-size:13px">⚠ Auto-load failed: ' + msg + '</span><br/>You can still upload the file manually below.';
+}
+
+
+// ─── NEARBY CONSUMERS ───────────────────────────────────────────────────────
+let NBM = null, NBL = null, NBCenter = null, NBData = [], nbPage = 1;
+let pickMode = false, NBCircle = null, NBCenterMarker = null;
+
+function initNearbyMap() {
+  NBM = L.map('nb-map').setView([25.45, 78.57], 13);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '© OSM, © CARTO', maxZoom: 19
+  }).addTo(NBM);
+  NBL = L.layerGroup().addTo(NBM);
+
+  // Click on map to pick location
+  NBM.on('click', function(e) {
+    if (!pickMode) return;
+    pickMode = false;
+    NBM.getContainer().style.cursor = '';
+    document.getElementById('nb-instruction').style.display = 'none';
+    document.getElementById('nb-map-cont').style.display = 'block';
+    setNearbyCenter(e.latlng.lat, e.latlng.lng);
+  });
+}
+
+function useMyLocation() {
+  if (!navigator.geolocation) return alert('GPS not supported in your browser.');
+  document.getElementById('nb-instruction').innerHTML = '<div style="font-size:40px">📡</div><div style="font-family:var(--fh);font-size:16px;color:var(--accent);margin-top:12px;letter-spacing:1px">GETTING YOUR LOCATION…</div>';
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      document.getElementById('nb-instruction').style.display = 'none';
+      document.getElementById('nb-map-cont').style.display = 'block';
+      if (!NBM) initNearbyMap();
+      setTimeout(() => setNearbyCenter(pos.coords.latitude, pos.coords.longitude), 100);
+    },
+    err => {
+      document.getElementById('nb-instruction').innerHTML = '<div style="font-size:40px">⚠️</div><div style="font-family:var(--fh);font-size:16px;color:#FF6B6B;margin-top:12px">Could not get GPS location.<br/>Please allow location access or pick on map.</div>';
+    }
+  );
+}
+
+function pickOnMap() {
+  document.getElementById('nb-instruction').style.display = 'none';
+  document.getElementById('nb-map-cont').style.display = 'block';
+  if (!NBM) initNearbyMap();
+  pickMode = true;
+  setTimeout(() => {
+    NBM.getContainer().style.cursor = 'crosshair';
+    // Show tip
+    const tip = L.popup({closeButton:false, autoClose:true})
+      .setLatLng(NBM.getCenter())
+      .setContent('<div style="font-family:sans-serif;font-size:13px;color:#000">🖱️ Click anywhere on the map to select location</div>')
+      .openOn(NBM);
+  }, 200);
+}
+
+function setNearbyCenter(lat, lon) {
+  NBCenter = { lat, lon };
+
+  // Update coord display
+  document.getElementById('nb-coords').style.display = 'flex';
+  document.getElementById('nb-lat-display').textContent = 'LAT: ' + lat.toFixed(6);
+  document.getElementById('nb-lon-display').textContent = 'LON: ' + lon.toFixed(6);
+
+  // Draw on map
+  NBL.clearLayers();
+  const radius = parseFloat(document.getElementById('nb-radius').value) * 1000; // km to metres
+
+  // Remove old circle & center marker
+  if (NBCircle) NBM.removeLayer(NBCircle);
+  if (NBCenterMarker) NBM.removeLayer(NBCenterMarker);
+
+  // Draw radius circle
+  NBCircle = L.circle([lat, lon], {
+    radius: radius,
+    color: '#F5A623', weight: 2, opacity: 0.8,
+    fillColor: '#F5A623', fillOpacity: 0.06
+  }).addTo(NBM);
+
+  // Draw center marker
+  NBCenterMarker = L.circleMarker([lat, lon], {
+    radius: 8, fillColor: '#F5A623', color: '#fff',
+    weight: 2, opacity: 1, fillOpacity: 1
+  }).bindPopup('<b style="font-family:sans-serif">📍 Selected Location</b>').addTo(NBM);
+
+  NBM.fitBounds(NBCircle.getBounds(), { padding: [20, 20] });
+
+  // Find nearby consumers
+  findNearby(lat, lon);
+}
+
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371; // km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)*Math.sin(dLat/2) +
+            Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*
+            Math.sin(dLon/2)*Math.sin(dLon/2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function findNearby(lat, lon) {
+  const radius = parseFloat(document.getElementById('nb-radius').value);
+  const cat = document.getElementById('nb-cat').value;
+  const sub = document.getElementById('nb-sub').value;
+  const feed = document.getElementById('nb-feed').value;
+
+  NBData = D
+    .filter(r => r.LAT && r.LON)
+    .map(r => ({ ...r, _dist: haversine(lat, lon, parseFloat(r.LAT), parseFloat(r.LON)) }))
+    .filter(r => r._dist <= radius)
+    .filter(r => !cat || r.CATEGORY === cat)
+    .filter(r => !sub || r.SUBSTATION === sub)
+    .filter(r => !feed || r.FEEDER === feed)
+    .sort((a, b) => a._dist - b._dist);
+
+  document.getElementById('nb-count-display').textContent = NBData.length + ' CONSUMERS FOUND';
+
+  // Plot on map
+  NBL.clearLayers();
+  // Re-add circle and center
+  if (NBCircle) NBCircle.addTo(NBM);
+  if (NBCenterMarker) NBCenterMarker.addTo(NBM);
+
+  NBData.forEach(r => {
+    const c = L.circleMarker([r.LAT, r.LON], {
+      radius: 6, fillColor: cc(r.CATEGORY), color: '#000',
+      weight: 0.5, opacity: 1, fillOpacity: 0.9
+    });
+    const mapUrl = 'https://www.google.com/maps?q=' + r.LAT + ',' + r.LON;
+    c.bindPopup(`<div style="font-family:sans-serif;font-size:12px;min-width:180px">
+      <strong>${r.NAME||'Unknown'}</strong><br/>
+      <span style="color:#888">Acct: ${r.ACCT_ID}</span><br/>
+      <span style="color:#888">Mobile: ${r.MOBILE_NO||'-'}</span><br/>
+      <b>${r.CATEGORY||''}</b> · ${r._dist < 1 ? (r._dist*1000).toFixed(0)+' m' : r._dist.toFixed(2)+' km'}<br/>
+      <a href="${mapUrl}" target="_blank" style="color:#00C4FF">📍 Open Maps</a>
+    </div>`);
+    NBL.addLayer(c);
+  });
+
+  // Show results
+  if (NBData.length > 0) {
+    document.getElementById('nb-results').style.display = 'block';
+    renderNearbyTable(1);
+  } else {
+    document.getElementById('nb-results').style.display = 'none';
+    document.getElementById('nb-count-display').textContent = '0 CONSUMERS IN RANGE';
+  }
+}
+
+function renderNearbyTable(page) {
+  nbPage = page;
+  const slice = NBData.slice((page-1)*PS, page*PS);
+  document.getElementById('nb-tbody').innerHTML = slice.map(r => {
+    const dist = r._dist < 1 ? (r._dist*1000).toFixed(0)+' m' : r._dist.toFixed(2)+' km';
+    const mapUrl = 'https://www.google.com/maps?q=' + r.LAT + ',' + r.LON;
+    return `<tr>
+      <td style="font-family:var(--fh);color:var(--accent);font-weight:700">${dist}</td>
+      <td style="font-family:var(--fh);color:var(--accent2)">${r.ACCT_ID}</td>
+      <td style="font-weight:500">${r.NAME||''}</td>
+      <td>${r.MOBILE_NO||''}</td>
+      <td>${cb(r.CATEGORY)}</td>
+      <td>${r.SUBSTATION||''}</td>
+      <td>${r.FEEDER||''}</td>
+      <td title="${r.ADDRESS||''}" style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${r.ADDRESS||''}</td>
+      <td><a class="ml" href="${mapUrl}" target="_blank">📍 MAP</a></td>
+    </tr>`;
+  }).join('');
+  rp('nb-pg', page, Math.ceil(NBData.length/PS), p => renderNearbyTable(p));
+}
+
+function clearNearby() {
+  NBCenter = null; NBData = []; nbPage = 1; pickMode = false;
+  if (NBL) NBL.clearLayers();
+  if (NBCircle) { NBM.removeLayer(NBCircle); NBCircle = null; }
+  if (NBCenterMarker) { NBM.removeLayer(NBCenterMarker); NBCenterMarker = null; }
+  document.getElementById('nb-sub').value = '';
+  document.getElementById('nb-feed').value = '';
+  document.getElementById('nb-cat').value = '';
+  document.getElementById('nb-coords').style.display = 'none';
+  document.getElementById('nb-results').style.display = 'none';
+  document.getElementById('nb-instruction').style.display = 'block';
+  document.getElementById('nb-instruction').innerHTML = '<div style="font-size:52px;margin-bottom:16px">📡</div><div style="font-family:var(--fh);font-size:20px;letter-spacing:1px;margin-bottom:8px">FIND NEARBY CONSUMERS</div><div style="font-size:13px;line-height:1.8">Click <strong style="color:var(--accent)">USE MY GPS LOCATION</strong> to find consumers near you<br/>or <strong style="color:var(--accent2)">CLICK ON MAP TO PICK LOCATION</strong> to select any point</div>';
+}
+
+function expNearbyX() {
+  if (!NBData.length) return alert('No data.');
+  const ws = XLSX.utils.json_to_sheet(NBData.map(r => ({...r, DISTANCE: r._dist < 1 ? (r._dist*1000).toFixed(0)+' m' : r._dist.toFixed(2)+' km'})));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Nearby');
+  XLSX.writeFile(wb, 'uppcl_nearby_' + Date.now() + '.xlsx');
+}
+function reapplyNearby() {
+  if (NBCenter) findNearby(NBCenter.lat, NBCenter.lon);
+}
+
+function expNearbyC() {
+  if (!NBData.length) return alert('No data.');
+  const ws = XLSX.utils.json_to_sheet(NBData.map(r => ({...r, DISTANCE: r._dist < 1 ? (r._dist*1000).toFixed(0)+' m' : r._dist.toFixed(2)+' km'})));
+  const csv = XLSX.utils.sheet_to_csv(ws);
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'}));
+  a.download = 'uppcl_nearby_' + Date.now() + '.csv'; a.click();
+}
+
+
+// ─── DISCONNECTED CONSUMERS ─────────────────────────────────────────────────
+let DC_FD = [], dcPage = 1;
+
+function loadDC() {
+  const pbar = document.getElementById('dc-pbar');
+  const msg = document.getElementById('dc-load-msg');
+  pbar.style.width = '20%';
+  msg.textContent = 'FETCHING FILE…';
+
+  fetch(DC_FILES[0])
+    .then(res => {
+      if (!res.ok) throw new Error('Could not load disconnected file from GitHub.');
+      pbar.style.width = '60%';
+      msg.textContent = 'PARSING DATA…';
+      return res.arrayBuffer();
+    })
+    .then(buf => {
+      pbar.style.width = '85%';
+      const wb = XLSX.read(buf, { type: 'array', raw: false });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      DC = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+      // Normalise column names to match our usage
+      DC = DC.map(r => ({
+        DATE_DC:    r['Date of DC'] || '',
+        ACCT_ID:    r['account_id'] || '',
+        NAME:       r['NAME'] || '',
+        ADDRESS:    r['ADDRES'] || '',
+        MOBILE_NO:  r['MOBILE NO'] || '',
+        METER_NO:   r['meterno'] || '',
+        LOAD:       r['load'] || '',
+        LMV:        r['LMV'] || '',
+        OUTSTANDING: parseFloat(r['TOTAL OUTSTANDING']) || 0,
+        SUBSTATION: r['SUBSTATION'] || '',
+        FEEDER:     r['FEEDER'] || '',
+        LAT:        r['LAT'] || '',
+        LON:        r['LONG'] || '',
+      }));
+
+      // Build substation->feeder map
+      DC_SUB_FEED_MAP = {};
+      const subSet = new Set(), feedSet = new Set(), lmvSet = new Set();
+      for (let i = 0; i < DC.length; i++) {
+        const r = DC[i];
+        if (r.SUBSTATION) {
+          subSet.add(r.SUBSTATION);
+          if (r.FEEDER) {
+            if (!DC_SUB_FEED_MAP[r.SUBSTATION]) DC_SUB_FEED_MAP[r.SUBSTATION] = new Set();
+            DC_SUB_FEED_MAP[r.SUBSTATION].add(r.FEEDER);
+          }
+        }
+        if (r.FEEDER) feedSet.add(r.FEEDER);
+        if (r.LMV) lmvSet.add(r.LMV);
+      }
+
+      // Populate selects
+      const subSel = document.getElementById('dc-sub');
+      const feedSel = document.getElementById('dc-feed');
+      const lmvSel = document.getElementById('dc-lmv');
+
+      function fillSel(sel, items) {
+        const frag = document.createDocumentFragment();
+        [...items].sort().forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v; frag.appendChild(o); });
+        sel.appendChild(frag);
+      }
+      fillSel(subSel, subSet);
+      fillSel(feedSel, feedSet);
+      fillSel(lmvSel, lmvSet);
+
+      // Summary stats
+      const total = DC.length;
+      const totalOut = DC.reduce((s, r) => s + r.OUTSTANDING, 0);
+      document.getElementById('dc-total').textContent = total.toLocaleString();
+      document.getElementById('dc-outstanding').textContent = '₹' + Math.round(totalOut).toLocaleString();
+      document.getElementById('dc-subs-count').textContent = subSet.size;
+
+      pbar.style.width = '100%';
+      // Init ATR_STATUS field (default: DISCONNECTED)
+      DC = DC.map(r => ({ ...r, ATR_STATUS: r.ATR_STATUS || 'DISCONNECTED' }));
+      dcUpdateAtrCards();
+
+      document.getElementById('dc-loading').style.display = 'none';
+      document.getElementById('dc-content').style.display = 'block';
+
+      DC_FD = DC;
+      // Pre-fill saved URL
+      const savedUrl = localStorage.getItem('atr_script_url') || '';
+      if (savedUrl) { ATR_SCRIPT_URL = savedUrl; document.getElementById('atr-url-input').value = savedUrl; }
+      loadAtrFromStorage(); // Restore saved ATR statuses
+      document.getElementById('dc-total2').textContent = DC.length.toLocaleString();
+      document.getElementById('dc-shown').textContent = DC.length.toLocaleString();
+      const initOut = DC.reduce((s,r)=>s+r.OUTSTANDING,0);
+      document.getElementById('dc-filt-amt').textContent = '₹' + Math.round(initOut).toLocaleString();
+      renderDcTable(1);
+    })
+    .catch(err => {
+      document.getElementById('dc-load-msg').textContent = '⚠ ' + err.message;
+      document.getElementById('dc-pbar').style.background = '#FF4D4D';
+    });
+}
+
+function onDcSubChange() {
+  const sub = document.getElementById('dc-sub').value;
+  const feedSel = document.getElementById('dc-feed');
+  feedSel.innerHTML = '<option value="">ALL FEEDERS</option>';
+  const feeds = sub && DC_SUB_FEED_MAP[sub]
+    ? [...DC_SUB_FEED_MAP[sub]].sort()
+    : [...new Set(DC.map(r => r.FEEDER).filter(Boolean))].sort();
+  const frag = document.createDocumentFragment();
+  feeds.forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v; frag.appendChild(o); });
+  feedSel.appendChild(frag);
+}
+
+function atrSelectClass(status) {
+  const s = String(status || '').toUpperCase();
+  if (s === 'PAID') return 'atr-paid';
+  if (s === 'LOCK') return 'atr-lock';
+  if (s === 'THEFT') return 'atr-theft';
+  if (s === 'OTHER') return 'atr-other';
+  return 'atr-dc';
+}
+
+function setAtr(acctId, value, selectEl) {
+  // Update in memory
+  const idx = DC.findIndex(r => String(r.ACCT_ID) === acctId);
+  if (idx >= 0) DC[idx].ATR_STATUS = value;
+
+  // Update filtered data too
+  const fidx = DC_FD.findIndex(r => String(r.ACCT_ID) === acctId);
+  if (fidx >= 0) DC_FD[fidx].ATR_STATUS = value;
+
+  // Update select style
+  selectEl.className = 'atr-select ' + atrSelectClass(value);
+  selectEl.classList.add('atr-saved');
+  setTimeout(() => selectEl.classList.remove('atr-saved'), 300);
+
+  // Save to sheet
+  const rec = DC.find(r => String(r.ACCT_ID) === acctId);
+  if (rec) saveAtrToStorage(rec);
+
+  // Update summary cards
+  dcUpdateAtrCards();
+}
+
+// ── Google Sheets ATR Sync ─────────────────────────────────
+// Replace YOUR_SCRIPT_URL with your deployed Apps Script URL
+let ATR_SCRIPT_URL = localStorage.getItem('atr_script_url') || '';
+
+function setScriptUrl(url) {
+  ATR_SCRIPT_URL = url.trim();
+  localStorage.setItem('atr_script_url', ATR_SCRIPT_URL);
+  document.getElementById('atr-url-input').value = ATR_SCRIPT_URL;
+  document.getElementById('atr-url-status').textContent = '✅ URL Saved!';
+  document.getElementById('atr-url-status').style.color = '#2ECC71';
+  setTimeout(() => document.getElementById('atr-url-status').textContent = '', 2000);
+  loadAtrFromStorage(); // Load existing ATR data from sheet
+}
+
+function saveAtrToStorage(r) {
+  // Save to localStorage as backup
+  try {
+    const saved = JSON.parse(localStorage.getItem('uppcl_atr') || '{}');
+    saved[String(r.ACCT_ID)] = r.ATR_STATUS;
+    localStorage.setItem('uppcl_atr', JSON.stringify(saved));
+  } catch(e) {}
+
+  // Save to Google Sheet
+  if (!ATR_SCRIPT_URL) return;
+  fetch(ATR_SCRIPT_URL, {
+    method: 'POST',
+    body: JSON.stringify({
+      action: 'save',
+      acctId: String(r.ACCT_ID),
+      atrStatus: r.ATR_STATUS,
+      name: r.NAME,
+      mobile: String(r.MOBILE_NO || ''),
+      substation: r.SUBSTATION,
+      feeder: r.FEEDER,
+      outstanding: r.OUTSTANDING
+    })
+  }).then(res => res.json())
+    .then(d => {
+      const ind = document.getElementById('atr-sync-ind');
+      if (ind) { ind.textContent = '☁️ Saved to Sheet'; ind.style.color = '#2ECC71'; setTimeout(() => ind.textContent = '', 2000); }
+    })
+    .catch(() => {
+      const ind = document.getElementById('atr-sync-ind');
+      if (ind) { ind.textContent = '⚠️ Sheet sync failed (saved locally)'; ind.style.color = '#F5A623'; setTimeout(() => ind.textContent = '', 3000); }
+    });
+}
+
+function loadAtrFromStorage() {
+  // First load from localStorage (fast)
+  try {
+    const saved = JSON.parse(localStorage.getItem('uppcl_atr') || '{}');
+    DC.forEach(r => { const v = saved[String(r.ACCT_ID)]; if (v) r.ATR_STATUS = v; });
+    dcUpdateAtrCards();
+  } catch(e) {}
+
+  // Then sync from Google Sheet (authoritative)
+  if (!ATR_SCRIPT_URL) return;
+  const ind = document.getElementById('atr-sync-ind');
+  if (ind) { ind.textContent = '☁️ Syncing from Sheet…'; ind.style.color = '#00C4FF'; }
+  fetch(ATR_SCRIPT_URL + '?action=getAll')
+    .then(res => res.json())
+    .then(d => {
+      if (d.status === 'ok' && d.data) {
+        let count = 0;
+        DC.forEach(r => { const v = d.data[String(r.ACCT_ID)]; if (v) { r.ATR_STATUS = v; count++; } });
+        dcUpdateAtrCards();
+        renderDcTable(dcPage || 1);
+        if (ind) { ind.textContent = '✅ ' + count + ' ATR loaded from Sheet'; ind.style.color = '#2ECC71'; setTimeout(() => ind.textContent = '', 3000); }
+        // Update localStorage cache
+        try { localStorage.setItem('uppcl_atr', JSON.stringify(d.data)); } catch(e) {}
+      }
+    })
+    .catch(() => { if (ind) { ind.textContent = '⚠️ Sheet sync failed'; ind.style.color = '#F5A623'; setTimeout(() => ind.textContent = '', 3000); } });
+}
+
+function exportAtrXlsx() {
+  const data = DC.map(r => ({
+    ACCT_ID: r.ACCT_ID, NAME: r.NAME, MOBILE: r.MOBILE_NO,
+    SUBSTATION: r.SUBSTATION, FEEDER: r.FEEDER,
+    OUTSTANDING: r.OUTSTANDING, ATR_STATUS: r.ATR_STATUS || 'DISCONNECTED',
+    METER_NO: r.METER_NO, LMV: r.LMV, DATE_DC: r.DATE_DC
+  }));
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'ATR');
+  XLSX.writeFile(wb, 'ATR_REPORT_' + Date.now() + '.xlsx');
+}
+
+function atrBadgeFn(status) {
+  if (!status) return '<span class="badge b-oth">—</span>';
+  const s = String(status).toUpperCase();
+  if (s === 'PAID') return '<span class="badge" style="background:#1A3A2A;color:#2ECC71">✅ PAID</span>';
+  if (s === 'LOCK') return '<span class="badge" style="background:#2A1A3A;color:#AA80FF">🔒 LOCK</span>';
+  if (s === 'THEFT') return '<span class="badge" style="background:#3A1A1A;color:#FF4D4D">⚠️ THEFT</span>';
+  if (s === 'DISCONNECTED') return '<span class="badge" style="background:#2A1A1A;color:#FF8080">🔴 DC</span>';
+  return '<span class="badge b-oth">📋 ' + status + '</span>';
+}
+
+function dcUpdateAtrCards() {
+  const paid  = DC.filter(r => r.ATR_STATUS === 'PAID').length;
+  const lock  = DC.filter(r => r.ATR_STATUS === 'LOCK').length;
+  const theft = DC.filter(r => r.ATR_STATUS === 'THEFT').length;
+  const other = DC.filter(r => r.ATR_STATUS === 'OTHER').length;
+  const dc    = DC.filter(r => !r.ATR_STATUS || r.ATR_STATUS === 'DISCONNECTED').length;
+  // Update modal mini-cards if open
+  const mp = document.getElementById('m-atr-paid');
+  if (mp) {
+    mp.textContent = paid;
+    document.getElementById('m-atr-lock').textContent = lock;
+    document.getElementById('m-atr-theft').textContent = theft;
+    document.getElementById('m-atr-dc').textContent = dc;
+    document.getElementById('m-atr-other').textContent = other;
+  }
+}
+
+function dcFilter() {
+  const q = (document.getElementById('dc-search').value || '').trim().toLowerCase();
+  const sub = document.getElementById('dc-sub').value;
+  const feed = document.getElementById('dc-feed').value;
+  const lmv = document.getElementById('dc-lmv').value;
+  const atr = document.getElementById('dc-atr').value;
+  const amin = parseFloat(document.getElementById('dc-amt-min').value) || 0;
+  const amax = parseFloat(document.getElementById('dc-amt-max').value) || Infinity;
+
+  DC_FD = DC.filter(r => {
+    if (sub && r.SUBSTATION !== sub) return false;
+    if (feed && r.FEEDER !== feed) return false;
+    if (lmv && r.LMV !== lmv) return false;
+    if (atr && r.ATR_STATUS !== atr) return false;
+    if (r.OUTSTANDING < amin || r.OUTSTANDING > amax) return false;
+    if (q) {
+      const acct = String(r.ACCT_ID || '');
+      const mob = String(r.MOBILE_NO || '');
+      const name = (r.NAME || '').toLowerCase();
+      const meter = (r.METER_NO || '').toLowerCase();
+      if (!acct.includes(q) && !mob.includes(q) && !name.includes(q) && !meter.includes(q)) return false;
+    }
+    return true;
+  });
+
+  const filtOut = DC_FD.reduce((s, r) => s + r.OUTSTANDING, 0);
+  document.getElementById('dc-filt-amt').textContent = '₹' + Math.round(filtOut).toLocaleString();
+  document.getElementById('dc-total2').textContent = DC_FD.length.toLocaleString();
+  renderDcTable(1);
+}
+
+function resetDcFilters() {
+  document.getElementById('dc-search').value = '';
+  document.getElementById('dc-sub').value = '';
+  document.getElementById('dc-feed').value = '';
+  document.getElementById('dc-lmv').value = '';
+  document.getElementById('dc-atr').value = '';
+  document.getElementById('dc-amt-min').value = '';
+  document.getElementById('dc-amt-max').value = '';
+  onDcSubChange();
+  DC_FD = DC;
+  const totalOut = DC.reduce((s, r) => s + r.OUTSTANDING, 0);
+  document.getElementById('dc-filt-amt').textContent = '₹' + Math.round(totalOut).toLocaleString();
+  document.getElementById('dc-total2').textContent = DC.length.toLocaleString();
+  renderDcTable(1);
+}
+
+function renderDcTable(page) {
+  dcPage = page;
+  const slice = DC_FD.slice((page - 1) * PS, page * PS);
+  document.getElementById('dc-shown').textContent = DC_FD.length.toLocaleString();
+  document.getElementById('dc-tbody').innerHTML = slice.map(r => {
+    const mapUrl = (r.LAT && r.LON) ? 'https://www.google.com/maps?q=' + r.LAT + ',' + r.LON : '';
+    const date = (() => {
+      if (!r.DATE_DC) return '';
+      const v = r.DATE_DC;
+      // If it's a number (Excel serial date)
+      if (!isNaN(v) && String(v).length <= 6) {
+        const d = new Date(Math.round((v - 25569) * 86400 * 1000));
+        return d.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+      }
+      // If it's a string with T (ISO)
+      if (typeof v === 'string' && v.includes('T')) return v.split('T')[0];
+      return String(v);
+    })();
+    const outstanding = parseFloat(r.OUTSTANDING) || 0;
+    const outColor = outstanding > 100000 ? '#FF4D4D' : outstanding > 10000 ? '#F5A623' : 'var(--text)';
+    const acctId = String(r.ACCT_ID);
+    return `<tr id="dc-row-${acctId}">
+      <td style="color:var(--muted);font-size:11px">${date}</td>
+      <td style="font-family:var(--fh);color:var(--accent2);cursor:pointer;text-decoration:underline;text-underline-offset:3px" onclick="openDcDetail('${acctId}')" title="Click to view details">${r.ACCT_ID}</td>
+      <td style="font-weight:500;cursor:pointer" onclick="openDcDetail('${acctId}')">${r.NAME}</td>
+      <td>${r.MOBILE_NO}</td>
+      <td style="font-size:11px;color:var(--muted)">${r.METER_NO}</td>
+      <td><span class="badge b-gov">${r.LMV}</span></td>
+      <td style="font-family:var(--fh);font-weight:700;color:${outColor}">₹${Math.round(outstanding).toLocaleString()}</td>
+      <td>${r.SUBSTATION}</td>
+      <td>${r.FEEDER}</td>
+      <td>${mapUrl ? `<a class="ml" href="${mapUrl}" target="_blank">📍 MAP</a>` : ''}</td>
+    </tr>`;
+  }).join('');
+  rp('dc-pg', page, Math.ceil(DC_FD.length / PS), p => renderDcTable(p));
+}
+
+function expDcX() {
+  if (!DC_FD.length) return alert('No data.');
+  const ws = XLSX.utils.json_to_sheet(DC_FD);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Disconnected');
+  XLSX.writeFile(wb, 'disconnected_' + Date.now() + '.xlsx');
+}
+function expDcC() {
+  if (!DC_FD.length) return alert('No data.');
+  const ws = XLSX.utils.json_to_sheet(DC_FD);
+  const csv = XLSX.utils.sheet_to_csv(ws);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  a.download = 'disconnected_' + Date.now() + '.csv'; a.click();
+}
+
+
+// ─── DC NEARBY ───────────────────────────────────────────────────────────────
+let DC_NBM = null, DC_NBL = null, DC_NBCenter = null, DC_NBData = [];
+let dcPickMode = false, DC_NBCircle = null, DC_NBCenterMarker = null;
+
+function initDcNearbyMap() {
+  DC_NBM = L.map('dc-nb-map').setView([25.45, 78.57], 13);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '© OSM, © CARTO', maxZoom: 19
+  }).addTo(DC_NBM);
+  DC_NBL = L.layerGroup().addTo(DC_NBM);
+  DC_NBM.on('click', function(e) {
+    if (!dcPickMode) return;
+    dcPickMode = false;
+    DC_NBM.getContainer().style.cursor = '';
+    setDcNearbyCenter(e.latlng.lat, e.latlng.lng);
+  });
+}
+
+function dcUseMyLocation() {
+  if (!navigator.geolocation) return alert('GPS not supported.');
+  document.getElementById('dc-nb-instruction').innerHTML = '<div style="font-size:36px">📡</div><div style="font-family:var(--fh);font-size:14px;color:var(--accent);margin-top:8px;letter-spacing:1px">GETTING YOUR LOCATION…</div>';
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      document.getElementById('dc-nb-instruction').style.display = 'none';
+      document.getElementById('dc-nb-map-cont').style.display = 'block';
+      if (!DC_NBM) initDcNearbyMap();
+      setTimeout(() => setDcNearbyCenter(pos.coords.latitude, pos.coords.longitude), 100);
+    },
+    () => { document.getElementById('dc-nb-instruction').innerHTML = '<div style="font-size:36px">⚠️</div><div style="font-family:var(--fh);font-size:14px;color:#FF6B6B;margin-top:8px">Could not get GPS. Please allow location or pick on map.</div>'; }
+  );
+}
+
+function dcPickOnMap() {
+  document.getElementById('dc-nb-instruction').style.display = 'none';
+  document.getElementById('dc-nb-map-cont').style.display = 'block';
+  if (!DC_NBM) initDcNearbyMap();
+  dcPickMode = true;
+  setTimeout(() => {
+    DC_NBM.getContainer().style.cursor = 'crosshair';
+    L.popup({ closeButton: false, autoClose: true })
+      .setLatLng(DC_NBM.getCenter())
+      .setContent('<div style="font-family:sans-serif;font-size:13px">🖱️ Click anywhere to select location</div>')
+      .openOn(DC_NBM);
+  }, 200);
+}
+
+function setDcNearbyCenter(lat, lon) {
+  DC_NBCenter = { lat, lon };
+  document.getElementById('dc-nb-coords').style.display = 'flex';
+  document.getElementById('dc-nb-lat').textContent = 'LAT: ' + lat.toFixed(6);
+  document.getElementById('dc-nb-lon').textContent = 'LON: ' + lon.toFixed(6);
+
+  const radius = parseFloat(document.getElementById('dc-nb-radius').value) * 1000;
+  if (DC_NBCircle) DC_NBM.removeLayer(DC_NBCircle);
+  if (DC_NBCenterMarker) DC_NBM.removeLayer(DC_NBCenterMarker);
+
+  DC_NBCircle = L.circle([lat, lon], {
+    radius, color: '#FF4D4D', weight: 2, opacity: 0.8,
+    fillColor: '#FF4D4D', fillOpacity: 0.06
+  }).addTo(DC_NBM);
+
+  DC_NBCenterMarker = L.circleMarker([lat, lon], {
+    radius: 8, fillColor: '#FF4D4D', color: '#fff', weight: 2, fillOpacity: 1
+  }).bindPopup('<b style="font-family:sans-serif">📍 Selected Location</b>').addTo(DC_NBM);
+
+  DC_NBM.fitBounds(DC_NBCircle.getBounds(), { padding: [20, 20] });
+  findDcNearby(lat, lon);
+}
+
+function findDcNearby(lat, lon) {
+  const radius = parseFloat(document.getElementById('dc-nb-radius').value);
+  const atr = document.getElementById('dc-nb-atr').value;
+
+  DC_NBData = DC
+    .filter(r => r.LAT && r.LON)
+    .map(r => ({ ...r, _dist: haversine(lat, lon, parseFloat(r.LAT), parseFloat(r.LON)) }))
+    .filter(r => r._dist <= radius)
+    .filter(r => !atr || r.ATR_STATUS === atr)
+    .sort((a, b) => a._dist - b._dist);
+
+  document.getElementById('dc-nb-found').textContent = DC_NBData.length + ' FOUND';
+
+  DC_NBL.clearLayers();
+  if (DC_NBCircle) DC_NBCircle.addTo(DC_NBM);
+  if (DC_NBCenterMarker) DC_NBCenterMarker.addTo(DC_NBM);
+
+  DC_NBData.forEach(r => {
+    const atrColor = r.ATR_STATUS === 'PAID' ? '#2ECC71' : r.ATR_STATUS === 'LOCK' ? '#AA80FF' : r.ATR_STATUS === 'THEFT' ? '#FF4D4D' : '#FF8080';
+    const c = L.circleMarker([r.LAT, r.LON], {
+      radius: 6, fillColor: atrColor, color: '#000', weight: 0.5, fillOpacity: 0.9
+    });
+    const dist = r._dist < 1 ? (r._dist * 1000).toFixed(0) + ' m' : r._dist.toFixed(2) + ' km';
+    const mapUrl = 'https://www.google.com/maps?q=' + r.LAT + ',' + r.LON;
+    c.bindPopup(`<div style="font-family:sans-serif;font-size:12px;min-width:170px">
+      <strong>${r.NAME || 'Unknown'}</strong><br/>
+      <span style="color:#888">Acct: ${r.ACCT_ID}</span><br/>
+      <span style="color:#888">Mobile: ${r.MOBILE_NO || '-'}</span><br/>
+      Outstanding: <b style="color:#FF4D4D">₹${Math.round(r.OUTSTANDING).toLocaleString()}</b><br/>
+      ATR: <b>${r.ATR_STATUS || '-'}</b> · ${dist}<br/>
+      <a href="${mapUrl}" target="_blank" style="color:#00C4FF">📍 Open Maps</a>
+    </div>`);
+    DC_NBL.addLayer(c);
+  });
+
+  document.getElementById('dc-nb-results').style.display = DC_NBData.length > 0 ? 'block' : 'none';
+  if (DC_NBData.length > 0) renderDcNbTable(1);
+}
+
+function renderDcNbTable(page) {
+  const slice = DC_NBData.slice((page - 1) * PS, page * PS);
+  document.getElementById('dc-nb-tbody').innerHTML = slice.map(r => {
+    const dist = r._dist < 1 ? (r._dist * 1000).toFixed(0) + ' m' : r._dist.toFixed(2) + ' km';
+    const mapUrl = 'https://www.google.com/maps?q=' + r.LAT + ',' + r.LON;
+    const outstanding = Math.round(r.OUTSTANDING || 0);
+    const outColor = outstanding > 100000 ? '#FF4D4D' : outstanding > 10000 ? '#F5A623' : 'var(--text)';
+    return `<tr>
+      <td style="font-family:var(--fh);color:var(--accent);font-weight:700">${dist}</td>
+      <td style="font-family:var(--fh);color:var(--accent2)">${r.ACCT_ID}</td>
+      <td style="font-weight:500">${r.NAME || ''}</td>
+      <td>${r.MOBILE_NO || ''}</td>
+      <td style="font-family:var(--fh);font-weight:700;color:${outColor}">₹${outstanding.toLocaleString()}</td>
+      <td>${atrBadgeFn(r.ATR_STATUS)}</td>
+      <td>${r.SUBSTATION || ''}</td>
+      <td>${r.FEEDER || ''}</td>
+      <td><a class="ml" href="${mapUrl}" target="_blank">📍 MAP</a></td>
+    </tr>`;
+  }).join('');
+  rp('dc-nb-pg', page, Math.ceil(DC_NBData.length / PS), p => renderDcNbTable(p));
+}
+
+function clearDcNearby() {
+  DC_NBCenter = null; DC_NBData = []; dcPickMode = false;
+  if (DC_NBL) DC_NBL.clearLayers();
+  if (DC_NBCircle) { DC_NBM.removeLayer(DC_NBCircle); DC_NBCircle = null; }
+  if (DC_NBCenterMarker) { DC_NBM.removeLayer(DC_NBCenterMarker); DC_NBCenterMarker = null; }
+  document.getElementById('dc-nb-coords').style.display = 'none';
+  document.getElementById('dc-nb-results').style.display = 'none';
+  document.getElementById('dc-nb-map-cont').style.display = 'none';
+  document.getElementById('dc-nb-instruction').style.display = 'block';
+  document.getElementById('dc-nb-instruction').innerHTML = '<div style="font-size:40px;margin-bottom:10px">📡</div><div style="font-family:var(--fh);font-size:15px;letter-spacing:1px">Use GPS or pick on map to find nearby disconnected consumers</div>';
+}
+
+function expDcNbX() {
+  if (!DC_NBData.length) return alert('No data.');
+  const ws = XLSX.utils.json_to_sheet(DC_NBData.map(r => ({ ...r, DISTANCE: r._dist < 1 ? (r._dist * 1000).toFixed(0) + ' m' : r._dist.toFixed(2) + ' km' })));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'DC_Nearby');
+  XLSX.writeFile(wb, 'dc_nearby_' + Date.now() + '.xlsx');
+}
+function expDcNbC() {
+  if (!DC_NBData.length) return alert('No data.');
+  const ws = XLSX.utils.json_to_sheet(DC_NBData.map(r => ({ ...r, DISTANCE: r._dist < 1 ? (r._dist * 1000).toFixed(0) + ' m' : r._dist.toFixed(2) + ' km' })));
+  const csv = XLSX.utils.sheet_to_csv(ws);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  a.download = 'dc_nearby_' + Date.now() + '.csv'; a.click();
+}
+
+
+// ─── DETAIL MODAL ────────────────────────────────────────────────────────────
+let modalCurrentAcct = null;
+let modalIsDc = false;
+
+function openDcDetail(acctId) {
+  const r = DC.find(row => String(row.ACCT_ID) === String(acctId));
+  if (!r) return;
+  modalCurrentAcct = String(acctId);
+  modalIsDc = true;
+
+  document.getElementById('modal-name').textContent = r.NAME || 'Unknown';
+  document.getElementById('modal-acct').textContent = 'ACCT: ' + r.ACCT_ID;
+  document.getElementById('modal-cat-badge').innerHTML = '<span class="badge b-gov">' + (r.LMV || '') + '</span>';
+  document.getElementById('modal-dc-badge').innerHTML = '<span class="badge" style="background:#2A1A1A;color:#FF8080">🔴 DISCONNECTED</span>';
+
+  // Date formatting
+  const v = r.DATE_DC;
+  let dateStr = '';
+  if (v) {
+    if (!isNaN(v) && String(v).length <= 6) {
+      const d = new Date(Math.round((v - 25569) * 86400 * 1000));
+      dateStr = d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    } else { dateStr = String(v).split('T')[0]; }
+  }
+
+  const outstanding = Math.round(parseFloat(r.OUTSTANDING) || 0);
+  const outColor = outstanding > 100000 ? '#FF4D4D' : outstanding > 10000 ? '#F5A623' : 'var(--text)';
+
+  document.getElementById('modal-grid').innerHTML = `
+    <div class="modal-field"><div class="lbl">DATE OF DISCONNECTION</div><div class="val">${dateStr || '-'}</div></div>
+    <div class="modal-field"><div class="lbl">MOBILE NO</div><div class="val">${r.MOBILE_NO || '-'}</div></div>
+    <div class="modal-field"><div class="lbl">METER NUMBER</div><div class="val">${r.METER_NO || '-'}</div></div>
+    <div class="modal-field"><div class="lbl">LMV TYPE</div><div class="val">${r.LMV || '-'}</div></div>
+    <div class="modal-field"><div class="lbl">LOAD</div><div class="val">${r.LOAD || '-'} kW</div></div>
+    <div class="modal-field"><div class="lbl">OUTSTANDING</div><div class="val" style="font-family:var(--fh);font-weight:700;font-size:16px;color:${outColor}">₹${outstanding.toLocaleString()}</div></div>
+    <div class="modal-field"><div class="lbl">SUBSTATION</div><div class="val">${r.SUBSTATION || '-'}</div></div>
+    <div class="modal-field"><div class="lbl">FEEDER</div><div class="val">${r.FEEDER || '-'}</div></div>
+    <div class="modal-field" style="grid-column:span 2"><div class="lbl">ADDRESS</div><div class="val">${r.ADDRESS || '-'}</div></div>
+    <div class="modal-field"><div class="lbl">LATITUDE</div><div class="val">${r.LAT || '-'}</div></div>
+    <div class="modal-field"><div class="lbl">LONGITUDE</div><div class="val">${r.LON || '-'}</div></div>
+  `;
+
+  // ATR section
+  const atrSel = document.getElementById('modal-atr-select');
+  atrSel.value = r.ATR_STATUS || 'DISCONNECTED';
+  updateModalAtrStyle();
+  document.getElementById('modal-atr-section').style.display = 'block';
+  document.getElementById('modal-save-ind').textContent = '';
+  dcUpdateAtrCards(); // refresh mini summary cards
+
+  // Map button
+  const mapBtn = document.getElementById('modal-map-btn');
+  if (r.LAT && r.LON) {
+    mapBtn.href = 'https://www.google.com/maps?q=' + r.LAT + ',' + r.LON;
+    mapBtn.style.display = 'inline-flex';
+  } else { mapBtn.style.display = 'none'; }
+
+  document.getElementById('detail-modal').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+
+}
+
+function openMainDetail(acctId) {
+  const r = D.find(row => String(row.ACCT_ID) === String(acctId));
+  if (!r) return;
+  modalCurrentAcct = String(acctId);
+  modalIsDc = false;
+
+  document.getElementById('modal-name').textContent = r.NAME || 'Unknown';
+  document.getElementById('modal-acct').textContent = 'ACCT: ' + r.ACCT_ID;
+  document.getElementById('modal-cat-badge').innerHTML = cb(r.CATEGORY);
+  document.getElementById('modal-dc-badge').innerHTML = '';
+
+  document.getElementById('modal-grid').innerHTML = `
+    <div class="modal-field"><div class="lbl">FATHER'S NAME</div><div class="val">${r.FATHER_NAME || '-'}</div></div>
+    <div class="modal-field"><div class="lbl">MOBILE</div><div class="val">${r.MOBILE_NO || '-'}</div></div>
+    <div class="modal-field"><div class="lbl">LOAD</div><div class="val">${r.LOAD || '-'} kW</div></div>
+    <div class="modal-field"><div class="lbl">SERIAL NUMBER</div><div class="val">${r.SERIAL_NBR || '-'}</div></div>
+    <div class="modal-field"><div class="lbl">SUBSTATION</div><div class="val">${r.SUBSTATION || '-'}</div></div>
+    <div class="modal-field"><div class="lbl">FEEDER</div><div class="val">${r.FEEDER || '-'}</div></div>
+    <div class="modal-field" style="grid-column:span 2"><div class="lbl">ADDRESS</div><div class="val">${r.ADDRESS || '-'}</div></div>
+    <div class="modal-field"><div class="lbl">LATITUDE</div><div class="val">${r.LAT || '-'}</div></div>
+    <div class="modal-field"><div class="lbl">LONGITUDE</div><div class="val">${r.LON || '-'}</div></div>
+  `;
+
+  // No ATR for main consumers
+  document.getElementById('modal-atr-section').style.display = 'none';
+
+  const mapBtn = document.getElementById('modal-map-btn');
+  if (r.LAT && r.LON) {
+    mapBtn.href = 'https://www.google.com/maps?q=' + r.LAT + ',' + r.LON;
+    mapBtn.style.display = 'inline-flex';
+  } else { mapBtn.style.display = 'none'; }
+
+  document.getElementById('detail-modal').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+  document.getElementById('detail-modal').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+// Close on Escape key
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+function updateModalAtrStyle() {
+  const sel = document.getElementById('modal-atr-select');
+  sel.className = 'atr-big-select atr-big-' + atrSelectClass(sel.value).replace('atr-', '');
+}
+
+function saveModalAtr() {
+  if (!modalCurrentAcct || !modalIsDc) return;
+
+  const newStatus = document.getElementById('modal-atr-select').value;
+  const ind = document.getElementById('modal-save-ind');
+
+  // Update DC array
+  const idx = DC.findIndex(r => String(r.ACCT_ID) === modalCurrentAcct);
+  if (idx >= 0) {
+    DC[idx].ATR_STATUS = newStatus;
+    const rec = DC[idx];
+
+    // Update inline select in table if visible
+    const inlineSel = document.getElementById('atr-' + modalCurrentAcct);
+    if (inlineSel) {
+      inlineSel.value = newStatus;
+      inlineSel.className = 'atr-select ' + atrSelectClass(newStatus);
+    }
+
+    // Save to storage + sheet
+    saveAtrToStorage(rec);
+    dcUpdateAtrCards();
+
+    ind.textContent = '💾 Saving…';
+    ind.style.color = '#F5A623';
+
+    // Auto-sync from sheet after save to confirm
+    if (ATR_SCRIPT_URL) {
+      setTimeout(() => {
+        ind.textContent = '🔄 Syncing…';
+        ind.style.color = '#00C4FF';
+        fetch(ATR_SCRIPT_URL + '?action=getAll')
+          .then(res => res.json())
+          .then(d => {
+            if (d.status === 'ok' && d.data) {
+              DC.forEach(r => { const v = d.data[String(r.ACCT_ID)]; if (v) r.ATR_STATUS = v; });
+              try { localStorage.setItem('uppcl_atr', JSON.stringify(d.data)); } catch(e) {}
+              dcUpdateAtrCards();
+              renderDcTable(dcPage || 1);
+              ind.textContent = '✅ Saved & Synced — ' + newStatus;
+              ind.style.color = '#2ECC71';
+              // Also update sync indicator in header
+              const si = document.getElementById('atr-sync-ind');
+              if (si) { si.textContent = '✅ Synced'; si.style.color = '#2ECC71'; setTimeout(() => si.textContent = '', 3000); }
+            }
+            setTimeout(() => ind.textContent = '', 4000);
+          })
+          .catch(() => {
+            ind.textContent = '✅ Saved locally (sheet sync failed)';
+            ind.style.color = '#F5A623';
+            setTimeout(() => ind.textContent = '', 3000);
+          });
+      }, 800);
+    } else {
+      ind.textContent = '✅ ATR saved — ' + newStatus;
+      ind.style.color = '#2ECC71';
+      setTimeout(() => ind.textContent = '', 3000);
+    }
+  }
+}
+
+function copyModalLink() {
+  if (!modalCurrentAcct) return;
+  navigator.clipboard.writeText(location.origin + location.pathname + '#lookup=' + modalCurrentAcct).then(() => toast());
+}
+
+
+function toggleSyncBar() {
+  const p = document.getElementById('sync-bar-panel');
+  const isHidden = p.style.display === 'none' || p.style.display === '';
+  p.style.display = isHidden ? 'flex' : 'none';
+}
+
+
+
+// ─── LOGIN & ROLE ACCESS ─────────────────────────────────────────────────────
+// Change these PINs as needed
+const ADMIN_PIN = '0107';
+const USER_PIN  = '1234';
+
+let currentPin = '';
+let loginRole = 'admin';
+let CURRENT_ROLE = null; // 'admin' or 'user'
+
+function setLoginRole(role) {
+  loginRole = role;
+  document.getElementById('tab-admin').classList.toggle('active', role === 'admin');
+  document.getElementById('tab-user').classList.toggle('active', role === 'user');
+  pinReset();
+}
+
+function pinPress(digit) {
+  if (currentPin.length >= 4) return;
+  currentPin += digit;
+  updatePinDots();
+  if (currentPin.length === 4) setTimeout(checkPin, 150);
+}
+
+function pinBackspace() {
+  currentPin = currentPin.slice(0, -1);
+  updatePinDots();
+  document.getElementById('login-error').textContent = '';
+}
+
+function pinClear() {
+  pinReset();
+}
+
+function pinReset() {
+  currentPin = '';
+  updatePinDots(false);
+  document.getElementById('login-error').textContent = '';
+}
+
+function updatePinDots(error) {
+  for (let i = 0; i < 4; i++) {
+    const dot = document.getElementById('pd' + i);
+    dot.classList.toggle('filled', i < currentPin.length);
+    dot.classList.toggle('error', error === true);
+  }
+}
+
+function checkPin() {
+  const correctPin = loginRole === 'admin' ? ADMIN_PIN : USER_PIN;
+  if (currentPin === correctPin) {
+    loginSuccess(loginRole);
+  } else {
+    updatePinDots(true);
+    document.getElementById('login-error').textContent = '✗ INCORRECT PIN — TRY AGAIN';
+    setTimeout(() => { pinReset(); }, 800);
+  }
+}
+
+function loginSuccess(role) {
+  CURRENT_ROLE = role;
+  sessionStorage.setItem('uppcl_role', role);
+  document.getElementById('login-screen').style.display = 'none';
+
+  // Set role badge
+  const badge = document.getElementById('role-indicator');
+  if (role === 'admin') {
+    badge.textContent = '👑 ADMIN';
+    badge.className = 'role-badge badge-admin';
+  } else {
+    badge.textContent = '👤 USER';
+    badge.className = 'role-badge badge-user';
+  }
+
+  applyRoleRestrictions(role);
+  // Start loading data after login if not already loaded
+  if (D.length === 0) autoFetch();
+}
+
+function applyRoleRestrictions(role) {
+  if (role === 'user') {
+    // Only hide Google Sheet sync bar
+    const syncBar = document.getElementById('sync-bar-panel');
+    if (syncBar) syncBar.style.display = 'none';
+    // Hide the sync settings button
+    document.querySelectorAll('button').forEach(btn => {
+      if (btn.textContent.includes('SHEET SYNC SETTINGS')) btn.style.display = 'none';
+    });
+  }
+}
+
+function logout() {
+  sessionStorage.removeItem('uppcl_role');
+  CURRENT_ROLE = null;
+  currentPin = '';
+  loginRole = 'admin';
+  document.getElementById('tab-admin').classList.add('active');
+  document.getElementById('tab-user').classList.remove('active');
+  pinReset();
+  document.getElementById('login-screen').style.display = 'flex';
+}
+
+// Check session on load (so refresh doesn't log out)
+window.addEventListener('DOMContentLoaded', () => {
+  const saved = sessionStorage.getItem('uppcl_role');
+  if (saved) {
+    loginSuccess(saved);
+  }
+});
+
+// Block ATR save for users in modal
+const _origSaveModalAtr = window.saveModalAtr;
+
+// Patch modal to hide ATR save for users
+const origOpenDcDetail = window.openDcDetail;
+
+</script>
+</body>
+</html>
