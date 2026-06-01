@@ -286,6 +286,18 @@ select option{background:#111920;}
           <div style="font-family:var(--fh);font-size:24px;font-weight:700;color:var(--accent2)" id="dc-subs-count">0</div>
           <div style="font-size:11px;color:var(--muted)">SUBSTATIONS</div>
         </div>
+        <div style="background:var(--card);border:1px solid #2ECC7133;border-left:3px solid #2ECC71;border-radius:10px;padding:14px 20px">
+          <div style="font-family:var(--fh);font-size:24px;font-weight:700;color:#2ECC71" id="dc-atr-paid">0</div>
+          <div style="font-size:11px;color:var(--muted)">PAID</div>
+        </div>
+        <div style="background:var(--card);border:1px solid #AA80FF33;border-left:3px solid #AA80FF;border-radius:10px;padding:14px 20px">
+          <div style="font-family:var(--fh);font-size:24px;font-weight:700;color:#AA80FF" id="dc-atr-lock">0</div>
+          <div style="font-size:11px;color:var(--muted)">LOCK</div>
+        </div>
+        <div style="background:var(--card);border:1px solid #FF4D4D33;border-left:3px solid #FF4D4D;border-radius:10px;padding:14px 20px">
+          <div style="font-family:var(--fh);font-size:24px;font-weight:700;color:#FF4D4D" id="dc-atr-theft">0</div>
+          <div style="font-size:11px;color:var(--muted)">THEFT</div>
+        </div>
       </div>
 
       <!-- Filters -->
@@ -315,6 +327,19 @@ select option{background:#111920;}
             <input type="number" id="dc-amt-max" placeholder="Max" oninput="dcFilter()" style="width:80px;background:var(--card);border:1.5px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-size:13px;outline:none"/>
           </div>
         </div>
+        <div>
+          <div class="lbl">ATR STATUS</div>
+          <div class="sw">
+            <select id="dc-atr" onchange="dcFilter()">
+              <option value="">ALL STATUS</option>
+              <option value="DISCONNECTED">🔴 DISCONNECTED</option>
+              <option value="PAID">✅ PAID</option>
+              <option value="LOCK">🔒 LOCK</option>
+              <option value="THEFT">⚠️ THEFT</option>
+              <option value="OTHER">📋 OTHER</option>
+            </select>
+          </div>
+        </div>
       </div>
 
       <!-- Result info + export -->
@@ -337,7 +362,7 @@ select option{background:#111920;}
           <thead>
             <tr>
               <th>DATE OF DC</th><th>ACCT ID</th><th>NAME</th><th>MOBILE</th>
-              <th>METER NO</th><th>LMV</th><th>OUTSTANDING</th>
+              <th>METER NO</th><th>LMV</th><th>OUTSTANDING</th><th>ATR STATUS</th>
               <th>SUBSTATION</th><th>FEEDER</th><th>MAP</th>
             </tr>
           </thead>
@@ -345,6 +370,70 @@ select option{background:#111920;}
         </table>
       </div>
       <div class="pg" id="dc-pg"></div>
+
+      <!-- DC Nearby Section -->
+      <div style="margin-top:24px;border-top:1px solid var(--border);padding-top:20px">
+        <div style="font-family:var(--fh);font-size:16px;font-weight:700;letter-spacing:1px;margin-bottom:14px;display:flex;align-items:center;gap:10px">
+          <span>📍 NEARBY DISCONNECTED CONSUMERS</span>
+        </div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px">
+          <div>
+            <div class="lbl">RADIUS</div>
+            <div class="sw" style="min-width:130px">
+              <select id="dc-nb-radius">
+                <option value="0.25">250 metres</option>
+                <option value="0.5" selected>500 metres</option>
+                <option value="1">1 km</option>
+                <option value="2">2 km</option>
+                <option value="5">5 km</option>
+                <option value="10">10 km</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <div class="lbl">ATR STATUS</div>
+            <div class="sw">
+              <select id="dc-nb-atr">
+                <option value="">ALL</option>
+                <option value="DISCONNECTED">🔴 DISCONNECTED</option>
+                <option value="PAID">✅ PAID</option>
+                <option value="LOCK">🔒 LOCK</option>
+                <option value="THEFT">⚠️ THEFT</option>
+                <option value="OTHER">📋 OTHER</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn btn-acc" onclick="dcUseMyLocation()">📡 USE MY GPS</button>
+          <button class="btn btn-out" onclick="dcPickOnMap()">🗺️ PICK ON MAP</button>
+          <button class="btn" style="background:var(--card);border:1px solid var(--border);color:var(--text)" onclick="clearDcNearby()">↺ CLEAR</button>
+        </div>
+        <div id="dc-nb-coords" style="display:none;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 16px;margin-bottom:12px;font-size:12px;align-items:center;gap:16px;flex-wrap:wrap">
+          <span style="color:var(--muted);font-family:var(--fh);letter-spacing:1px">📍 LOCATION:</span>
+          <span id="dc-nb-lat" style="color:var(--accent2)"></span>
+          <span id="dc-nb-lon" style="color:var(--accent2)"></span>
+          <span id="dc-nb-found" style="color:var(--accent);font-family:var(--fh);font-weight:700;margin-left:auto"></span>
+        </div>
+        <div id="dc-nb-map-cont" style="border-radius:12px;overflow:hidden;border:1px solid var(--border);margin-bottom:14px;display:none">
+          <div id="dc-nb-map" style="width:100%;height:360px"></div>
+        </div>
+        <div id="dc-nb-instruction" style="text-align:center;padding:40px;color:var(--muted)">
+          <div style="font-size:40px;margin-bottom:10px">📡</div>
+          <div style="font-family:var(--fh);font-size:15px;letter-spacing:1px">Use GPS or pick on map to find nearby disconnected consumers</div>
+        </div>
+        <div id="dc-nb-results" style="display:none">
+          <div class="tw">
+            <table>
+              <thead><tr><th>DIST</th><th>ACCT ID</th><th>NAME</th><th>MOBILE</th><th>OUTSTANDING</th><th>ATR</th><th>SUBSTATION</th><th>FEEDER</th><th>MAP</th></tr></thead>
+              <tbody id="dc-nb-tbody"></tbody>
+            </table>
+          </div>
+          <div class="pg" id="dc-nb-pg"></div>
+          <div style="display:flex;gap:10px;margin-top:12px">
+            <button class="btn btn-acc" onclick="expDcNbX()">⬇ EXPORT XLSX</button>
+            <button class="btn btn-out" onclick="expDcNbC()">⬇ EXPORT CSV</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -928,6 +1017,10 @@ function loadDC() {
       document.getElementById('dc-subs-count').textContent = subSet.size;
 
       pbar.style.width = '100%';
+      // Init ATR_STATUS field (default: DISCONNECTED)
+      DC = DC.map(r => ({ ...r, ATR_STATUS: r.ATR_STATUS || 'DISCONNECTED' }));
+      dcUpdateAtrCards();
+
       document.getElementById('dc-loading').style.display = 'none';
       document.getElementById('dc-content').style.display = 'block';
 
@@ -952,11 +1045,28 @@ function onDcSubChange() {
   feedSel.appendChild(frag);
 }
 
+function atrBadgeFn(status) {
+  if (!status) return '<span class="badge b-oth">—</span>';
+  const s = String(status).toUpperCase();
+  if (s === 'PAID') return '<span class="badge" style="background:#1A3A2A;color:#2ECC71">✅ PAID</span>';
+  if (s === 'LOCK') return '<span class="badge" style="background:#2A1A3A;color:#AA80FF">🔒 LOCK</span>';
+  if (s === 'THEFT') return '<span class="badge" style="background:#3A1A1A;color:#FF4D4D">⚠️ THEFT</span>';
+  if (s === 'DISCONNECTED') return '<span class="badge" style="background:#2A1A1A;color:#FF8080">🔴 DC</span>';
+  return '<span class="badge b-oth">📋 ' + status + '</span>';
+}
+
+function dcUpdateAtrCards() {
+  document.getElementById('dc-atr-paid').textContent = DC.filter(r => r.ATR_STATUS === 'PAID').length.toLocaleString();
+  document.getElementById('dc-atr-lock').textContent = DC.filter(r => r.ATR_STATUS === 'LOCK').length.toLocaleString();
+  document.getElementById('dc-atr-theft').textContent = DC.filter(r => r.ATR_STATUS === 'THEFT').length.toLocaleString();
+}
+
 function dcFilter() {
   const q = (document.getElementById('dc-search').value || '').trim().toLowerCase();
   const sub = document.getElementById('dc-sub').value;
   const feed = document.getElementById('dc-feed').value;
   const lmv = document.getElementById('dc-lmv').value;
+  const atr = document.getElementById('dc-atr').value;
   const amin = parseFloat(document.getElementById('dc-amt-min').value) || 0;
   const amax = parseFloat(document.getElementById('dc-amt-max').value) || Infinity;
 
@@ -964,6 +1074,7 @@ function dcFilter() {
     if (sub && r.SUBSTATION !== sub) return false;
     if (feed && r.FEEDER !== feed) return false;
     if (lmv && r.LMV !== lmv) return false;
+    if (atr && r.ATR_STATUS !== atr) return false;
     if (r.OUTSTANDING < amin || r.OUTSTANDING > amax) return false;
     if (q) {
       const acct = String(r.ACCT_ID || '');
@@ -986,6 +1097,7 @@ function resetDcFilters() {
   document.getElementById('dc-sub').value = '';
   document.getElementById('dc-feed').value = '';
   document.getElementById('dc-lmv').value = '';
+  document.getElementById('dc-atr').value = '';
   document.getElementById('dc-amt-min').value = '';
   document.getElementById('dc-amt-max').value = '';
   onDcSubChange();
@@ -1005,6 +1117,7 @@ function renderDcTable(page) {
     const date = r.DATE_DC ? (typeof r.DATE_DC === 'string' ? r.DATE_DC.split('T')[0] : String(r.DATE_DC).split('T')[0]) : '';
     const outstanding = parseFloat(r.OUTSTANDING) || 0;
     const outColor = outstanding > 100000 ? '#FF4D4D' : outstanding > 10000 ? '#F5A623' : 'var(--text)';
+    const atrBadge = atrBadgeFn(r.ATR_STATUS);
     return `<tr>
       <td style="color:var(--muted);font-size:11px">${date}</td>
       <td style="font-family:var(--fh);color:var(--accent2)">${r.ACCT_ID}</td>
@@ -1013,6 +1126,7 @@ function renderDcTable(page) {
       <td style="font-size:11px;color:var(--muted)">${r.METER_NO}</td>
       <td><span class="badge b-gov">${r.LMV}</span></td>
       <td style="font-family:var(--fh);font-weight:700;color:${outColor}">₹${Math.round(outstanding).toLocaleString()}</td>
+      <td>${atrBadge}</td>
       <td>${r.SUBSTATION}</td>
       <td>${r.FEEDER}</td>
       <td>${mapUrl ? `<a class="ml" href="${mapUrl}" target="_blank">📍 MAP</a>` : ''}</td>
@@ -1035,6 +1149,165 @@ function expDcC() {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
   a.download = 'disconnected_' + Date.now() + '.csv'; a.click();
+}
+
+
+// ─── DC NEARBY ───────────────────────────────────────────────────────────────
+let DC_NBM = null, DC_NBL = null, DC_NBCenter = null, DC_NBData = [];
+let dcPickMode = false, DC_NBCircle = null, DC_NBCenterMarker = null;
+
+function initDcNearbyMap() {
+  DC_NBM = L.map('dc-nb-map').setView([25.45, 78.57], 13);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '© OSM, © CARTO', maxZoom: 19
+  }).addTo(DC_NBM);
+  DC_NBL = L.layerGroup().addTo(DC_NBM);
+  DC_NBM.on('click', function(e) {
+    if (!dcPickMode) return;
+    dcPickMode = false;
+    DC_NBM.getContainer().style.cursor = '';
+    setDcNearbyCenter(e.latlng.lat, e.latlng.lng);
+  });
+}
+
+function dcUseMyLocation() {
+  if (!navigator.geolocation) return alert('GPS not supported.');
+  document.getElementById('dc-nb-instruction').innerHTML = '<div style="font-size:36px">📡</div><div style="font-family:var(--fh);font-size:14px;color:var(--accent);margin-top:8px;letter-spacing:1px">GETTING YOUR LOCATION…</div>';
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      document.getElementById('dc-nb-instruction').style.display = 'none';
+      document.getElementById('dc-nb-map-cont').style.display = 'block';
+      if (!DC_NBM) initDcNearbyMap();
+      setTimeout(() => setDcNearbyCenter(pos.coords.latitude, pos.coords.longitude), 100);
+    },
+    () => { document.getElementById('dc-nb-instruction').innerHTML = '<div style="font-size:36px">⚠️</div><div style="font-family:var(--fh);font-size:14px;color:#FF6B6B;margin-top:8px">Could not get GPS. Please allow location or pick on map.</div>'; }
+  );
+}
+
+function dcPickOnMap() {
+  document.getElementById('dc-nb-instruction').style.display = 'none';
+  document.getElementById('dc-nb-map-cont').style.display = 'block';
+  if (!DC_NBM) initDcNearbyMap();
+  dcPickMode = true;
+  setTimeout(() => {
+    DC_NBM.getContainer().style.cursor = 'crosshair';
+    L.popup({ closeButton: false, autoClose: true })
+      .setLatLng(DC_NBM.getCenter())
+      .setContent('<div style="font-family:sans-serif;font-size:13px">🖱️ Click anywhere to select location</div>')
+      .openOn(DC_NBM);
+  }, 200);
+}
+
+function setDcNearbyCenter(lat, lon) {
+  DC_NBCenter = { lat, lon };
+  document.getElementById('dc-nb-coords').style.display = 'flex';
+  document.getElementById('dc-nb-lat').textContent = 'LAT: ' + lat.toFixed(6);
+  document.getElementById('dc-nb-lon').textContent = 'LON: ' + lon.toFixed(6);
+
+  const radius = parseFloat(document.getElementById('dc-nb-radius').value) * 1000;
+  if (DC_NBCircle) DC_NBM.removeLayer(DC_NBCircle);
+  if (DC_NBCenterMarker) DC_NBM.removeLayer(DC_NBCenterMarker);
+
+  DC_NBCircle = L.circle([lat, lon], {
+    radius, color: '#FF4D4D', weight: 2, opacity: 0.8,
+    fillColor: '#FF4D4D', fillOpacity: 0.06
+  }).addTo(DC_NBM);
+
+  DC_NBCenterMarker = L.circleMarker([lat, lon], {
+    radius: 8, fillColor: '#FF4D4D', color: '#fff', weight: 2, fillOpacity: 1
+  }).bindPopup('<b style="font-family:sans-serif">📍 Selected Location</b>').addTo(DC_NBM);
+
+  DC_NBM.fitBounds(DC_NBCircle.getBounds(), { padding: [20, 20] });
+  findDcNearby(lat, lon);
+}
+
+function findDcNearby(lat, lon) {
+  const radius = parseFloat(document.getElementById('dc-nb-radius').value);
+  const atr = document.getElementById('dc-nb-atr').value;
+
+  DC_NBData = DC
+    .filter(r => r.LAT && r.LON)
+    .map(r => ({ ...r, _dist: haversine(lat, lon, parseFloat(r.LAT), parseFloat(r.LON)) }))
+    .filter(r => r._dist <= radius)
+    .filter(r => !atr || r.ATR_STATUS === atr)
+    .sort((a, b) => a._dist - b._dist);
+
+  document.getElementById('dc-nb-found').textContent = DC_NBData.length + ' FOUND';
+
+  DC_NBL.clearLayers();
+  if (DC_NBCircle) DC_NBCircle.addTo(DC_NBM);
+  if (DC_NBCenterMarker) DC_NBCenterMarker.addTo(DC_NBM);
+
+  DC_NBData.forEach(r => {
+    const atrColor = r.ATR_STATUS === 'PAID' ? '#2ECC71' : r.ATR_STATUS === 'LOCK' ? '#AA80FF' : r.ATR_STATUS === 'THEFT' ? '#FF4D4D' : '#FF8080';
+    const c = L.circleMarker([r.LAT, r.LON], {
+      radius: 6, fillColor: atrColor, color: '#000', weight: 0.5, fillOpacity: 0.9
+    });
+    const dist = r._dist < 1 ? (r._dist * 1000).toFixed(0) + ' m' : r._dist.toFixed(2) + ' km';
+    const mapUrl = 'https://www.google.com/maps?q=' + r.LAT + ',' + r.LON;
+    c.bindPopup(`<div style="font-family:sans-serif;font-size:12px;min-width:170px">
+      <strong>${r.NAME || 'Unknown'}</strong><br/>
+      <span style="color:#888">Acct: ${r.ACCT_ID}</span><br/>
+      <span style="color:#888">Mobile: ${r.MOBILE_NO || '-'}</span><br/>
+      Outstanding: <b style="color:#FF4D4D">₹${Math.round(r.OUTSTANDING).toLocaleString()}</b><br/>
+      ATR: <b>${r.ATR_STATUS || '-'}</b> · ${dist}<br/>
+      <a href="${mapUrl}" target="_blank" style="color:#00C4FF">📍 Open Maps</a>
+    </div>`);
+    DC_NBL.addLayer(c);
+  });
+
+  document.getElementById('dc-nb-results').style.display = DC_NBData.length > 0 ? 'block' : 'none';
+  if (DC_NBData.length > 0) renderDcNbTable(1);
+}
+
+function renderDcNbTable(page) {
+  const slice = DC_NBData.slice((page - 1) * PS, page * PS);
+  document.getElementById('dc-nb-tbody').innerHTML = slice.map(r => {
+    const dist = r._dist < 1 ? (r._dist * 1000).toFixed(0) + ' m' : r._dist.toFixed(2) + ' km';
+    const mapUrl = 'https://www.google.com/maps?q=' + r.LAT + ',' + r.LON;
+    const outstanding = Math.round(r.OUTSTANDING || 0);
+    const outColor = outstanding > 100000 ? '#FF4D4D' : outstanding > 10000 ? '#F5A623' : 'var(--text)';
+    return `<tr>
+      <td style="font-family:var(--fh);color:var(--accent);font-weight:700">${dist}</td>
+      <td style="font-family:var(--fh);color:var(--accent2)">${r.ACCT_ID}</td>
+      <td style="font-weight:500">${r.NAME || ''}</td>
+      <td>${r.MOBILE_NO || ''}</td>
+      <td style="font-family:var(--fh);font-weight:700;color:${outColor}">₹${outstanding.toLocaleString()}</td>
+      <td>${atrBadgeFn(r.ATR_STATUS)}</td>
+      <td>${r.SUBSTATION || ''}</td>
+      <td>${r.FEEDER || ''}</td>
+      <td><a class="ml" href="${mapUrl}" target="_blank">📍 MAP</a></td>
+    </tr>`;
+  }).join('');
+  rp('dc-nb-pg', page, Math.ceil(DC_NBData.length / PS), p => renderDcNbTable(p));
+}
+
+function clearDcNearby() {
+  DC_NBCenter = null; DC_NBData = []; dcPickMode = false;
+  if (DC_NBL) DC_NBL.clearLayers();
+  if (DC_NBCircle) { DC_NBM.removeLayer(DC_NBCircle); DC_NBCircle = null; }
+  if (DC_NBCenterMarker) { DC_NBM.removeLayer(DC_NBCenterMarker); DC_NBCenterMarker = null; }
+  document.getElementById('dc-nb-coords').style.display = 'none';
+  document.getElementById('dc-nb-results').style.display = 'none';
+  document.getElementById('dc-nb-map-cont').style.display = 'none';
+  document.getElementById('dc-nb-instruction').style.display = 'block';
+  document.getElementById('dc-nb-instruction').innerHTML = '<div style="font-size:40px;margin-bottom:10px">📡</div><div style="font-family:var(--fh);font-size:15px;letter-spacing:1px">Use GPS or pick on map to find nearby disconnected consumers</div>';
+}
+
+function expDcNbX() {
+  if (!DC_NBData.length) return alert('No data.');
+  const ws = XLSX.utils.json_to_sheet(DC_NBData.map(r => ({ ...r, DISTANCE: r._dist < 1 ? (r._dist * 1000).toFixed(0) + ' m' : r._dist.toFixed(2) + ' km' })));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'DC_Nearby');
+  XLSX.writeFile(wb, 'dc_nearby_' + Date.now() + '.xlsx');
+}
+function expDcNbC() {
+  if (!DC_NBData.length) return alert('No data.');
+  const ws = XLSX.utils.json_to_sheet(DC_NBData.map(r => ({ ...r, DISTANCE: r._dist < 1 ? (r._dist * 1000).toFixed(0) + ' m' : r._dist.toFixed(2) + ' km' })));
+  const csv = XLSX.utils.sheet_to_csv(ws);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  a.download = 'dc_nearby_' + Date.now() + '.csv'; a.click();
 }
 
 </script>
