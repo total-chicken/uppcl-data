@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>UPPCL Consumer Data Tool v3.4</title>
+<title>UPPCL Consumer Data Tool v3.8</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Noto+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
 <style>
@@ -163,6 +163,203 @@ select option{background:#111920;}
 .save-atr-btn{width:100%;background:var(--accent);color:#000;font-family:var(--fh);font-size:15px;font-weight:700;letter-spacing:1.5px;padding:13px;border-radius:10px;border:none;cursor:pointer;margin-top:12px;transition:opacity .2s;}
 .save-atr-btn:hover{opacity:.85;}
 .save-indicator{text-align:center;font-family:var(--fh);font-size:12px;margin-top:8px;min-height:18px;}
+
+/* ═══════════════════════════════════════════
+   MOBILE UI — Responsive Improvements
+   ═══════════════════════════════════════════ */
+
+/* Base touch improvements */
+button, .tab, .pin-btn, .btn, select, input {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* ── HEADER ── */
+@media (max-width: 768px) {
+  .header {
+    padding: 10px 14px;
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
+  .logo-text { font-size: 17px; letter-spacing: 1px; }
+  .logo-sub { font-size: 9px; }
+  .logo-icon { width: 30px; height: 30px; font-size: 13px; }
+  .stats-bar { gap: 10px; }
+  .stat-chip { font-size: 10px; }
+  .stat-chip .val { font-size: 13px; }
+
+  /* Hide feeders stat on very small screens */
+  .stat-chip:last-child { display: none; }
+
+  /* Logout + Help buttons smaller */
+  #sbar ~ button, button[onclick="logout()"], button[onclick="showHelp()"] {
+    padding: 5px 8px;
+    font-size: 10px;
+  }
+}
+
+/* ── TABS ── */
+@media (max-width: 768px) {
+  .tabs { padding: 0 8px; }
+  .tab {
+    font-size: 11px;
+    padding: 12px 10px;
+    letter-spacing: 0.5px;
+  }
+}
+
+/* ── LOGIN SCREEN ── */
+@media (max-width: 480px) {
+  .login-box {
+    padding: 32px 20px;
+    border-radius: 16px;
+  }
+  .login-title { font-size: 22px; }
+  .login-sub { font-size: 10px; margin-bottom: 24px; }
+  .role-tab { font-size: 12px; padding: 9px; }
+  .pin-btn { padding: 18px 10px; font-size: 22px; border-radius: 10px; }
+  .pin-clear { padding: 18px 10px; font-size: 12px; border-radius: 10px; }
+  .pin-pad { gap: 8px; }
+  .pin-dot { width: 12px; height: 12px; }
+}
+
+/* ── PANELS ── */
+@media (max-width: 768px) {
+  .panel { padding: 14px 12px; }
+}
+
+/* ── SEARCH / LOOKUP ── */
+@media (max-width: 768px) {
+  .ls { flex-direction: row; gap: 8px; }
+  .ls input { font-size: 14px; padding: 12px; }
+  .lw { max-width: 100%; }
+
+  /* Lookup detail card */
+  .dgrid { grid-template-columns: 1fr; gap: 10px; }
+  .dn { font-size: 18px; }
+  .db { padding: 14px; }
+  .dh { padding: 14px; }
+  .mb { padding: 10px 16px; font-size: 12px; margin-top: 14px; }
+  .clb { padding: 8px 14px; font-size: 11px; margin-top: 14px; margin-left: 6px; }
+}
+
+/* ── FILTER GRID ── */
+@media (max-width: 768px) {
+  .fg { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .rc { gap: 12px; padding: 12px; }
+  .rci .val { font-size: 18px; }
+}
+
+@media (max-width: 480px) {
+  .fg { grid-template-columns: 1fr; }
+}
+
+/* ── TABLES ── */
+@media (max-width: 768px) {
+  table { font-size: 11px; }
+  th { padding: 8px 8px; font-size: 9px; }
+  td { padding: 8px 8px; }
+  /* Hide less important columns on mobile */
+  th:nth-child(4), td:nth-child(4),   /* CATEGORY in filter */
+  th:nth-child(7), td:nth-child(7) {  /* ADDRESS in search */
+    display: none;
+  }
+}
+
+/* ── NEARBY CONTROLS ── */
+@media (max-width: 768px) {
+  #panel-nearby > div:first-child {
+    gap: 8px;
+  }
+  .sw { min-width: 140px !important; }
+  #nb-map, #dc-nb-map { height: 280px !important; }
+}
+
+/* ── DISCONNECTED FILTERS ── */
+@media (max-width: 768px) {
+  #dc-content > div[style*="grid"] {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+  }
+  /* Summary cards */
+  #dc-content > div:first-child {
+    gap: 8px;
+  }
+  #dc-content > div:first-child > div {
+    padding: 10px 12px !important;
+    min-width: 80px;
+  }
+  #dc-total, #dc-outstanding, #dc-subs-count {
+    font-size: 18px !important;
+  }
+}
+
+/* ── MODAL ── */
+@media (max-width: 768px) {
+  .modal-box { max-height: 95vh; border-radius: 12px; }
+  .modal-body { padding: 14px; }
+  .modal-header { padding: 14px; }
+  .modal-grid { grid-template-columns: 1fr !important; gap: 10px; }
+  .atr-big-select { font-size: 13px; padding: 10px; }
+  .save-atr-btn { padding: 11px; font-size: 13px; }
+
+  /* ATR mini cards in modal */
+  #modal-atr-cards { gap: 6px; }
+  #modal-atr-cards > div { padding: 6px 10px !important; }
+  #m-atr-paid, #m-atr-lock, #m-atr-theft, #m-atr-dc, #m-atr-other {
+    font-size: 15px !important;
+  }
+}
+
+/* ── HELP MODAL ── */
+@media (max-width: 768px) {
+  #help-modal > div { max-height: 95vh; border-radius: 12px; }
+  #help-modal > div > div:last-child { padding: 16px; }
+}
+
+/* ── BUTTONS ── */
+@media (max-width: 768px) {
+  .btn { padding: 10px 14px; font-size: 11px; }
+  .btn-acc, .btn-out { padding: 10px 14px; }
+}
+
+/* ── PAGINATION ── */
+@media (max-width: 480px) {
+  .pgb { padding: 5px 8px; font-size: 11px; }
+  .pgi { font-size: 10px; }
+}
+
+/* ── EXPORT BUTTONS ROW ── */
+@media (max-width: 768px) {
+  div[style*="display:flex;gap:10px;flex-wrap:wrap"] {
+    gap: 6px !important;
+  }
+}
+
+/* ── UPLOAD SCREEN ── */
+@media (max-width: 480px) {
+  .upload-box { padding: 40px 20px; }
+  .upload-box h2 { font-size: 20px; }
+  .upload-icon { font-size: 40px; }
+}
+
+/* ── SYNC BAR ── */
+@media (max-width: 768px) {
+  #sync-bar-panel { flex-direction: column !important; }
+  #atr-url-input { min-width: unset !important; width: 100% !important; }
+}
+
+/* ── NEARBY TABLE ── */
+@media (max-width: 768px) {
+  /* Hide address column in nearby */
+  #nb-tbody tr td:nth-child(8),
+  #panel-nearby thead th:nth-child(8) { display: none; }
+}
+
+/* Smooth scrolling */
+html { scroll-behavior: smooth; }
+* { -webkit-overflow-scrolling: touch; }
+
 </style>
 </head>
 <body>
@@ -221,7 +418,8 @@ select option{background:#111920;}
     <div><div class="logo-text">UPP<span>CL</span> TOOL</div><div class="logo-sub">CONSUMER DATA INTELLIGENCE &nbsp;<span class="role-badge" id="role-indicator"></span></div></div>
   </div>
   <div style="display:flex;align-items:center;gap:16px">
-  <button onclick="logout()" style="background:transparent;border:1px solid var(--border);color:var(--muted);font-family:var(--fh);font-size:11px;font-weight:600;padding:6px 14px;border-radius:6px;cursor:pointer;letter-spacing:1px;transition:all .2s" onmouseover="this.style.borderColor='#FF4D4D';this.style.color='#FF4D4D'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">⎋ LOGOUT</button>
+  <button onclick="showHelp()" style="background:transparent;border:1px solid var(--border);color:var(--muted);font-family:var(--fh);font-size:11px;font-weight:600;padding:6px 14px;border-radius:6px;cursor:pointer;letter-spacing:1px;transition:all .2s" onmouseover="this.style.borderColor='var(--accent2)';this.style.color='var(--accent2)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">❓ HELP</button>
+<button onclick="logout()" style="background:transparent;border:1px solid var(--border);color:var(--muted);font-family:var(--fh);font-size:11px;font-weight:600;padding:6px 14px;border-radius:6px;cursor:pointer;letter-spacing:1px;transition:all .2s" onmouseover="this.style.borderColor='#FF4D4D';this.style.color='#FF4D4D'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">⎋ LOGOUT</button>
   <div class="stats-bar" id="sbar" style="display:none">
     <div class="stat-chip">RECORDS <span class="val" id="s-tot">0</span></div>
     <div class="stat-chip">SUBSTATIONS <span class="val" id="s-sub">0</span></div>
@@ -244,8 +442,7 @@ select option{background:#111920;}
   <div class="tabs">
     <div class="tab active" onclick="st('lookup')">🔍 SEARCH</div>
     <div class="tab" onclick="st('filter')">⚙️ FILTER & EXPORT</div>
-    <div class="tab" onclick="st('nearby')">📍 NEARBY</div>
-    <div class="tab" onclick="st('dc')">🔴 DISCONNECTED</div>
+    <div class="tab" onclick="st('dc')">🔴 SM UNRECHARGE</div>
   </div>
   <!-- FILTER -->
   <div class="panel" id="panel-filter">
@@ -279,78 +476,6 @@ select option{background:#111920;}
   <input id="si" style="display:none"/>
   <tbody id="stb" style="display:none"></tbody>
   <div id="spg" style="display:none"></div>
-
-  <!-- NEARBY -->
-  <div class="panel" id="panel-nearby">
-    <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:flex-end">
-      <div>
-        <div class="lbl">SEARCH RADIUS</div>
-        <div class="sw" style="min-width:140px">
-          <select id="nb-radius">
-            <option value="0.25">250 metres</option>
-            <option value="0.5" selected>500 metres</option>
-            <option value="1">1 km</option>
-            <option value="2">2 km</option>
-            <option value="5">5 km</option>
-            <option value="10">10 km</option>
-          </select>
-        </div>
-      </div>
-      <div>
-        <div class="lbl">CATEGORY</div>
-        <div class="sw"><select id="nb-cat" onchange="reapplyNearby()"><option value="">ALL CATEGORIES</option></select></div>
-      </div>
-      <div>
-        <div class="lbl">SUBSTATION</div>
-        <div class="sw"><select id="nb-sub" onchange="onSubChange('nb-sub','nb-feed');reapplyNearby()"><option value="">ALL SUBSTATIONS</option></select></div>
-      </div>
-      <div>
-        <div class="lbl">FEEDER</div>
-        <div class="sw"><select id="nb-feed" onchange="reapplyNearby()"><option value="">ALL FEEDERS</option></select></div>
-      </div>
-      <button class="btn btn-acc" onclick="useMyLocation()">📡 USE MY GPS LOCATION</button>
-      <button class="btn btn-out" onclick="pickOnMap()">🗺️ CLICK ON MAP TO PICK LOCATION</button>
-      <button class="btn" style="background:var(--card);border:1px solid var(--border);color:var(--text)" onclick="clearNearby()">↺ CLEAR</button>
-    </div>
-
-    <!-- Coordinates display -->
-    <div id="nb-coords" style="display:none;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 16px;margin-bottom:14px;font-size:12px;display:none;align-items:center;gap:16px;flex-wrap:wrap">
-      <span style="color:var(--muted);font-family:var(--fh);letter-spacing:1px">📍 SELECTED LOCATION:</span>
-      <span id="nb-lat-display" style="color:var(--accent2)"></span>
-      <span id="nb-lon-display" style="color:var(--accent2)"></span>
-      <span id="nb-count-display" style="color:var(--accent);font-family:var(--fh);font-weight:700;margin-left:auto"></span>
-    </div>
-
-    <!-- Mini map for nearby -->
-    <div id="nb-map-cont" style="border-radius:12px;overflow:hidden;border:1px solid var(--border);margin-bottom:16px;display:none">
-      <div id="nb-map" style="width:100%;height:380px"></div>
-    </div>
-
-    <!-- Instruction box -->
-    <div id="nb-instruction" style="text-align:center;padding:60px 20px;color:var(--muted)">
-      <div style="font-size:52px;margin-bottom:16px">📡</div>
-      <div style="font-family:var(--fh);font-size:20px;letter-spacing:1px;margin-bottom:8px">FIND NEARBY CONSUMERS</div>
-      <div style="font-size:13px;line-height:1.8">
-        Click <strong style="color:var(--accent)">USE MY GPS LOCATION</strong> to find consumers near you<br/>
-        or <strong style="color:var(--accent2)">CLICK ON MAP TO PICK LOCATION</strong> to select any point
-      </div>
-    </div>
-
-    <!-- Results table -->
-    <div id="nb-results" style="display:none">
-      <div class="tw">
-        <table>
-          <thead><tr><th>S.NO</th><th>DIST</th><th>ACCT ID</th><th>NAME</th><th>MOBILE</th><th>CATEGORY</th><th>SUBSTATION</th><th>FEEDER</th><th>ADDRESS</th><th>MAP</th></tr></thead>
-          <tbody id="nb-tbody"></tbody>
-        </table>
-      </div>
-      <div class="pg" id="nb-pg"></div>
-      <div style="display:flex;gap:12px;margin-top:14px;flex-wrap:wrap">
-        <button class="btn btn-acc" onclick="expNearbyX()">⬇ EXPORT XLSX</button>
-        <button class="btn btn-out" onclick="expNearbyC()">⬇ EXPORT CSV</button>
-      </div>
-    </div>
-  </div>
   <!-- LOOKUP -->
   <div class="panel active" id="panel-lookup">
     <div class="lw">
@@ -364,7 +489,7 @@ select option{background:#111920;}
     <!-- Stats bar -->
     <div id="dc-loading" style="text-align:center;padding:40px;color:var(--muted)">
       <div style="font-size:36px;margin-bottom:12px">🔴</div>
-      <div style="font-family:var(--fh);font-size:16px;letter-spacing:1px" id="dc-load-msg">LOADING DISCONNECTED DATA…</div>
+      <div style="font-family:var(--fh);font-size:16px;letter-spacing:1px" id="dc-load-msg">LOADING SM UNRECHARGE DATA…</div>
       <div style="width:200px;height:3px;background:var(--border);border-radius:2px;margin:12px auto;overflow:hidden">
         <div id="dc-pbar" style="height:100%;background:#FF4D4D;border-radius:2px;width:0%;transition:width .3s"></div>
       </div>
@@ -375,7 +500,7 @@ select option{background:#111920;}
       <div style="display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap">
         <div style="background:var(--card);border:1px solid #FF4D4D33;border-left:3px solid #FF4D4D;border-radius:10px;padding:14px 20px">
           <div style="font-family:var(--fh);font-size:24px;font-weight:700;color:#FF4D4D" id="dc-total">0</div>
-          <div style="font-size:11px;color:var(--muted)">TOTAL DISCONNECTED</div>
+          <div style="font-size:11px;color:var(--muted)">TOTAL SM UNRECHARGE</div>
         </div>
         <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 20px">
           <div style="font-family:var(--fh);font-size:24px;font-weight:700;color:var(--accent)" id="dc-outstanding">0</div>
@@ -444,7 +569,7 @@ select option{background:#111920;}
           <div class="sw">
             <select id="dc-atr" onchange="dcFilter()">
               <option value="">ALL STATUS</option>
-              <option value="DISCONNECTED">🔴 DISCONNECTED</option>
+              <option value="DISCONNECTED">🔴 SM UNRECHARGE</option>
               <option value="PAID">✅ PAID</option>
               <option value="LOCK">🔒 LOCK</option>
               <option value="THEFT">⚠️ THEFT</option>
@@ -486,7 +611,7 @@ select option{background:#111920;}
       <!-- DC Nearby Section -->
       <div style="margin-top:24px;border-top:1px solid var(--border);padding-top:20px">
         <div style="font-family:var(--fh);font-size:16px;font-weight:700;letter-spacing:1px;margin-bottom:14px;display:flex;align-items:center;gap:10px">
-          <span>📍 NEARBY DISCONNECTED CONSUMERS</span>
+          <span>📍 NEARBY SM UNRECHARGE CONSUMERS</span>
         </div>
         <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px">
           <div>
@@ -507,7 +632,7 @@ select option{background:#111920;}
             <div class="sw">
               <select id="dc-nb-atr">
                 <option value="">ALL</option>
-                <option value="DISCONNECTED">🔴 DISCONNECTED</option>
+                <option value="DISCONNECTED">🔴 SM UNRECHARGE</option>
                 <option value="PAID">✅ PAID</option>
                 <option value="LOCK">🔒 LOCK</option>
                 <option value="THEFT">⚠️ THEFT</option>
@@ -544,6 +669,93 @@ select option{background:#111920;}
             <button class="btn btn-acc" onclick="expDcNbX()">⬇ EXPORT XLSX</button>
             <button class="btn btn-out" onclick="expDcNbC()">⬇ EXPORT CSV</button>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Help Modal -->
+  <div id="help-modal" style="display:none;position:fixed;inset:0;background:#000000CC;z-index:99998;align-items:center;justify-content:center;padding:20px;overflow-y:auto" onclick="if(event.target===this)closeHelp()">
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;width:100%;max-width:680px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px #000">
+      <div style="background:linear-gradient(135deg,#0E1C25,#111920);padding:20px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+        <div style="font-family:var(--fh);font-size:20px;font-weight:700;letter-spacing:1px">❓ HOW TO USE — UPPCL TOOL</div>
+        <button onclick="closeHelp()" style="background:transparent;border:1px solid var(--border);color:var(--muted);width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:16px">✕</button>
+      </div>
+      <div style="padding:24px">
+
+        <!-- Login -->
+        <div style="margin-bottom:20px;background:#0C1419;border-radius:10px;padding:16px;border-left:3px solid var(--accent)">
+          <div style="font-family:var(--fh);font-size:14px;font-weight:700;color:var(--accent);letter-spacing:1px;margin-bottom:10px">🔐 LOGIN</div>
+          <table style="width:100%;font-size:13px;border-collapse:collapse">
+            <tr><td style="padding:4px 8px;color:var(--muted);width:120px">Admin PIN</td><td style="padding:4px 8px;font-family:var(--fh);color:var(--accent);font-weight:700">0107</td><td style="padding:4px 8px;color:var(--muted);font-size:11px">Full access — ATR update, Sheet sync, Export</td></tr>
+            <tr><td style="padding:4px 8px;color:var(--muted)">User PIN</td><td style="padding:4px 8px;font-family:var(--fh);color:var(--accent2);font-weight:700">1234</td><td style="padding:4px 8px;color:var(--muted);font-size:11px">View, Search, Filter, Nearby — No Sheet sync</td></tr>
+          </table>
+        </div>
+
+        <!-- Search -->
+        <div style="margin-bottom:20px;background:#0C1419;border-radius:10px;padding:16px;border-left:3px solid var(--accent2)">
+          <div style="font-family:var(--fh);font-size:14px;font-weight:700;color:var(--accent2);letter-spacing:1px;margin-bottom:10px">🔍 SEARCH TAB</div>
+          <ul style="font-size:13px;color:var(--text);line-height:2;padding-left:16px">
+            <li>Enter <strong>Account ID</strong>, <strong>Mobile Number</strong> or <strong>Serial Number</strong></li>
+            <li>Full consumer details popup opens with all info</li>
+            <li>Click <strong>📍 OPEN IN GOOGLE MAPS</strong> to view location</li>
+            <li>Click <strong>🔗 COPY LINK</strong> to share consumer details link</li>
+          </ul>
+        </div>
+
+        <!-- Filter -->
+        <div style="margin-bottom:20px;background:#0C1419;border-radius:10px;padding:16px;border-left:3px solid #AA80FF">
+          <div style="font-family:var(--fh);font-size:14px;font-weight:700;color:#AA80FF;letter-spacing:1px;margin-bottom:10px">⚙️ FILTER & EXPORT TAB</div>
+          <ul style="font-size:13px;color:var(--text);line-height:2;padding-left:16px">
+            <li>Filter by <strong>Substation → Feeder</strong> (feeder updates automatically)</li>
+            <li>Filter by <strong>Category</strong> and <strong>Load range (kW)</strong></li>
+            <li>Summary cards show matched count by category</li>
+            <li>Export filtered results as <strong>XLSX</strong> or <strong>CSV</strong></li>
+            <li>S.NO resets automatically when filter changes</li>
+          </ul>
+        </div>
+
+        <!-- Nearby -->
+        <div style="margin-bottom:20px;background:#0C1419;border-radius:10px;padding:16px;border-left:3px solid #2ECC71">
+          <div style="font-family:var(--fh);font-size:14px;font-weight:700;color:#2ECC71;letter-spacing:1px;margin-bottom:10px">📍 NEARBY TAB</div>
+          <ul style="font-size:13px;color:var(--text);line-height:2;padding-left:16px">
+            <li>Click <strong>📡 USE MY GPS LOCATION</strong> — finds consumers near you</li>
+            <li>Click <strong>🗺️ CLICK ON MAP</strong> — click any point on map to search</li>
+            <li>Set <strong>Radius</strong> (250m to 10km)</li>
+            <li>Filter by <strong>Substation / Feeder / Category</strong></li>
+            <li>Results sorted by distance — export as XLSX/CSV</li>
+          </ul>
+        </div>
+
+        <!-- Disconnected -->
+        <div style="margin-bottom:20px;background:#0C1419;border-radius:10px;padding:16px;border-left:3px solid #FF4D4D">
+          <div style="font-family:var(--fh);font-size:14px;font-weight:700;color:#FF4D4D;letter-spacing:1px;margin-bottom:10px">🔴 SM UNRECHARGE TAB</div>
+          <ul style="font-size:13px;color:var(--text);line-height:2;padding-left:16px">
+            <li>Shows all <strong>1,234 Smart Meter consumers</strong> who have not recharged after disconnection with outstanding amounts</li>
+            <li>Click any <strong>Account ID</strong> to open full details popup</li>
+            <li>Inside popup: set <strong>ATR Status</strong> → PAID / LOCK / THEFT / OTHER</li>
+            <li>Click <strong>💾 SAVE ATR STATUS</strong> → auto-syncs to Google Sheet</li>
+            <li>Popup also shows <strong>nearby disconnected consumers</strong> automatically</li>
+            <li>Filter by Substation / Feeder / LMV / ATR Status / Outstanding range</li>
+            <li><strong>📋 EXPORT ATR REPORT</strong> — download all ATR statuses as XLSX</li>
+            <li>Bottom section: <strong>📍 Nearby Disconnected</strong> — GPS or map pick</li>
+          </ul>
+        </div>
+
+        <!-- Google Sheet -->
+        <div style="background:#0C1419;border-radius:10px;padding:16px;border-left:3px solid #00C4FF">
+          <div style="font-family:var(--fh);font-size:14px;font-weight:700;color:#00C4FF;letter-spacing:1px;margin-bottom:10px">☁️ GOOGLE SHEET SYNC (Admin only)</div>
+          <ul style="font-size:13px;color:var(--text);line-height:2;padding-left:16px">
+            <li>Click <strong>☁️ SHEET SYNC SETTINGS</strong> in Disconnected tab</li>
+            <li>Paste your <strong>Apps Script Web App URL</strong> → click CONNECT</li>
+            <li>ATR changes auto-save to Google Sheet instantly</li>
+            <li>Click <strong>🔄 SYNC NOW</strong> to pull latest data from sheet</li>
+            <li>All team members see same ATR data in real time</li>
+          </ul>
+        </div>
+
+        <div style="text-align:center;margin-top:20px">
+          <button onclick="closeHelp()" style="background:var(--accent);color:#000;font-family:var(--fh);font-size:14px;font-weight:700;letter-spacing:1px;padding:12px 40px;border-radius:10px;border:none;cursor:pointer">GOT IT ✓</button>
         </div>
       </div>
     </div>
@@ -596,7 +808,7 @@ select option{background:#111920;}
 
           <div style="font-family:var(--fh);font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:8px">UPDATE STATUS FOR THIS CONSUMER:</div>
           <select class="atr-big-select atr-big-dc" id="modal-atr-select" onchange="updateModalAtrStyle()">
-            <option value="DISCONNECTED">🔴 DISCONNECTED</option>
+            <option value="DISCONNECTED">🔴 SM UNRECHARGE</option>
             <option value="PAID">✅ PAID</option>
             <option value="LOCK">🔒 LOCK</option>
             <option value="THEFT">⚠️ THEFT</option>
@@ -757,11 +969,10 @@ function ps(id,items){
 
 // TABS
 function st(name){
-  ['lookup','filter','nearby','dc'].forEach((n,i)=>{
+  ['lookup','filter','dc'].forEach((n,i)=>{
     document.querySelectorAll('.tab')[i].classList.toggle('active',n===name);
     document.getElementById('panel-'+n).classList.toggle('active',n===name);
   });
-  if(name==='nearby'&&!NBM)initNearbyMap();
   if(name==='dc'&&DC.length===0)loadDC();
   if(name==='dc'&&!DC_NBM)setTimeout(()=>initDcNearbyMap(),500);
 }
@@ -1448,7 +1659,7 @@ function atrBadgeFn(status) {
   if (s === 'PAID') return '<span class="badge" style="background:#1A3A2A;color:#2ECC71">✅ PAID</span>';
   if (s === 'LOCK') return '<span class="badge" style="background:#2A1A3A;color:#AA80FF">🔒 LOCK</span>';
   if (s === 'THEFT') return '<span class="badge" style="background:#3A1A1A;color:#FF4D4D">⚠️ THEFT</span>';
-  if (s === 'DISCONNECTED') return '<span class="badge" style="background:#2A1A1A;color:#FF8080">🔴 DC</span>';
+  if (s === 'DISCONNECTED') return '<span class="badge" style="background:#2A1A1A;color:#FF8080">🔴 SM</span>';
   return '<span class="badge b-oth">📋 ' + status + '</span>';
 }
 
@@ -1744,7 +1955,7 @@ function openDcDetail(acctId) {
   document.getElementById('modal-name').textContent = r.NAME || 'Unknown';
   document.getElementById('modal-acct').textContent = 'ACCT: ' + r.ACCT_ID;
   document.getElementById('modal-cat-badge').innerHTML = '<span class="badge b-gov">' + (r.LMV || '') + '</span>';
-  document.getElementById('modal-dc-badge').innerHTML = '<span class="badge" style="background:#2A1A1A;color:#FF8080">🔴 DISCONNECTED</span>';
+  document.getElementById('modal-dc-badge').innerHTML = '<span class="badge" style="background:#2A1A1A;color:#FF8080">🔴 SM UNRECHARGE</span>';
 
   // Date formatting
   const v = r.DATE_DC;
@@ -2108,6 +2319,18 @@ function loadModalNearby(lat, lon) {
     '<th style="padding:8px 12px;text-align:left;font-family:var(--fh);font-size:10px;color:var(--muted);letter-spacing:1px;border-bottom:1px solid var(--border)">ATR</th>' +
     '<th style="padding:8px 12px;text-align:left;font-family:var(--fh);font-size:10px;color:var(--muted);letter-spacing:1px;border-bottom:1px solid var(--border)">MAP</th>' +
     '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+}
+
+
+function showHelp() {
+  const m = document.getElementById('help-modal');
+  m.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+function closeHelp() {
+  const m = document.getElementById('help-modal');
+  m.style.display = 'none';
+  document.body.style.overflow = '';
 }
 
 </script>
