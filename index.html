@@ -2455,20 +2455,21 @@ function openConsumerMap(acctId) {
     lat: lat, lon: lon, name: r.NAME||'Unknown', acct: String(r.ACCT_ID),
     mobile: String(r.MOBILE_NO||'-'), out: Math.round(r.OUTSTANDING||0),
     sub: r.SUBSTATION||'-', feed: r.FEEDER||'-', atr: r.ATR_STATUS||'SM',
-    addr: (r.ADDRESS||'-').replace(/"/g,''), lmv: r.LMV||'-', main: true, dist: 0
+    addr: (r.ADDRESS||'-').substring(0,100), lmv: r.LMV||'-', main: true, dist: 0
   }].concat(nearby.map(function(x) {
     return {
       lat: x.lat, lon: x.lon, name: x.row.NAME||'Unknown', acct: String(x.row.ACCT_ID),
       mobile: String(x.row.MOBILE_NO||'-'), out: Math.round(x.row.OUTSTANDING||0),
       sub: x.row.SUBSTATION||'-', feed: x.row.FEEDER||'-', atr: x.row.ATR_STATUS||'SM',
-      addr: (x.row.ADDRESS||'-').replace(/"/g,''), lmv: x.row.LMV||'-', main: false, dist: x.dist
+      addr: (x.row.ADDRESS||'-').substring(0,100), lmv: x.row.LMV||'-', main: false, dist: x.dist
     };
   }));
 
-  // Encode data and open map page
-  var encoded = encodeURIComponent(JSON.stringify({data: data, lat: lat, lon: lon}));
-  var mapUrl = 'https://anshu10kumar04-pixel.github.io/uppcl-data/map.html#' + encoded;
-  window.open(mapUrl, '_blank');
+  // Store in localStorage and open map page
+  try {
+    localStorage.setItem('uppcl_map_data', JSON.stringify({data: data, lat: lat, lon: lon}));
+  } catch(e) {}
+  window.open('https://anshu10kumar04-pixel.github.io/uppcl-data/map.html', '_blank');
 }
 
 function showHelp() {
