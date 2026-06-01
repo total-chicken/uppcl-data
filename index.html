@@ -1239,9 +1239,18 @@ function loadDC() {
         OUTSTANDING: parseFloat(r['TOTAL OUTSTANDING']) || 0,
         SUBSTATION: r['SUBSTATION'] || '',
         FEEDER:     r['FEEDER'] || '',
-        LAT:        r['LAT'] || '',
-        LON:        r['LONG'] || '',
+        LAT:        r['LAT'] || r['LONG'] || '',   // LAT = latitude (~25.xx for Jhansi)
+        LON:        r['LONG'] || r['LAT'] || '',   // LON = longitude (~78.xx for Jhansi)
       }));
+      // Fix swapped LAT/LON - Jhansi LAT should be ~25.xx, LON should be ~78.xx
+      DC = DC.map(r => {
+        const lat = parseFloat(r.LAT), lon = parseFloat(r.LON);
+        if (lat && lon && lat > 50) {
+          // LAT and LON are swapped - fix them
+          return { ...r, LAT: String(lon), LON: String(lat) };
+        }
+        return r;
+      });
 
       // Build substation->feeder map
       DC_SUB_FEED_MAP = {};
