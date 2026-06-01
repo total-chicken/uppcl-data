@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>UPPCL Consumer Data Tool</title>
+<title>UPPCL Consumer Data Tool v3.1</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Noto+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
 <style>
@@ -145,7 +145,7 @@ select option{background:#111920;}
 .badge-user{background:#00C4FF22;color:var(--accent2);}
 
 /* Detail Modal */
-.modal-overlay{position:fixed;inset:0;background:#000000CC;z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);}
+.modal-overlay{position:fixed;inset:0;background:#000000CC;z-index:500;pointer-events:none;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);}
 .modal-box{background:var(--card);border:1px solid var(--border);border-radius:16px;width:100%;max-width:640px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px #000;}
 .modal-header{background:linear-gradient(135deg,#0E1C25,#111920);padding:20px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
 .modal-close{background:transparent;border:1px solid var(--border);color:var(--muted);width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;}
@@ -1792,7 +1792,7 @@ function openDcDetail(acctId) {
     mapBtn.style.display = 'inline-flex';
   } else { mapBtn.style.display = 'none'; }
 
-  document.getElementById('detail-modal').style.display = 'flex';
+  const dm=document.getElementById('detail-modal');dm.style.display='flex';dm.style.pointerEvents='all';
   document.body.style.overflow = 'hidden';
 
   // Load nearby - use corrected LAT/LON (LAT~25.xx, LON~78.xx for Jhansi)
@@ -1838,12 +1838,14 @@ function openMainDetail(acctId) {
     mapBtn.style.display = 'inline-flex';
   } else { mapBtn.style.display = 'none'; }
 
-  document.getElementById('detail-modal').style.display = 'flex';
+  const dm2=document.getElementById('detail-modal');dm2.style.display='flex';dm2.style.pointerEvents='all';
   document.body.style.overflow = 'hidden';
 }
 
 function closeModal() {
-  document.getElementById('detail-modal').style.display = 'none';
+  const dm=document.getElementById('detail-modal');
+  dm.style.display='none';
+  dm.style.pointerEvents='none';
   document.body.style.overflow = '';
 }
 
