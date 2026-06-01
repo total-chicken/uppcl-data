@@ -897,11 +897,7 @@ const FILES = [
   'https://raw.githubusercontent.com/anshu10kumar04-pixel/uppcl-data/main/part4.csv'
 ];
 
-window.addEventListener('DOMContentLoaded', () => {
-  // Data loads after login, not on page load
-  const saved = sessionStorage.getItem('uppcl_role');
-  if (saved) autoFetch(); // Only if already logged in
-});
+// DOMContentLoaded handled below
 
 function autoFetch() {
   document.getElementById('loading').style.display = 'flex';
@@ -2037,10 +2033,10 @@ function logout() {
 
 // Check session on load (so refresh doesn't log out)
 window.addEventListener('DOMContentLoaded', () => {
-  const saved = sessionStorage.getItem('uppcl_role');
-  if (saved) {
-    loginSuccess(saved);
-  }
+  // Always show login screen - don't auto-login from session
+  // Clear any old session to force fresh login
+  sessionStorage.removeItem('uppcl_role');
+  document.getElementById('login-screen').style.display = 'flex';
 });
 
 // Block ATR save for users in modal
