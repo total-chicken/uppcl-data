@@ -289,7 +289,7 @@ button, .tab, .pin-btn, .btn, select, input {
     padding: 10px 12px !important;
     min-width: 80px;
   }
-  #dc-total, #dc-outstanding, #dc-subs-count {
+  #dc-total {
     font-size: 18px !important;
   }
 }
@@ -1497,8 +1497,6 @@ function loadDC() {
       const total = DC.length;
       const totalOut = DC.reduce((s, r) => s + r.OUTSTANDING, 0);
       document.getElementById('dc-total').textContent = total.toLocaleString();
-      document.getElementById('dc-outstanding').textContent = '₹' + Math.round(totalOut).toLocaleString();
-      document.getElementById('dc-subs-count').textContent = subSet.size;
 
       pbar.style.width = '100%';
       // Init ATR_STATUS field (default: DISCONNECTED)
