@@ -584,6 +584,7 @@ html { scroll-behavior: smooth; }
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           <button class="btn btn-acc" onclick="expDcX()">⬇ EXPORT XLSX</button>
+          <button class="btn" style="background:#1A2A3A;border:1px solid #00C4FF55;color:var(--accent2);font-family:var(--fh);font-size:13px;font-weight:700;letter-spacing:1px;padding:11px 20px;border-radius:10px;cursor:pointer" onclick="expDcKML()">🗺️ EXPORT KML (Google My Maps)</button>
           <button class="btn" style="background:#1A3A2A;border:1px solid #2ECC7155;color:#2ECC71;font-family:var(--fh);font-size:13px;font-weight:700;letter-spacing:1px;padding:11px 20px;border-radius:10px;cursor:pointer" onclick="exportAtrXlsx()">📋 EXPORT ATR REPORT</button>
           <button class="btn" style="background:var(--card);border:1px solid var(--border);color:var(--text)" onclick="resetDcFilters()">↺ RESET</button>
         </div>
@@ -1754,7 +1755,10 @@ function renderDcTable(page) {
   const slice = DC_FD.slice((page - 1) * PS, page * PS);
   document.getElementById('dc-shown').textContent = DC_FD.length.toLocaleString();
   document.getElementById('dc-tbody').innerHTML = slice.map(r => {
-    const mapUrl = (r.LAT && r.LON) ? 'https://www.google.com/maps?q=' + r.LAT + ',' + r.LON : '';
+    var mapLat = parseFloat(r.LAT), mapLon = parseFloat(r.LON);
+    if (mapLat > 50) { var t = mapLat; mapLat = mapLon; mapLon = t; }
+    var mapQuery = encodeURIComponent((r.NAME||'Consumer') + ', ' + (r.ADDRESS||'Jhansi') + ', UP');
+    const mapUrl = (r.LAT && r.LON) ? 'https://www.google.com/maps/search/' + mapQuery + '/@' + mapLat + ',' + mapLon + ',17z' : '';
     const date = (() => {
       if (!r.DATE_DC) return '';
       const v = r.DATE_DC;
@@ -2383,6 +2387,50 @@ function sortFt(col) {
     return 0;
   });
   rft(1);
+}
+
+
+function expDcKML() {
+  if (!DC_FD.length) return alert('No data.');
+  var kml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+  kml += '<kml xmlns="http://www.opengis.net/kml/2.2">\n<Document>\n';
+  kml += '<name>UPPCL SM Unrecharge - ' + new Date().toLocaleDateString('en-IN') + '</name>\n';
+  kml += '<Style id="red"><IconStyle><color>ff0000ff</color><Icon><href>http://maps.google.com/mapfiles/ms/icons/red-dot.png</href></Icon></IconStyle></Style>\n';
+  kml += '<Style id="green"><IconStyle><color>ff00ff00</color><Icon><href>http://maps.google.com/mapfiles/ms/icons/green-dot.png</href></Icon></IconStyle></Style>\n';
+  
+  DC_FD.forEach(function(r) {
+    var lat = parseFloat(r.LAT), lon = parseFloat(r.LON);
+    if (lat > 50) { var t = lat; lat = lon; lon = t; }
+    if (!lat || !lon) return;
+    
+    var out = Math.round(r.OUTSTANDING || 0);
+    var atr = r.ATR_STATUS || 'SM UNRECHARGE';
+    var styleId = atr === 'PAID' ? 'green' : 'red';
+    
+    kml += '<Placemark>\n';
+    kml += '<name>' + (r.NAME||'Unknown').replace(/&/g,'&amp;').replace(/</g,'&lt;') + '</name>\n';
+    kml += '<styleUrl>#' + styleId + '</styleUrl>\n';
+    kml += '<description><![CDATA[';
+    kml += '<b>Account ID:</b> ' + r.ACCT_ID + '<br/>';
+    kml += '<b>Mobile:</b> ' + (r.MOBILE_NO||'-') + '<br/>';
+    kml += '<b>Outstanding:</b> ₹' + out.toLocaleString() + '<br/>';
+    kml += '<b>LMV:</b> ' + (r.LMV||'-') + '<br/>';
+    kml += '<b>Substation:</b> ' + (r.SUBSTATION||'-') + '<br/>';
+    kml += '<b>Feeder:</b> ' + (r.FEEDER||'-') + '<br/>';
+    kml += '<b>ATR:</b> ' + atr + '<br/>';
+    kml += '<b>Address:</b> ' + (r.ADDRESS||'-');
+    kml += ']]></description>\n';
+    kml += '<Point><coordinates>' + lon + ',' + lat + ',0</coordinates></Point>\n';
+    kml += '</Placemark>\n';
+  });
+  
+  kml += '</Document>\n</kml>';
+  
+  var blob = new Blob([kml], {type: 'application/vnd.google-earth.kml+xml'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'SM_Unrecharge_' + Date.now() + '.kml';
+  a.click();
 }
 
 function showHelp() {
