@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>UPPCL Consumer Data Tool v3.1</title>
+<title>UPPCL Consumer Data Tool v3.2</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Noto+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
 <style>
@@ -94,7 +94,7 @@ mark{background:#F5A62344;color:var(--accent);border-radius:2px;}
 .clb:hover{background:#F5A62318;}
 .nf{text-align:center;padding:60px 20px;color:var(--muted);font-family:var(--fh);font-size:18px;}
 .nf .ico{font-size:48px;margin-bottom:12px;}
-#loading{position:fixed;inset:0;background:#050A0Eee;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;}
+#loading{position:fixed;inset:0;background:#050A0Eee;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9998;}
 .spinner{width:48px;height:48px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
 .lt{margin-top:16px;font-family:var(--fh);font-size:16px;color:var(--muted);letter-spacing:2px;}
@@ -120,7 +120,7 @@ select option{background:#111920;}
 .atr-saved{animation:atrpop .3s ease;}
 @keyframes atrpop{0%{transform:scale(1.2);}100%{transform:scale(1);}}
 /* Login Screen */
-#login-screen{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;}
+#login-screen{position:fixed;inset:0;background:var(--bg);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;pointer-events:all;}
 .login-box{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:48px 40px;width:100%;max-width:420px;text-align:center;}
 .login-logo{width:56px;height:56px;background:var(--accent);clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 20px;}
 .login-title{font-family:var(--fh);font-size:28px;font-weight:700;letter-spacing:2px;margin-bottom:4px;}
@@ -145,7 +145,7 @@ select option{background:#111920;}
 .badge-user{background:#00C4FF22;color:var(--accent2);}
 
 /* Detail Modal */
-.modal-overlay{position:fixed;inset:0;background:#000000CC;z-index:500;pointer-events:none;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);}
+.modal-overlay{position:fixed;inset:0;background:#000000CC;z-index:500;pointer-events:none;display:none;align-items:center;justify-content:center;padding:20px;}
 .modal-box{background:var(--card);border:1px solid var(--border);border-radius:16px;width:100%;max-width:640px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px #000;}
 .modal-header{background:linear-gradient(135deg,#0E1C25,#111920);padding:20px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
 .modal-close{background:transparent;border:1px solid var(--border);color:var(--muted);width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;}
@@ -1792,7 +1792,7 @@ function openDcDetail(acctId) {
     mapBtn.style.display = 'inline-flex';
   } else { mapBtn.style.display = 'none'; }
 
-  const dm=document.getElementById('detail-modal');dm.style.display='flex';dm.style.pointerEvents='all';
+  const dm=document.getElementById('detail-modal');dm.style.display='flex';dm.style.pointerEvents='all';dm.style.backdropFilter='blur(4px)';
   document.body.style.overflow = 'hidden';
 
   // Load nearby - use corrected LAT/LON (LAT~25.xx, LON~78.xx for Jhansi)
@@ -1838,7 +1838,7 @@ function openMainDetail(acctId) {
     mapBtn.style.display = 'inline-flex';
   } else { mapBtn.style.display = 'none'; }
 
-  const dm2=document.getElementById('detail-modal');dm2.style.display='flex';dm2.style.pointerEvents='all';
+  const dm2=document.getElementById('detail-modal');dm2.style.display='flex';dm2.style.pointerEvents='all';dm2.style.backdropFilter='blur(4px)';
   document.body.style.overflow = 'hidden';
 }
 
@@ -1846,6 +1846,7 @@ function closeModal() {
   const dm=document.getElementById('detail-modal');
   dm.style.display='none';
   dm.style.pointerEvents='none';
+  dm.style.backdropFilter='none';
   document.body.style.overflow = '';
 }
 
