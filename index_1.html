@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>UPPCL Consumer Data Tool</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Noto+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+:root{--bg:#050A0E;--surface:#0C1419;--card:#111920;--border:#1E2D38;--accent:#F5A623;--accent2:#00C4FF;--green:#2ECC71;--text:#D4E8F0;--muted:#5A7A8A;--fh:'Rajdhani',sans-serif;--fb:'Noto Sans',sans-serif;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--fb);min-height:100vh;}
+.header{background:linear-gradient(90deg,#0C1419,#0A1820);border-bottom:1px solid var(--border);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.logo{display:flex;align-items:center;gap:12px;}
+.logo-icon{width:36px;height:36px;background:var(--accent);clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);display:flex;align-items:center;justify-content:center;font-size:16px;color:#000;font-weight:700;font-family:var(--fh);}
+.logo-text{font-family:var(--fh);font-size:22px;font-weight:700;letter-spacing:2px;}
+.logo-text span{color:var(--accent);}
+.logo-sub{font-size:11px;color:var(--muted);letter-spacing:1px;margin-top:2px;}
+.stats-bar{display:flex;gap:20px;}
+.stat-chip{font-family:var(--fh);font-size:13px;font-weight:600;color:var(--muted);display:flex;align-items:center;gap:6px;}
+.stat-chip .val{color:var(--accent2);font-size:16px;}
+#upload-screen{display:flex;align-items:center;justify-content:center;min-height:calc(100vh - 65px);padding:40px;}
+.upload-box{background:var(--card);border:2px dashed var(--border);border-radius:16px;padding:60px 80px;text-align:center;max-width:560px;width:100%;transition:border-color .2s,background .2s;cursor:pointer;}
+.upload-box:hover,.upload-box.drag{border-color:var(--accent);background:#111920;}
+.upload-icon{font-size:56px;margin-bottom:20px;}
+.upload-box h2{font-family:var(--fh);font-size:28px;font-weight:700;letter-spacing:1px;margin-bottom:10px;}
+.upload-box p{color:var(--muted);font-size:14px;line-height:1.6;}
+.upload-btn{display:inline-block;margin-top:28px;background:var(--accent);color:#000;font-family:var(--fh);font-size:15px;font-weight:700;letter-spacing:1.5px;padding:12px 32px;border-radius:8px;cursor:pointer;border:none;transition:opacity .2s;}
+.upload-btn:hover{opacity:.85;}
+#file-input{display:none;}
+#app{display:none;}
+.tabs{display:flex;gap:0;background:var(--surface);border-bottom:1px solid var(--border);padding:0 28px;overflow-x:auto;}
+.tab{font-family:var(--fh);font-size:14px;font-weight:600;letter-spacing:1px;padding:14px 24px;border-bottom:3px solid transparent;cursor:pointer;color:var(--muted);white-space:nowrap;transition:color .2s,border-color .2s;}
+.tab:hover{color:var(--text);}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.panel{display:none;padding:28px;}
+.panel.active{display:block;}
+.search-bar{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;}
+.siw{flex:1;min-width:220px;position:relative;}
+.siw input{width:100%;background:var(--card);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px 12px 40px;color:var(--text);font-family:var(--fb);font-size:13px;outline:none;transition:border-color .2s;}
+.siw input:focus{border-color:var(--accent2);}
+.siw .ico{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:15px;pointer-events:none;}
+.btn{font-family:var(--fh);font-size:13px;font-weight:700;letter-spacing:1px;padding:11px 20px;border-radius:10px;cursor:pointer;border:none;transition:opacity .2s;white-space:nowrap;}
+.btn-acc{background:var(--accent);color:#000;}
+.btn-out{background:transparent;color:var(--accent2);border:1.5px solid var(--accent2);}
+.btn:hover{opacity:.82;}
+.rinfo{font-size:12px;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+.rinfo .hl{color:var(--accent2);font-weight:600;}
+.tw{overflow-x:auto;border-radius:12px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:12.5px;}
+thead tr{background:#0E1C25;}
+th{padding:11px 14px;text-align:left;font-family:var(--fh);font-size:11px;font-weight:600;letter-spacing:1.2px;color:var(--muted);white-space:nowrap;border-bottom:1px solid var(--border);}
+td{padding:10px 14px;border-bottom:1px solid #0E1A22;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;}
+tr:hover td{background:#0E1C26;}
+tr:last-child td{border-bottom:none;}
+.ml{display:inline-flex;align-items:center;gap:4px;color:var(--accent2);text-decoration:none;font-weight:500;font-size:11px;padding:3px 8px;border-radius:5px;border:1px solid #00C4FF33;transition:background .15s;}
+.ml:hover{background:#00C4FF18;}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;letter-spacing:.5px;font-family:var(--fh);}
+.b-dom{background:#1A3A2A;color:#2ECC71;}
+.b-com{background:#3A2A10;color:#F5A623;}
+.b-ind{background:#2A1A3A;color:#AA80FF;}
+.b-gov{background:#1A2A3A;color:#00C4FF;}
+.b-oth{background:#2A1A1A;color:#FF8080;}
+mark{background:#F5A62344;color:var(--accent);border-radius:2px;}
+#map{width:100%;height:520px;}
+#map-cont{border-radius:12px;overflow:hidden;border:1px solid var(--border);}
+.mc{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:flex-end;}
+.sw{position:relative;min-width:180px;}
+.sw select{width:100%;background:var(--card);border:1.5px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--text);font-family:var(--fb);font-size:13px;outline:none;appearance:none;cursor:pointer;transition:border-color .2s;}
+.sw select:focus{border-color:var(--accent2);}
+.sw::after{content:'▾';position:absolute;right:12px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--muted);}
+.lbl{font-size:11px;color:var(--muted);margin-bottom:5px;font-family:var(--fh);letter-spacing:1px;}
+.mleg{display:flex;gap:16px;flex-wrap:wrap;padding:10px 16px;background:#0C1419CC;border-radius:8px;margin-bottom:12px;font-size:11px;align-items:center;}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block;}
+.fg{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin-bottom:20px;}
+.rc{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 20px;display:flex;gap:24px;margin-bottom:20px;flex-wrap:wrap;}
+.rci .val{font-family:var(--fh);font-size:22px;font-weight:700;color:var(--accent);}
+.rci .lbl2{font-size:11px;color:var(--muted);margin-top:2px;}
+.lw{max-width:700px;}
+.ls{display:flex;gap:10px;margin-bottom:24px;}
+.ls input{flex:1;background:var(--card);border:1.5px solid var(--border);border-radius:10px;padding:13px 16px;color:var(--text);font-family:var(--fh);font-size:16px;letter-spacing:1px;outline:none;transition:border-color .2s;}
+.ls input:focus{border-color:var(--accent);}
+.dc{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
+.dh{background:linear-gradient(135deg,#0E1C25,#111920);padding:20px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;}
+.dn{font-family:var(--fh);font-size:24px;font-weight:700;}
+.da{color:var(--accent);font-family:var(--fh);font-size:14px;letter-spacing:1px;}
+.db{padding:20px 24px;}
+.dgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.df .lbl{font-size:10px;color:var(--muted);font-family:var(--fh);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;}
+.df .val{font-size:14px;color:var(--text);}
+.mb{display:inline-flex;align-items:center;gap:8px;background:var(--accent2);color:#000;font-family:var(--fh);font-size:14px;font-weight:700;letter-spacing:1px;padding:12px 24px;border-radius:10px;text-decoration:none;margin-top:20px;transition:opacity .2s;}
+.mb:hover{opacity:.82;}
+.clb{background:transparent;border:1.5px solid var(--accent);color:var(--accent);font-family:var(--fh);font-size:13px;font-weight:600;letter-spacing:1px;padding:10px 18px;border-radius:8px;cursor:pointer;transition:background .2s;margin-top:20px;margin-left:10px;}
+.clb:hover{background:#F5A62318;}
+.nf{text-align:center;padding:60px 20px;color:var(--muted);font-family:var(--fh);font-size:18px;}
+.nf .ico{font-size:48px;margin-bottom:12px;}
+#loading{position:fixed;inset:0;background:#050A0Eee;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;}
+.spinner{width:48px;height:48px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.lt{margin-top:16px;font-family:var(--fh);font-size:16px;color:var(--muted);letter-spacing:2px;}
+.pb{width:200px;height:3px;background:var(--border);border-radius:2px;margin-top:12px;overflow:hidden;}
+.pf{height:100%;background:var(--accent);border-radius:2px;transition:width .3s;}
+.pg{display:flex;gap:8px;margin-top:14px;align-items:center;flex-wrap:wrap;}
+.pgb{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:6px 12px;cursor:pointer;font-family:var(--fh);font-size:12px;color:var(--text);transition:border-color .15s;}
+.pgb:hover,.pgb.active{border-color:var(--accent2);color:var(--accent2);}
+.pgi{font-size:12px;color:var(--muted);margin-left:8px;}
+.toast{position:fixed;bottom:30px;right:30px;background:var(--green);color:#000;font-family:var(--fh);font-size:13px;font-weight:700;padding:12px 24px;border-radius:8px;z-index:9999;opacity:0;transform:translateY(10px);transition:opacity .3s,transform .3s;pointer-events:none;}
+.toast.show{opacity:1;transform:translateY(0);}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:#1E2D38;border-radius:3px;}
+input::placeholder{color:var(--muted);}
+select option{background:#111920;}
+</style>
+</head>
+<body>
+<div id="loading" style="display:none"><div class="spinner"></div><div class="lt" id="lt">LOADING…</div><div class="pb"><div class="pf" id="pf" style="width:0%"></div></div></div>
+<div class="toast" id="toast">✓ Link Copied!</div>
+<div class="header">
+  <div class="logo">
+    <div class="logo-icon">⚡</div>
+    <div><div class="logo-text">UPP<span>CL</span> TOOL</div><div class="logo-sub">CONSUMER DATA INTELLIGENCE</div></div>
+  </div>
+  <div class="stats-bar" id="sbar" style="display:none">
+    <div class="stat-chip">RECORDS <span class="val" id="s-tot">0</span></div>
+    <div class="stat-chip">SUBSTATIONS <span class="val" id="s-sub">0</span></div>
+    <div class="stat-chip">FEEDERS <span class="val" id="s-feed">0</span></div>
+  </div>
+</div>
+<div id="upload-screen">
+  <label for="file-input">
+    <div class="upload-box" id="ub">
+      <div class="upload-icon">📊</div>
+      <h2>UPLOAD YOUR DATA FILE</h2>
+      <p>Drop your <strong>123_map_links.csv</strong> here<br/>Activates all 4 features instantly</p>
+      <div class="upload-btn">CHOOSE FILE</div>
+    </div>
+  </label>
+  <input type="file" id="file-input" accept=".xlsx,.xls,.csv"/>
+</div>
+<div id="app">
+  <div class="tabs">
+    <div class="tab active" onclick="st('search')">🔍 SEARCH</div>
+    <div class="tab" onclick="st('map')">🗺️ MAP VIEW</div>
+    <div class="tab" onclick="st('filter')">⚙️ FILTER & EXPORT</div>
+    <div class="tab" onclick="st('lookup')">⚡ LOOKUP</div>
+  </div>
+  <!-- SEARCH -->
+  <div class="panel active" id="panel-search">
+    <div class="search-bar">
+      <div class="siw"><span class="ico">⌕</span><input type="text" id="si" placeholder="Search name, account ID, mobile, address, feeder, substation…" oninput="doSearch()"/></div>
+      <button class="btn btn-out" onclick="copySL()">🔗 COPY LINK</button>
+    </div>
+    <div class="rinfo"><span>Showing <span class="hl" id="rc">0</span> of <span class="hl" id="rt">0</span> records</span><span id="sup" style="font-size:11px;color:var(--muted);word-break:break-all;max-width:600px"></span></div>
+    <div class="tw"><table><thead><tr><th>ACCT ID</th><th>NAME</th><th>MOBILE</th><th>CATEGORY</th><th>SUBSTATION</th><th>FEEDER</th><th>ADDRESS</th><th>MAP</th></tr></thead><tbody id="stb"></tbody></table></div>
+    <div class="pg" id="spg"></div>
+  </div>
+  <!-- MAP -->
+  <div class="panel" id="panel-map">
+    <div class="mc">
+      <div><div class="lbl">SUBSTATION</div><div class="sw"><select id="ms" onchange="umap()"><option value="">ALL SUBSTATIONS</option></select></div></div>
+      <div><div class="lbl">FEEDER</div><div class="sw"><select id="mf" onchange="umap()"><option value="">ALL FEEDERS</option></select></div></div>
+      <div><div class="lbl">CATEGORY</div><div class="sw"><select id="mc2" onchange="umap()"><option value="">ALL CATEGORIES</option></select></div></div>
+      <div><div class="lbl">MAX POINTS</div><div class="sw" style="min-width:120px"><select id="ml2" onchange="umap()"><option value="500">500</option><option value="1000" selected>1,000</option><option value="2000">2,000</option><option value="5000">5,000</option></select></div></div>
+      <button class="btn btn-acc" onclick="umap()">PLOT MAP</button>
+    </div>
+    <div class="mleg">
+      <span style="color:var(--muted);font-family:var(--fh);font-size:11px;letter-spacing:1px">CATEGORY:</span>
+      <div style="display:flex;align-items:center;gap:6px"><span class="dot" style="background:#2ECC71"></span>Domestic</div>
+      <div style="display:flex;align-items:center;gap:6px"><span class="dot" style="background:#F5A623"></span>Commercial</div>
+      <div style="display:flex;align-items:center;gap:6px"><span class="dot" style="background:#AA80FF"></span>Industrial</div>
+      <div style="display:flex;align-items:center;gap:6px"><span class="dot" style="background:#00C4FF"></span>Govt</div>
+      <div style="display:flex;align-items:center;gap:6px"><span class="dot" style="background:#FF6B6B"></span>Other</div>
+      <span id="mpc" style="margin-left:auto;color:var(--muted);font-size:11px;font-family:var(--fh)"></span>
+    </div>
+    <div id="map-cont"><div id="map"></div></div>
+  </div>
+  <!-- FILTER -->
+  <div class="panel" id="panel-filter">
+    <div class="fg">
+      <div><div class="lbl">SUBSTATION</div><div class="sw"><select id="fs" onchange="af()"><option value="">ALL</option></select></div></div>
+      <div><div class="lbl">FEEDER</div><div class="sw"><select id="ff" onchange="af()"><option value="">ALL</option></select></div></div>
+      <div><div class="lbl">CATEGORY</div><div class="sw"><select id="fc" onchange="af()"><option value="">ALL</option></select></div></div>
+      <div><div class="lbl">LOAD (kW)</div><div style="display:flex;gap:8px"><input type="number" id="fln" placeholder="Min" oninput="af()" style="width:80px;background:var(--card);border:1.5px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-size:13px;outline:none"/><input type="number" id="flx" placeholder="Max" oninput="af()" style="width:80px;background:var(--card);border:1.5px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-size:13px;outline:none"/></div></div>
+    </div>
+    <div class="rc">
+      <div class="rci"><div class="val" id="fc2">0</div><div class="lbl2">MATCHED</div></div>
+      <div class="rci"><div class="val" id="fd">0</div><div class="lbl2">DOMESTIC</div></div>
+      <div class="rci"><div class="val" id="fco">0</div><div class="lbl2">COMMERCIAL</div></div>
+      <div class="rci"><div class="val" id="fi">0</div><div class="lbl2">INDUSTRIAL</div></div>
+      <div class="rci"><div class="val" id="fg2">0</div><div class="lbl2">GOVT</div></div>
+      <div class="rci"><div class="val" id="ftl">0</div><div class="lbl2">TOTAL LOAD kW</div></div>
+    </div>
+    <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+      <button class="btn btn-acc" onclick="expX()">⬇ EXPORT XLSX</button>
+      <button class="btn btn-out" onclick="expC()">⬇ EXPORT CSV</button>
+      <button class="btn" style="background:var(--card);border:1px solid var(--border);color:var(--text)" onclick="rf()">↺ RESET</button>
+    </div>
+    <div class="tw"><table><thead><tr><th>ACCT ID</th><th>NAME</th><th>MOBILE</th><th>CATEGORY</th><th>LOAD</th><th>SUBSTATION</th><th>FEEDER</th><th>MAP</th></tr></thead><tbody id="ftb"></tbody></table></div>
+    <div class="pg" id="fpg"></div>
+  </div>
+  <!-- LOOKUP -->
+  <div class="panel" id="panel-lookup">
+    <div class="lw">
+      <div class="ls"><input type="text" id="li" placeholder="Enter Account ID or Mobile Number…" oninput="dl()" onkeydown="if(event.key==='Enter')dl()"/><button class="btn btn-acc" onclick="dl()">FIND</button></div>
+      <div id="lr"></div>
+    </div>
+  </div>
+</div>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+let D=[],FD=[],MAP=null,ML=null;
+const PS=50;
+
+// Upload
+const fi=document.getElementById('file-input'),ub=document.getElementById('ub');
+ub.addEventListener('dragover',e=>{e.preventDefault();ub.classList.add('drag');});
+ub.addEventListener('dragleave',()=>ub.classList.remove('drag'));
+ub.addEventListener('drop',e=>{e.preventDefault();ub.classList.remove('drag');hf(e.dataTransfer.files[0]);});
+fi.addEventListener('change',e=>hf(e.target.files[0]));
+
+function hf(file){
+  if(!file)return;
+  sl('READING FILE…',10);
+  const r=new FileReader();
+  r.onload=e=>{
+    sl('PARSING DATA…',40);
+    setTimeout(()=>{
+      try{
+        const wb=XLSX.read(e.target.result,{type:'binary'});
+        const ws=wb.Sheets[wb.SheetNames[0]];
+        sl('PROCESSING ROWS…',70);
+        setTimeout(()=>{
+          D=XLSX.utils.sheet_to_json(ws,{defval:''});
+            // Auto-generate Google Maps links from LAT/LON
+            D=D.map(r=>{if(!r.Google_Map_Link&&r.LAT&&r.LON){r.Google_Map_Link='https://www.google.com/maps?q='+r.LAT+','+r.LON;}return r;});
+            // Auto-generate Google Maps links from LAT/LON if not present
+            D=D.map(r=>{
+              if(!r.Google_Map_Link && r.LAT && r.LON){
+                r.Google_Map_Link='https://www.google.com/maps?q='+r.LAT+','+r.LON;
+              }
+              return r;
+            });
+          sl('BUILDING INDEX…',90);
+          setTimeout(()=>{ia();hl2();},100);
+        },50);
+      }catch(err){hl2();alert('Error: '+err.message);}
+    },50);
+  };
+  r.readAsBinaryString(file);
+}
+function sl(m,p){document.getElementById('loading').style.display='flex';document.getElementById('lt').textContent=m;document.getElementById('pf').style.width=p+'%';}
+function hl2(){document.getElementById('loading').style.display='none';}
+
+function ia(){
+  document.getElementById('upload-screen').style.display='none';
+  document.getElementById('app').style.display='block';
+  document.getElementById('sbar').style.display='flex';
+  const subs=[...new Set(D.map(r=>r.SUBSTATION).filter(Boolean))].sort();
+  const feeds=[...new Set(D.map(r=>r.FEEDER).filter(Boolean))].sort();
+  const cats=[...new Set(D.map(r=>r.CATEGORY).filter(Boolean))].sort();
+  document.getElementById('s-tot').textContent=D.length.toLocaleString();
+  document.getElementById('s-sub').textContent=subs.length;
+  document.getElementById('s-feed').textContent=feeds.length;
+  document.getElementById('rt').textContent=D.length.toLocaleString();
+  ['ms','fs'].forEach(id=>ps(id,subs));
+  ['mf','ff'].forEach(id=>ps(id,feeds));
+  ['mc2','fc'].forEach(id=>ps(id,cats));
+  const hash=window.location.hash;
+  const sm=hash.match(/search=([^&]*)/);
+  if(sm){document.getElementById('si').value=decodeURIComponent(sm[1]);}
+  const lm=hash.match(/lookup=([^&]*)/);
+  if(lm){st('lookup');document.getElementById('li').value=decodeURIComponent(lm[1]);dl();}
+  FD=[...D];rs(1);af();
+}
+function ps(id,items){
+  const sel=document.getElementById(id);
+  items.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;sel.appendChild(o);});
+}
+
+// TABS
+function st(name){
+  ['search','map','filter','lookup'].forEach((n,i)=>{
+    document.querySelectorAll('.tab')[i].classList.toggle('active',n===name);
+    document.getElementById('panel-'+n).classList.toggle('active',n===name);
+  });
+  if(name==='map'&&!MAP)initMap();
+}
+
+// SEARCH
+let sp=1;
+function doSearch(){sp=1;const q=document.getElementById('si').value.trim();window.location.hash=q?'search='+encodeURIComponent(q):'';rs(1);document.getElementById('sup').textContent=q?'🔗 '+window.location.href:'';}
+function gr(){
+  const q=document.getElementById('si').value.trim().toLowerCase();
+  if(!q)return D;
+  return D.filter(r=>String(r.ACCT_ID).includes(q)||String(r.NAME||'').toLowerCase().includes(q)||String(r.MOBILE_NO||'').includes(q)||String(r.ADDRESS||'').toLowerCase().includes(q)||String(r.SUBSTATION||'').toLowerCase().includes(q)||String(r.FEEDER||'').toLowerCase().includes(q)||String(r.CATEGORY||'').toLowerCase().includes(q)||String(r.SERIAL_NBR||'').toLowerCase().includes(q));
+}
+function rs(page){
+  const res=gr();const q=document.getElementById('si').value.trim().toLowerCase();
+  document.getElementById('rc').textContent=res.length.toLocaleString();
+  const sl2=res.slice((page-1)*PS,page*PS);
+  document.getElementById('stb').innerHTML=sl2.map(r=>`<tr><td style="font-family:var(--fh);color:var(--accent2)">${h(String(r.ACCT_ID),q)}</td><td style="font-weight:500">${h(r.NAME||'',q)}</td><td>${h(String(r.MOBILE_NO||''),q)}</td><td>${cb(r.CATEGORY)}</td><td>${h(r.SUBSTATION||'',q)}</td><td>${h(r.FEEDER||'',q)}</td><td title="${r.ADDRESS||''}">${h(r.ADDRESS||'',q)}</td><td>${(r.LAT&&r.LON)?`<a class="ml" href="https://www.google.com/maps?q=${r.LAT},${r.LON}" target="_blank">📍 MAP</a>`:''}</td></tr>`).join('');
+  rp('spg',page,Math.ceil(res.length/PS),p=>rs(p));
+}
+function h(t,q){if(!q||!t)return t;const i=t.toLowerCase().indexOf(q);if(i<0)return t;return t.slice(0,i)+'<mark>'+t.slice(i,i+q.length)+'</mark>'+t.slice(i+q.length);}
+function copySL(){navigator.clipboard.writeText(window.location.href).then(()=>toast());}
+
+// MAP
+function cc(cat){
+  if(!cat)return '#888';const c=String(cat).toUpperCase();
+  if(c.includes('DOMESTIC'))return '#2ECC71';
+  if(c.includes('COMMERCIAL'))return '#F5A623';
+  if(c.includes('INDUSTRI'))return '#AA80FF';
+  if(c.includes('GOVT')||c.includes('GOV')||c.includes('CENTRAL')||c.includes('DEPARTMENTAL'))return '#00C4FF';
+  return '#FF6B6B';
+}
+function initMap(){
+  MAP=L.map('map').setView([25.45,78.57],11);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© OSM, © CARTO',maxZoom:19}).addTo(MAP);
+  ML=L.layerGroup().addTo(MAP);umap();
+}
+function umap(){
+  if(!MAP)return;
+  const sub=document.getElementById('ms').value,feed=document.getElementById('mf').value,cat=document.getElementById('mc2').value,lim=parseInt(document.getElementById('ml2').value);
+  let data=D;
+  if(sub)data=data.filter(r=>r.SUBSTATION===sub);
+  if(feed)data=data.filter(r=>r.FEEDER===feed);
+  if(cat)data=data.filter(r=>r.CATEGORY===cat);
+  const sample=data.length>lim?data.slice(0,lim):data;
+  document.getElementById('mpc').textContent=sample.length.toLocaleString()+' POINTS PLOTTED';
+  ML.clearLayers();
+  sample.forEach(r=>{
+    if(!r.LAT||!r.LON)return;
+    const c=L.circleMarker([r.LAT,r.LON],{radius:5,fillColor:cc(r.CATEGORY),color:'#000',weight:.5,opacity:.9,fillOpacity:.8});
+    c.bindPopup(`<div style="font-family:sans-serif;font-size:12px;min-width:180px"><strong style="font-size:14px">${r.NAME||'Unknown'}</strong><br/><span style="color:#888">Acct: ${r.ACCT_ID}</span><br/><span style="color:#888">Mobile: ${r.MOBILE_NO||'-'}</span><br/><b>${r.CATEGORY||''}</b> · Load: ${r.LOAD||'-'} kW<br/>${r.SUBSTATION||''} › ${r.FEEDER||''}<br/>${(r.LAT&&r.LON)?`<a href="https://www.google.com/maps?q=${r.LAT},${r.LON}" target="_blank" style="color:#00C4FF">📍 Open Google Maps</a>`:''}</div>`);
+    ML.addLayer(c);
+  });
+  const pts=sample.filter(r=>r.LAT&&r.LON).map(r=>[r.LAT,r.LON]);
+  if(pts.length>0)MAP.fitBounds(pts,{padding:[30,30]});
+}
+
+// FILTER
+let fp=1;
+function af(){
+  fp=1;
+  const sub=document.getElementById('fs').value,feed=document.getElementById('ff').value,cat=document.getElementById('fc').value;
+  const lmin=parseFloat(document.getElementById('fln').value)||0,lmax=parseFloat(document.getElementById('flx').value)||Infinity;
+  FD=D.filter(r=>{
+    if(sub&&r.SUBSTATION!==sub)return false;
+    if(feed&&r.FEEDER!==feed)return false;
+    if(cat&&r.CATEGORY!==cat)return false;
+    const ld=parseFloat(r.LOAD)||0;
+    return ld>=lmin&&ld<=lmax;
+  });
+  document.getElementById('fc2').textContent=FD.length.toLocaleString();
+  document.getElementById('fd').textContent=FD.filter(r=>(r.CATEGORY||'').toUpperCase().includes('DOMESTIC')).length.toLocaleString();
+  document.getElementById('fco').textContent=FD.filter(r=>(r.CATEGORY||'').toUpperCase().includes('COMMERCIAL')).length.toLocaleString();
+  document.getElementById('fi').textContent=FD.filter(r=>(r.CATEGORY||'').toUpperCase().includes('INDUSTRI')).length.toLocaleString();
+  document.getElementById('fg2').textContent=FD.filter(r=>(r.CATEGORY||'').toUpperCase().includes('GOVT')||(r.CATEGORY||'').toUpperCase().includes('GOV')).length.toLocaleString();
+  document.getElementById('ftl').textContent=FD.reduce((s,r)=>s+(parseFloat(r.LOAD)||0),0).toLocaleString();
+  rft(1);
+}
+function rft(page){
+  const sl2=FD.slice((page-1)*PS,page*PS);
+  document.getElementById('ftb').innerHTML=sl2.map(r=>`<tr><td style="font-family:var(--fh);color:var(--accent2)">${r.ACCT_ID}</td><td style="font-weight:500">${r.NAME||''}</td><td>${r.MOBILE_NO||''}</td><td>${cb(r.CATEGORY)}</td><td style="color:var(--accent);font-family:var(--fh)">${r.LOAD||''}</td><td>${r.SUBSTATION||''}</td><td>${r.FEEDER||''}</td><td>${(r.LAT&&r.LON)?`<a class="ml" href="https://www.google.com/maps?q=${r.LAT},${r.LON}" target="_blank">📍 MAP</a>`:''}</td></tr>`).join('');
+  rp('fpg',page,Math.ceil(FD.length/PS),p=>rft(p));
+}
+function rf(){document.getElementById('fs').value='';document.getElementById('ff').value='';document.getElementById('fc').value='';document.getElementById('fln').value='';document.getElementById('flx').value='';af();}
+function expX(){if(!FD.length)return alert('No data.');const ws=XLSX.utils.json_to_sheet(FD);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Filtered');XLSX.writeFile(wb,'uppcl_filtered_'+Date.now()+'.xlsx');}
+function expC(){if(!FD.length)return alert('No data.');const ws=XLSX.utils.json_to_sheet(FD);const csv=XLSX.utils.sheet_to_csv(ws);const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='uppcl_filtered_'+Date.now()+'.csv';a.click();}
+
+// LOOKUP
+function dl(){
+  const q=document.getElementById('li').value.trim();const div=document.getElementById('lr');
+  if(!q){div.innerHTML='';return;}
+  window.location.hash='lookup='+encodeURIComponent(q);
+  const r=D.find(row=>String(row.ACCT_ID)===q||String(row.MOBILE_NO)===q||String(row.SERIAL_NBR)===q);
+  if(!r){div.innerHTML=`<div class="nf"><div class="ico">🔎</div>No record found for "<strong>${q}</strong>"<br/><small style="font-size:13px;color:var(--muted)">Try Account ID, Mobile Number, or Serial Number</small></div>`;return;}
+  div.innerHTML=`<div class="dc"><div class="dh"><div><div class="dn">${r.NAME||'Unknown'}</div><div style="margin-top:4px"><span class="da">ACCT: ${r.ACCT_ID}</span> &nbsp;&nbsp;${cb(r.CATEGORY)}</div></div><div style="text-align:right"><div style="color:var(--muted);font-size:11px;font-family:var(--fh);letter-spacing:1px">LOAD</div><div style="font-family:var(--fh);font-size:28px;font-weight:700;color:var(--accent)">${r.LOAD||'-'} <span style="font-size:14px;color:var(--muted)">kW</span></div></div></div><div class="db"><div class="dgrid"><div class="df"><div class="lbl">FATHER'S NAME</div><div class="val">${r.FATHER_NAME||'-'}</div></div><div class="df"><div class="lbl">MOBILE</div><div class="val">${r.MOBILE_NO||'-'}</div></div><div class="df"><div class="lbl">SUBSTATION</div><div class="val">${r.SUBSTATION||'-'}</div></div><div class="df"><div class="lbl">FEEDER</div><div class="val">${r.FEEDER||'-'}</div></div><div class="df"><div class="lbl">SERIAL NUMBER</div><div class="val">${r.SERIAL_NBR||'-'}</div></div><div class="df"><div class="lbl">ST CODE</div><div class="val">${r.ST||'-'}</div></div><div class="df" style="grid-column:span 2"><div class="lbl">ADDRESS</div><div class="val">${r.ADDRESS||'-'}</div></div><div class="df"><div class="lbl">LATITUDE</div><div class="val">${r.LAT||'-'}</div></div><div class="df"><div class="lbl">LONGITUDE</div><div class="val">${r.LON||'-'}</div></div></div><div>${(r.LAT&&r.LON)?`<a class="mb" href="https://www.google.com/maps?q=${r.LAT},${r.LON}" target="_blank">📍 OPEN IN GOOGLE MAPS</a>`:''}<button class="clb" onclick="clk('${r.ACCT_ID}')">🔗 COPY LINK</button></div></div></div>`;
+}
+function clk(id){navigator.clipboard.writeText(location.origin+location.pathname+'#lookup='+id).then(()=>toast());}
+
+// HELPERS
+function cb(cat){
+  if(!cat)return '';const c=String(cat).toUpperCase();
+  let cls='b-oth';
+  if(c.includes('DOMESTIC'))cls='b-dom';
+  else if(c.includes('COMMERCIAL'))cls='b-com';
+  else if(c.includes('INDUSTRI'))cls='b-ind';
+  else if(c.includes('GOVT')||c.includes('GOV')||c.includes('CENTRAL')||c.includes('DEPARTMENTAL'))cls='b-gov';
+  return `<span class="badge ${cls}">${cat}</span>`;
+}
+function rp(cid,cur,tot,onP){
+  const el=document.getElementById(cid);
+  if(tot<=1){el.innerHTML='';return;}
+  const pages=[];
+  if(cur>1)pages.push({l:'‹ PREV',p:cur-1});
+  const s=Math.max(1,cur-2),e=Math.min(tot,cur+2);
+  if(s>1)pages.push({l:'1',p:1});
+  if(s>2)pages.push({l:'…',p:null});
+  for(let i=s;i<=e;i++)pages.push({l:String(i),p:i});
+  if(e<tot-1)pages.push({l:'…',p:null});
+  if(e<tot)pages.push({l:String(tot),p:tot});
+  if(cur<tot)pages.push({l:'NEXT ›',p:cur+1});
+  el.innerHTML=pages.map(pg=>pg.p===null?`<span class="pgb" style="cursor:default;color:var(--muted)">…</span>`:`<button class="pgb ${pg.p===cur?'active':''}" onclick="(${onP.toString()})(${pg.p})">${pg.l}</button>`).join('')+`<span class="pgi">Page ${cur} of ${tot}</span>`;
+}
+function toast(){const t=document.getElementById('toast');t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000);}
+
+// ─── AUTO FETCH FROM GITHUB ─────────────────────────────────────────────────
+const RAW_URL = 'https://docs.google.com/spreadsheets/d/1Q4NStS5MSETCblWghHrxg-xBQZz9t3A6/export?format=xlsx';
+
+window.addEventListener('DOMContentLoaded', () => {
+  autoFetch();
+});
+
+function autoFetch() {
+  sl('CONNECTING TO GOOGLE DRIVE…', 15);
+  document.getElementById('loading').style.display = 'flex';
+
+  // Try direct fetch first, then CORS proxy fallback
+  const CORS_PROXY = 'https://corsproxy.io/?';
+  
+  function tryFetch(url) {
+    return fetch(url).then(res => {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.arrayBuffer();
+    });
+  }
+
+  tryFetch(RAW_URL)
+    .catch(() => {
+      sl('RETRYING VIA PROXY…', 25);
+      return tryFetch(CORS_PROXY + encodeURIComponent(RAW_URL));
+    })
+    .then(buf => {
+      sl('PARSING DATA…', 55);
+      setTimeout(() => {
+        try {
+          const wb = XLSX.read(buf, { type: 'array' });
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          sl('PROCESSING ROWS…', 75);
+          setTimeout(() => {
+            D = XLSX.utils.sheet_to_json(ws, { defval: '' });
+            // Auto-generate Google Maps links from LAT/LON
+            D = D.map(r => { if(!r.Google_Map_Link && r.LAT && r.LON){ r.Google_Map_Link = 'https://www.google.com/maps?q=' + r.LAT + ',' + r.LON; } return r; });
+            // Auto-generate Google Maps links from LAT/LON if not present
+            D = D.map(r => {
+              if(!r.Google_Map_Link && r.LAT && r.LON){
+                r.Google_Map_Link = 'https://www.google.com/maps?q=' + r.LAT + ',' + r.LON;
+              }
+              return r;
+            });
+            sl('BUILDING INDEX…', 92);
+            setTimeout(() => { ia(); hl2(); }, 100);
+          }, 50);
+        } catch(err) { hl2(); showFetchError(err.message); }
+      }, 50);
+    })
+    .catch(err => { hl2(); showFetchError('Could not load from Google Drive: ' + err.message + '. Make sure the file is shared as Anyone with the link.'); });
+}
+
+function showFetchError(msg) {
+  // Fall back to manual upload with error shown
+  document.getElementById('upload-screen').style.display = 'flex';
+  const p = document.querySelector('.upload-box p');
+  p.innerHTML = '<span style="color:#FF6B6B;font-size:13px">⚠ Auto-load failed: ' + msg + '</span><br/>You can still upload the file manually below.';
+}
+
+</script>
+</body>
+</html>
