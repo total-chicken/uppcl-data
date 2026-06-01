@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>UPPCL Consumer Data Tool v3.8</title>
+<title>UPPCL Consumer Data Tool v4.0</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Noto+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
 <style>
@@ -356,6 +356,8 @@ button, .tab, .pin-btn, .btn, select, input {
   #panel-nearby thead th:nth-child(8) { display: none; }
 }
 
+.nb-card{background:#0C1419;border:1px solid var(--border);border-radius:10px;padding:12px 14px;cursor:pointer;margin-bottom:8px;transition:border-color .15s;}
+.nb-card:hover{border-color:var(--accent);}
 /* Smooth scrolling */
 html { scroll-behavior: smooth; }
 * { -webkit-overflow-scrolling: touch; }
@@ -462,10 +464,19 @@ html { scroll-behavior: smooth; }
     </div>
     <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap">
       <button class="btn btn-acc" onclick="expX()">⬇ EXPORT XLSX</button>
-      <button class="btn btn-out" onclick="expC()">⬇ EXPORT CSV</button>
       <button class="btn" style="background:var(--card);border:1px solid var(--border);color:var(--text)" onclick="rf()">↺ RESET</button>
     </div>
-    <div class="tw"><table><thead><tr><th>S.NO</th><th>ACCT ID</th><th>NAME</th><th>MOBILE</th><th>CATEGORY</th><th>LOAD</th><th>SUBSTATION</th><th>FEEDER</th><th>MAP</th></tr></thead><tbody id="ftb"></tbody></table></div>
+    <div class="tw"><table><thead><tr>
+  <th>S.NO</th>
+  <th onclick="sortFt('ACCT_ID')" style="cursor:pointer">ACCT ID <span id="fts-ACCT_ID">⇅</span></th>
+  <th onclick="sortFt('NAME')" style="cursor:pointer">NAME <span id="fts-NAME">⇅</span></th>
+  <th>MOBILE</th>
+  <th onclick="sortFt('CATEGORY')" style="cursor:pointer">CATEGORY <span id="fts-CATEGORY">⇅</span></th>
+  <th onclick="sortFt('LOAD')" style="cursor:pointer">LOAD <span id="fts-LOAD">⇅</span></th>
+  <th onclick="sortFt('SUBSTATION')" style="cursor:pointer">SUBSTATION <span id="fts-SUBSTATION">⇅</span></th>
+  <th onclick="sortFt('FEEDER')" style="cursor:pointer">FEEDER <span id="fts-FEEDER">⇅</span></th>
+  <th>MAP</th>
+</tr></thead><tbody id="ftb"></tbody></table></div>
     <div class="pg" id="fpg"></div>
   </div>
 
@@ -496,22 +507,7 @@ html { scroll-behavior: smooth; }
     </div>
 
     <div id="dc-content" style="display:none">
-      <!-- Summary cards -->
-      <div style="display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap">
-        <div style="background:var(--card);border:1px solid #FF4D4D33;border-left:3px solid #FF4D4D;border-radius:10px;padding:14px 20px">
-          <div style="font-family:var(--fh);font-size:24px;font-weight:700;color:#FF4D4D" id="dc-total">0</div>
-          <div style="font-size:11px;color:var(--muted)">TOTAL SM UNRECHARGE</div>
-        </div>
-        <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 20px">
-          <div style="font-family:var(--fh);font-size:24px;font-weight:700;color:var(--accent)" id="dc-outstanding">0</div>
-          <div style="font-size:11px;color:var(--muted)">TOTAL OUTSTANDING (₹)</div>
-        </div>
-        <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 20px">
-          <div style="font-family:var(--fh);font-size:24px;font-weight:700;color:var(--accent2)" id="dc-subs-count">0</div>
-          <div style="font-size:11px;color:var(--muted)">SUBSTATIONS</div>
-        </div>
-
-      </div>
+      <!-- Summary - inline in filter bar -->
 
       <!-- Google Sheet Sync Config (collapsible) -->
       <div style="margin-bottom:14px">
@@ -588,7 +584,6 @@ html { scroll-behavior: smooth; }
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           <button class="btn btn-acc" onclick="expDcX()">⬇ EXPORT XLSX</button>
-          <button class="btn btn-out" onclick="expDcC()">⬇ EXPORT CSV</button>
           <button class="btn" style="background:#1A3A2A;border:1px solid #2ECC7155;color:#2ECC71;font-family:var(--fh);font-size:13px;font-weight:700;letter-spacing:1px;padding:11px 20px;border-radius:10px;cursor:pointer" onclick="exportAtrXlsx()">📋 EXPORT ATR REPORT</button>
           <button class="btn" style="background:var(--card);border:1px solid var(--border);color:var(--text)" onclick="resetDcFilters()">↺ RESET</button>
         </div>
@@ -598,9 +593,18 @@ html { scroll-behavior: smooth; }
       <div class="tw">
         <table>
           <thead>
-            <tr>
-              <th>S.NO</th><th>DATE OF DC</th><th>ACCT ID</th><th>NAME</th><th>MOBILE</th>
-              <th>METER NO</th><th>LMV</th><th>OUTSTANDING</th><th>SUBSTATION</th><th>FEEDER</th><th>MAP</th>
+            <tr id="dc-sort-row">
+              <th>S.NO</th>
+              <th onclick="sortDc('DATE_DC')" style="cursor:pointer" title="Sort">DATE OF DC <span id="sort-DATE_DC">⇅</span></th>
+              <th onclick="sortDc('ACCT_ID')" style="cursor:pointer" title="Sort">ACCT ID <span id="sort-ACCT_ID">⇅</span></th>
+              <th onclick="sortDc('NAME')" style="cursor:pointer" title="Sort">NAME <span id="sort-NAME">⇅</span></th>
+              <th>MOBILE</th>
+              <th>METER NO</th>
+              <th>LMV</th>
+              <th onclick="sortDc('OUTSTANDING')" style="cursor:pointer" title="Sort">OUTSTANDING <span id="sort-OUTSTANDING">⇅</span></th>
+              <th onclick="sortDc('SUBSTATION')" style="cursor:pointer" title="Sort">SUBSTATION <span id="sort-SUBSTATION">⇅</span></th>
+              <th onclick="sortDc('FEEDER')" style="cursor:pointer" title="Sort">FEEDER <span id="sort-FEEDER">⇅</span></th>
+              <th>MAP</th>
             </tr>
           </thead>
           <tbody id="dc-tbody"></tbody>
@@ -667,7 +671,6 @@ html { scroll-behavior: smooth; }
           <div class="pg" id="dc-nb-pg"></div>
           <div style="display:flex;gap:10px;margin-top:12px">
             <button class="btn btn-acc" onclick="expDcNbX()">⬇ EXPORT XLSX</button>
-            <button class="btn btn-out" onclick="expDcNbC()">⬇ EXPORT CSV</button>
           </div>
         </div>
       </div>
@@ -821,7 +824,7 @@ html { scroll-behavior: smooth; }
         <!-- Action buttons -->
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px">
           <a id="modal-map-btn" href="#" target="_blank" class="mb" style="display:none">📍 OPEN IN GOOGLE MAPS</a>
-          <button class="clb" onclick="copyModalLink()">🔗 COPY LINK</button>
+          
         </div>
 
         <!-- Nearby Disconnected in Modal -->
@@ -1069,7 +1072,7 @@ function dl(){
   window.location.hash='lookup='+encodeURIComponent(q);
   const r=D.find(row=>String(row.ACCT_ID)===q||String(row.MOBILE_NO)===q||String(row.SERIAL_NBR)===q);
   if(!r){div.innerHTML=`<div class="nf"><div class="ico">🔎</div>No record found for "<strong>${q}</strong>"<br/><small style="font-size:13px;color:var(--muted)">Try Account ID, Mobile Number, or Serial Number</small></div>`;return;}
-  div.innerHTML=`<div class="dc"><div class="dh"><div><div class="dn">${r.NAME||'Unknown'}</div><div style="margin-top:4px"><span class="da">ACCT: ${r.ACCT_ID}</span> &nbsp;&nbsp;${cb(r.CATEGORY)}</div></div><div style="text-align:right"><div style="color:var(--muted);font-size:11px;font-family:var(--fh);letter-spacing:1px">LOAD</div><div style="font-family:var(--fh);font-size:28px;font-weight:700;color:var(--accent)">${r.LOAD||'-'} <span style="font-size:14px;color:var(--muted)">kW</span></div></div></div><div class="db"><div class="dgrid"><div class="df"><div class="lbl">FATHER'S NAME</div><div class="val">${r.FATHER_NAME||'-'}</div></div><div class="df"><div class="lbl">MOBILE</div><div class="val">${r.MOBILE_NO||'-'}</div></div><div class="df"><div class="lbl">SUBSTATION</div><div class="val">${r.SUBSTATION||'-'}</div></div><div class="df"><div class="lbl">FEEDER</div><div class="val">${r.FEEDER||'-'}</div></div><div class="df"><div class="lbl">SERIAL NUMBER</div><div class="val">${r.SERIAL_NBR||'-'}</div></div><div class="df"><div class="lbl">ST CODE</div><div class="val">${r.ST||'-'}</div></div><div class="df" style="grid-column:span 2"><div class="lbl">ADDRESS</div><div class="val">${r.ADDRESS||'-'}</div></div><div class="df"><div class="lbl">LATITUDE</div><div class="val">${r.LAT||'-'}</div></div><div class="df"><div class="lbl">LONGITUDE</div><div class="val">${r.LON||'-'}</div></div></div><div>${(r.LAT&&r.LON)?`<a class="mb" href="https://www.google.com/maps?q=${r.LAT},${r.LON}" target="_blank">📍 OPEN IN GOOGLE MAPS</a>`:''}<button class="clb" onclick="clk('${r.ACCT_ID}')">🔗 COPY LINK</button></div></div></div>`;
+  div.innerHTML=`<div class="dc"><div class="dh"><div><div class="dn">${r.NAME||'Unknown'}</div><div style="margin-top:4px"><span class="da">ACCT: ${r.ACCT_ID}</span> &nbsp;&nbsp;${cb(r.CATEGORY)}</div></div><div style="text-align:right"><div style="color:var(--muted);font-size:11px;font-family:var(--fh);letter-spacing:1px">LOAD</div><div style="font-family:var(--fh);font-size:28px;font-weight:700;color:var(--accent)">${r.LOAD||'-'} <span style="font-size:14px;color:var(--muted)">kW</span></div></div></div><div class="db"><div class="dgrid"><div class="df"><div class="lbl">FATHER'S NAME</div><div class="val">${r.FATHER_NAME||'-'}</div></div><div class="df"><div class="lbl">MOBILE</div><div class="val">${r.MOBILE_NO||'-'}</div></div><div class="df"><div class="lbl">SUBSTATION</div><div class="val">${r.SUBSTATION||'-'}</div></div><div class="df"><div class="lbl">FEEDER</div><div class="val">${r.FEEDER||'-'}</div></div><div class="df"><div class="lbl">SERIAL NUMBER</div><div class="val">${r.SERIAL_NBR||'-'}</div></div><div class="df"><div class="lbl">ST CODE</div><div class="val">${r.ST||'-'}</div></div><div class="df" style="grid-column:span 2"><div class="lbl">ADDRESS</div><div class="val">${r.ADDRESS||'-'}</div></div><div class="df"><div class="lbl">LATITUDE</div><div class="val">${r.LAT||'-'}</div></div><div class="df"><div class="lbl">LONGITUDE</div><div class="val">${r.LON||'-'}</div></div></div><div>${(r.LAT&&r.LON)?`<a class="mb" href="https://www.google.com/maps?q=${r.LAT},${r.LON}" target="_blank">📍 OPEN IN GOOGLE MAPS</a>`:''}</div></div></div>`;
 }
 function clk(id){navigator.clipboard.writeText(location.origin+location.pathname+'#lookup='+id).then(()=>toast());}
 
@@ -2290,37 +2293,78 @@ function loadModalNearby(lat, lon) {
     return;
   }
 
-  var rows = nearby.map(function(r, i) {
+  // Render as cards
+  var cards = nearby.map(function(r, i) {
     var dist = r._dist < 1 ? (r._dist*1000).toFixed(0)+' m' : r._dist.toFixed(2)+' km';
     var out = Math.round(r.OUTSTANDING || 0);
-    var outColor = out > 100000 ? '#FF4D4D' : out > 10000 ? '#F5A623' : 'var(--text)';
+    var outColor = out > 100000 ? '#FF4D4D' : out > 10000 ? '#F5A623' : '#2ECC71';
     var mapUrl = 'https://www.google.com/maps?q=' + r._lat + ',' + r._lon;
     var acct = String(r.ACCT_ID);
-    return '<tr style="border-bottom:1px solid #0E1A22;cursor:pointer" onclick="closeModal();setTimeout(function(){openDcDetail(&quot;'+acct+'&quot;)},100)" title="Click to open details">' +
-      '<td style="padding:8px 12px;font-family:var(--fh);color:var(--muted);font-size:11px">'+(i+1)+'</td>' +
-      '<td style="padding:8px 12px;font-family:var(--fh);color:var(--accent);font-weight:700">'+dist+'</td>' +
-      '<td style="padding:8px 12px;font-family:var(--fh);color:var(--accent2)">'+r.ACCT_ID+'</td>' +
-      '<td style="padding:8px 12px;font-weight:500;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(r.NAME||'')+'</td>' +
-      '<td style="padding:8px 12px;font-family:var(--fh);font-weight:700;color:'+outColor+'">&#8377;'+out.toLocaleString()+'</td>' +
-      '<td style="padding:8px 12px">'+atrBadgeFn(r.ATR_STATUS)+'</td>' +
-      '<td style="padding:8px 12px"><a class="ml" href="'+mapUrl+'" target="_blank" onclick="event.stopPropagation()">&#128205;</a></td>' +
-      '</tr>';
+    var atrColor = r.ATR_STATUS === 'PAID' ? '#2ECC71' : r.ATR_STATUS === 'LOCK' ? '#AA80FF' : r.ATR_STATUS === 'THEFT' ? '#FF4D4D' : '#FF8080';
+    return '<div onclick="closeModal();setTimeout(function(){openDcDetail(&quot;'+acct+'&quot;)},100)" class="nb-card">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">' +
+        '<div>' +
+          '<div style="font-family:var(--fh);font-size:13px;font-weight:700;color:var(--text)">'+(r.NAME||'Unknown')+'</div>' +
+          '<div style="font-family:var(--fh);font-size:11px;color:var(--accent2);margin-top:2px">'+r.ACCT_ID+'</div>' +
+        '</div>' +
+        '<div style="text-align:right">' +
+          '<div style="font-family:var(--fh);font-size:12px;font-weight:700;color:var(--accent)">'+dist+'</div>' +
+          '<div style="font-size:10px;color:var(--muted)">away</div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">' +
+        '<div style="font-family:var(--fh);font-size:13px;font-weight:700;color:'+outColor+'">&#8377;'+out.toLocaleString()+'</div>' +
+        '<div style="font-size:10px;color:var(--muted)">'+(r.SUBSTATION||'-')+' › '+(r.FEEDER||'-')+'</div>' +
+        '<div style="display:flex;align-items:center;gap:6px">' +
+          '<span style="font-size:10px;font-weight:700;color:'+atrColor+'">'+(r.ATR_STATUS||'SM')+'</span>' +
+          '<a href="'+mapUrl+'" target="_blank" onclick="event.stopPropagation()" style="color:var(--accent2);font-size:13px;text-decoration:none">📍</a>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
   }).join('');
 
-  document.getElementById('modal-nb-list').innerHTML =
-    '<div style="overflow-x:auto;border-radius:8px;border:1px solid var(--border)">' +
-    '<table style="width:100%;border-collapse:collapse;font-size:12px">' +
-    '<thead><tr style="background:#0E1C25">' +
-    '<th style="padding:8px 12px;text-align:left;font-family:var(--fh);font-size:10px;color:var(--muted);letter-spacing:1px;border-bottom:1px solid var(--border)">S.NO</th>' +
-    '<th style="padding:8px 12px;text-align:left;font-family:var(--fh);font-size:10px;color:var(--muted);letter-spacing:1px;border-bottom:1px solid var(--border)">DIST</th>' +
-    '<th style="padding:8px 12px;text-align:left;font-family:var(--fh);font-size:10px;color:var(--muted);letter-spacing:1px;border-bottom:1px solid var(--border)">ACCT ID</th>' +
-    '<th style="padding:8px 12px;text-align:left;font-family:var(--fh);font-size:10px;color:var(--muted);letter-spacing:1px;border-bottom:1px solid var(--border)">NAME</th>' +
-    '<th style="padding:8px 12px;text-align:left;font-family:var(--fh);font-size:10px;color:var(--muted);letter-spacing:1px;border-bottom:1px solid var(--border)">OUTSTANDING</th>' +
-    '<th style="padding:8px 12px;text-align:left;font-family:var(--fh);font-size:10px;color:var(--muted);letter-spacing:1px;border-bottom:1px solid var(--border)">ATR</th>' +
-    '<th style="padding:8px 12px;text-align:left;font-family:var(--fh);font-size:10px;color:var(--muted);letter-spacing:1px;border-bottom:1px solid var(--border)">MAP</th>' +
-    '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+  document.getElementById('modal-nb-list').innerHTML = cards;
 }
 
+
+
+// ─── TABLE SORTING ──────────────────────────────────────────────────────────
+let dcSortCol = null, dcSortAsc = true;
+let ftSortCol = null, ftSortAsc = true;
+
+function sortDc(col) {
+  if (dcSortCol === col) { dcSortAsc = !dcSortAsc; }
+  else { dcSortCol = col; dcSortAsc = true; }
+  // Update sort icons
+  document.querySelectorAll('[id^="sort-"]').forEach(el => el.textContent = '⇅');
+  const icon = document.getElementById('sort-' + col);
+  if (icon) icon.textContent = dcSortAsc ? '↑' : '↓';
+  // Sort DC_FD
+  DC_FD.sort(function(a, b) {
+    var av = col === 'OUTSTANDING' ? (parseFloat(a[col])||0) : String(a[col]||'').toLowerCase();
+    var bv = col === 'OUTSTANDING' ? (parseFloat(b[col])||0) : String(b[col]||'').toLowerCase();
+    if (av < bv) return dcSortAsc ? -1 : 1;
+    if (av > bv) return dcSortAsc ? 1 : -1;
+    return 0;
+  });
+  renderDcTable(1);
+}
+
+function sortFt(col) {
+  if (ftSortCol === col) { ftSortAsc = !ftSortAsc; }
+  else { ftSortCol = col; ftSortAsc = true; }
+  document.querySelectorAll('[id^="fts-"]').forEach(el => el.textContent = '⇅');
+  const icon = document.getElementById('fts-' + col);
+  if (icon) icon.textContent = ftSortAsc ? '↑' : '↓';
+  FD.sort(function(a, b) {
+    var av = col === 'LOAD' ? (parseFloat(a[col])||0) : String(a[col]||'').toLowerCase();
+    var bv = col === 'LOAD' ? (parseFloat(b[col])||0) : String(b[col]||'').toLowerCase();
+    if (av < bv) return ftSortAsc ? -1 : 1;
+    if (av > bv) return ftSortAsc ? 1 : -1;
+    return 0;
+  });
+  rft(1);
+}
 
 function showHelp() {
   const m = document.getElementById('help-modal');
