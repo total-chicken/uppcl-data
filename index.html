@@ -141,7 +141,6 @@ select option{background:#111920;}
 <div id="app">
   <div class="tabs">
     <div class="tab active" onclick="st('search')">🔍 SEARCH</div>
-    <div class="tab" onclick="st('map')">🗺️ MAP VIEW</div>
     <div class="tab" onclick="st('filter')">⚙️ FILTER & EXPORT</div>
     <div class="tab" onclick="st('lookup')">⚡ LOOKUP</div>
     <div class="tab" onclick="st('nearby')">📍 NEARBY</div>
@@ -156,30 +155,10 @@ select option{background:#111920;}
     <div class="tw"><table><thead><tr><th>ACCT ID</th><th>NAME</th><th>MOBILE</th><th>CATEGORY</th><th>SUBSTATION</th><th>FEEDER</th><th>ADDRESS</th><th>MAP</th></tr></thead><tbody id="stb"></tbody></table></div>
     <div class="pg" id="spg"></div>
   </div>
-  <!-- MAP -->
-  <div class="panel" id="panel-map">
-    <div class="mc">
-      <div><div class="lbl">SUBSTATION</div><div class="sw"><select id="ms" onchange="umap()"><option value="">ALL SUBSTATIONS</option></select></div></div>
-      <div><div class="lbl">FEEDER</div><div class="sw"><select id="mf" onchange="umap()"><option value="">ALL FEEDERS</option></select></div></div>
-      <div><div class="lbl">CATEGORY</div><div class="sw"><select id="mc2" onchange="umap()"><option value="">ALL CATEGORIES</option></select></div></div>
-      <div><div class="lbl">MAX POINTS</div><div class="sw" style="min-width:120px"><select id="ml2" onchange="umap()"><option value="500">500</option><option value="1000" selected>1,000</option><option value="2000">2,000</option><option value="5000">5,000</option></select></div></div>
-      <button class="btn btn-acc" onclick="umap()">PLOT MAP</button>
-    </div>
-    <div class="mleg">
-      <span style="color:var(--muted);font-family:var(--fh);font-size:11px;letter-spacing:1px">CATEGORY:</span>
-      <div style="display:flex;align-items:center;gap:6px"><span class="dot" style="background:#2ECC71"></span>Domestic</div>
-      <div style="display:flex;align-items:center;gap:6px"><span class="dot" style="background:#F5A623"></span>Commercial</div>
-      <div style="display:flex;align-items:center;gap:6px"><span class="dot" style="background:#AA80FF"></span>Industrial</div>
-      <div style="display:flex;align-items:center;gap:6px"><span class="dot" style="background:#00C4FF"></span>Govt</div>
-      <div style="display:flex;align-items:center;gap:6px"><span class="dot" style="background:#FF6B6B"></span>Other</div>
-      <span id="mpc" style="margin-left:auto;color:var(--muted);font-size:11px;font-family:var(--fh)"></span>
-    </div>
-    <div id="map-cont"><div id="map"></div></div>
-  </div>
   <!-- FILTER -->
   <div class="panel" id="panel-filter">
     <div class="fg">
-      <div><div class="lbl">SUBSTATION</div><div class="sw"><select id="fs" onchange="af()"><option value="">ALL</option></select></div></div>
+      <div><div class="lbl">SUBSTATION</div><div class="sw"><select id="fs" onchange="onSubChange('fs','ff');af()"><option value="">ALL</option></select></div></div>
       <div><div class="lbl">FEEDER</div><div class="sw"><select id="ff" onchange="af()"><option value="">ALL</option></select></div></div>
       <div><div class="lbl">CATEGORY</div><div class="sw"><select id="fc" onchange="af()"><option value="">ALL</option></select></div></div>
       <div><div class="lbl">LOAD (kW)</div><div style="display:flex;gap:8px"><input type="number" id="fln" placeholder="Min" oninput="af()" style="width:80px;background:var(--card);border:1.5px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-size:13px;outline:none"/><input type="number" id="flx" placeholder="Max" oninput="af()" style="width:80px;background:var(--card);border:1.5px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-size:13px;outline:none"/></div></div>
@@ -219,7 +198,15 @@ select option{background:#111920;}
       </div>
       <div>
         <div class="lbl">CATEGORY</div>
-        <div class="sw"><select id="nb-cat"><option value="">ALL</option></select></div>
+        <div class="sw"><select id="nb-cat" onchange="reapplyNearby()"><option value="">ALL CATEGORIES</option></select></div>
+      </div>
+      <div>
+        <div class="lbl">SUBSTATION</div>
+        <div class="sw"><select id="nb-sub" onchange="onSubChange('nb-sub','nb-feed');reapplyNearby()"><option value="">ALL SUBSTATIONS</option></select></div>
+      </div>
+      <div>
+        <div class="lbl">FEEDER</div>
+        <div class="sw"><select id="nb-feed" onchange="reapplyNearby()"><option value="">ALL FEEDERS</option></select></div>
       </div>
       <button class="btn btn-acc" onclick="useMyLocation()">📡 USE MY GPS LOCATION</button>
       <button class="btn btn-out" onclick="pickOnMap()">🗺️ CLICK ON MAP TO PICK LOCATION</button>
@@ -275,7 +262,7 @@ select option{background:#111920;}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
-let D=[],FD=[],MAP=null,ML=null;
+let D=[],FD=[],MAP=null,ML=null,SUB_FEED_MAP={};
 const PS=50;
 
 // Upload
@@ -322,38 +309,71 @@ function ia(){
   document.getElementById('upload-screen').style.display='none';
   document.getElementById('app').style.display='block';
   document.getElementById('sbar').style.display='flex';
-  const subs=[...new Set(D.map(r=>r.SUBSTATION).filter(Boolean))].sort();
-  const feeds=[...new Set(D.map(r=>r.FEEDER).filter(Boolean))].sort();
-  const cats=[...new Set(D.map(r=>r.CATEGORY).filter(Boolean))].sort();
+
+  // Single pass to collect all unique values + substation->feeder map
+  const subSet=new Set(), feedSet=new Set(), catSet=new Set();
+  SUB_FEED_MAP={};
+  for(let i=0;i<D.length;i++){
+    const r=D[i];
+    if(r.SUBSTATION){
+      subSet.add(r.SUBSTATION);
+      if(r.FEEDER){
+        if(!SUB_FEED_MAP[r.SUBSTATION]) SUB_FEED_MAP[r.SUBSTATION]=new Set();
+        SUB_FEED_MAP[r.SUBSTATION].add(r.FEEDER);
+      }
+    }
+    if(r.FEEDER) feedSet.add(r.FEEDER);
+    if(r.CATEGORY) catSet.add(r.CATEGORY);
+  }
+  const subs=[...subSet].sort();
+  const feeds=[...feedSet].sort();
+  const cats=[...catSet].sort();
+
   document.getElementById('s-tot').textContent=D.length.toLocaleString();
   document.getElementById('s-sub').textContent=subs.length;
   document.getElementById('s-feed').textContent=feeds.length;
   document.getElementById('rt').textContent=D.length.toLocaleString();
-  ['ms','fs'].forEach(id=>ps(id,subs));
-  ['mf','ff'].forEach(id=>ps(id,feeds));
-  ['mc2','fc'].forEach(id=>ps(id,cats));
+
+  // Fast select population using DocumentFragment
+  function fastSelect(ids, items){
+    ids.forEach(id=>{
+      const sel=document.getElementById(id);
+      if(!sel) return;
+      const frag=document.createDocumentFragment();
+      items.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;frag.appendChild(o);});
+      sel.appendChild(frag);
+    });
+  }
+  fastSelect(['fs'], subs);
+  fastSelect(['ff'], feeds);
+  fastSelect(['fc','nb-cat'], cats);
+  fastSelect(['nb-sub'], subs);
+  fastSelect(['nb-feed'], feeds);
+
+  // Handle URL hash params
   const hash=window.location.hash;
   const sm=hash.match(/search=([^&]*)/);
   if(sm){document.getElementById('si').value=decodeURIComponent(sm[1]);}
   const lm=hash.match(/lookup=([^&]*)/);
   if(lm){st('lookup');document.getElementById('li').value=decodeURIComponent(lm[1]);dl();}
-  FD=[...D];rs(1);af();
-  // Populate nearby category
-  const nbCat=document.getElementById('nb-cat');
-  [...new Set(D.map(r=>r.CATEGORY).filter(Boolean))].sort().forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;nbCat.appendChild(o);});
+
+  // Defer heavy renders to next tick so UI shows first
+  FD=D;
+  setTimeout(()=>{ rs(1); af(); }, 0);
 }
 function ps(id,items){
   const sel=document.getElementById(id);
-  items.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;sel.appendChild(o);});
+  const frag=document.createDocumentFragment();
+  items.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;frag.appendChild(o);});
+  sel.appendChild(frag);
 }
 
 // TABS
 function st(name){
-  ['search','map','filter','lookup','nearby'].forEach((n,i)=>{
+  ['search','filter','lookup','nearby'].forEach((n,i)=>{
     document.querySelectorAll('.tab')[i].classList.toggle('active',n===name);
     document.getElementById('panel-'+n).classList.toggle('active',n===name);
   });
-  if(name==='map'&&!MAP)initMap();
   if(name==='nearby'&&!NBM)initNearbyMap();
 }
 
@@ -363,7 +383,18 @@ function doSearch(){sp=1;const q=document.getElementById('si').value.trim();wind
 function gr(){
   const q=document.getElementById('si').value.trim().toLowerCase();
   if(!q)return D;
-  return D.filter(r=>String(r.ACCT_ID).includes(q)||String(r.NAME||'').toLowerCase().includes(q)||String(r.MOBILE_NO||'').includes(q)||String(r.ADDRESS||'').toLowerCase().includes(q)||String(r.SUBSTATION||'').toLowerCase().includes(q)||String(r.FEEDER||'').toLowerCase().includes(q)||String(r.CATEGORY||'').toLowerCase().includes(q)||String(r.SERIAL_NBR||'').toLowerCase().includes(q));
+  return D.filter(r=>{
+    const acct=String(r.ACCT_ID||'');
+    const mob=String(r.MOBILE_NO||'');
+    if(acct.includes(q)||mob.includes(q)) return true;
+    const name=(r.NAME||'').toLowerCase();
+    const sub=(r.SUBSTATION||'').toLowerCase();
+    const feed=(r.FEEDER||'').toLowerCase();
+    if(name.includes(q)||sub.includes(q)||feed.includes(q)) return true;
+    const addr=(r.ADDRESS||'').toLowerCase();
+    const cat=(r.CATEGORY||'').toLowerCase();
+    return addr.includes(q)||cat.includes(q);
+  });
 }
 function rs(page){
   const res=gr();const q=document.getElementById('si').value.trim().toLowerCase();
@@ -384,33 +415,25 @@ function cc(cat){
   if(c.includes('GOVT')||c.includes('GOV')||c.includes('CENTRAL')||c.includes('DEPARTMENTAL'))return '#00C4FF';
   return '#FF6B6B';
 }
-function initMap(){
-  MAP=L.map('map').setView([25.45,78.57],11);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© OSM, © CARTO',maxZoom:19}).addTo(MAP);
-  ML=L.layerGroup().addTo(MAP);umap();
-}
-function umap(){
-  if(!MAP)return;
-  const sub=document.getElementById('ms').value,feed=document.getElementById('mf').value,cat=document.getElementById('mc2').value,lim=parseInt(document.getElementById('ml2').value);
-  let data=D;
-  if(sub)data=data.filter(r=>r.SUBSTATION===sub);
-  if(feed)data=data.filter(r=>r.FEEDER===feed);
-  if(cat)data=data.filter(r=>r.CATEGORY===cat);
-  const sample=data.length>lim?data.slice(0,lim):data;
-  document.getElementById('mpc').textContent=sample.length.toLocaleString()+' POINTS PLOTTED';
-  ML.clearLayers();
-  sample.forEach(r=>{
-    if(!r.LAT||!r.LON)return;
-    const c=L.circleMarker([r.LAT,r.LON],{radius:5,fillColor:cc(r.CATEGORY),color:'#000',weight:.5,opacity:.9,fillOpacity:.8});
-    c.bindPopup(`<div style="font-family:sans-serif;font-size:12px;min-width:180px"><strong style="font-size:14px">${r.NAME||'Unknown'}</strong><br/><span style="color:#888">Acct: ${r.ACCT_ID}</span><br/><span style="color:#888">Mobile: ${r.MOBILE_NO||'-'}</span><br/><b>${r.CATEGORY||''}</b> · Load: ${r.LOAD||'-'} kW<br/>${r.SUBSTATION||''} › ${r.FEEDER||''}<br/>${(r.LAT&&r.LON)?`<a href="https://www.google.com/maps?q=${r.LAT},${r.LON}" target="_blank" style="color:#00C4FF">📍 Open Google Maps</a>`:''}</div>`);
-    ML.addLayer(c);
-  });
-  const pts=sample.filter(r=>r.LAT&&r.LON).map(r=>[r.LAT,r.LON]);
-  if(pts.length>0)MAP.fitBounds(pts,{padding:[30,30]});
-}
 
 // FILTER
 let fp=1;
+function onSubChange(subId, feedId){
+  const sub = document.getElementById(subId).value;
+  const feedSel = document.getElementById(feedId);
+  const prevVal = feedSel.value;
+  // Clear and repopulate feeder dropdown
+  feedSel.innerHTML = '<option value="">ALL FEEDERS</option>';
+  const feeds = sub && SUB_FEED_MAP[sub]
+    ? [...SUB_FEED_MAP[sub]].sort()
+    : [...new Set(D.map(r=>r.FEEDER).filter(Boolean))].sort();
+  const frag = document.createDocumentFragment();
+  feeds.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;frag.appendChild(o);});
+  feedSel.appendChild(frag);
+  // Restore previous selection if still valid
+  if(feeds.includes(prevVal)) feedSel.value = prevVal;
+}
+
 function af(){
   fp=1;
   const sub=document.getElementById('fs').value,feed=document.getElementById('ff').value,cat=document.getElementById('fc').value;
@@ -507,7 +530,7 @@ function autoFetch() {
         sl('LOADING FILE ' + completed + ' OF ' + FILES.length + '…', 10 + Math.round((completed / FILES.length) * 70));
         const wb = XLSX.read(buf, { type: 'array' });
         const ws = wb.Sheets[wb.SheetNames[0]];
-        allData[idx] = XLSX.utils.sheet_to_json(ws, { defval: '' });
+        allData[idx] = XLSX.utils.sheet_to_json(ws, { defval: '', raw: false });
       });
   });
 
@@ -516,15 +539,9 @@ function autoFetch() {
       sl('MERGING ALL DATA…', 85);
       setTimeout(() => {
         D = allData.flat();
-        D = D.map(r => {
-          if(!r.Google_Map_Link && r.LAT && r.LON){
-            r.Google_Map_Link = 'https://www.google.com/maps?q=' + r.LAT + ',' + r.LON;
-          }
-          return r;
-        });
-        sl('BUILDING INDEX…', 95);
-        setTimeout(() => { ia(); hl2(); }, 100);
-      }, 100);
+        sl('READY…', 98);
+        setTimeout(() => { ia(); hl2(); }, 50);
+      }, 50);
     })
     .catch(err => { hl2(); showFetchError(err.message); });
 }
@@ -638,12 +655,16 @@ function haversine(lat1, lon1, lat2, lon2) {
 function findNearby(lat, lon) {
   const radius = parseFloat(document.getElementById('nb-radius').value);
   const cat = document.getElementById('nb-cat').value;
+  const sub = document.getElementById('nb-sub').value;
+  const feed = document.getElementById('nb-feed').value;
 
   NBData = D
     .filter(r => r.LAT && r.LON)
     .map(r => ({ ...r, _dist: haversine(lat, lon, parseFloat(r.LAT), parseFloat(r.LON)) }))
     .filter(r => r._dist <= radius)
     .filter(r => !cat || r.CATEGORY === cat)
+    .filter(r => !sub || r.SUBSTATION === sub)
+    .filter(r => !feed || r.FEEDER === feed)
     .sort((a, b) => a._dist - b._dist);
 
   document.getElementById('nb-count-display').textContent = NBData.length + ' CONSUMERS FOUND';
@@ -706,6 +727,9 @@ function clearNearby() {
   if (NBL) NBL.clearLayers();
   if (NBCircle) { NBM.removeLayer(NBCircle); NBCircle = null; }
   if (NBCenterMarker) { NBM.removeLayer(NBCenterMarker); NBCenterMarker = null; }
+  document.getElementById('nb-sub').value = '';
+  document.getElementById('nb-feed').value = '';
+  document.getElementById('nb-cat').value = '';
   document.getElementById('nb-coords').style.display = 'none';
   document.getElementById('nb-results').style.display = 'none';
   document.getElementById('nb-instruction').style.display = 'block';
@@ -719,6 +743,10 @@ function expNearbyX() {
   XLSX.utils.book_append_sheet(wb, ws, 'Nearby');
   XLSX.writeFile(wb, 'uppcl_nearby_' + Date.now() + '.xlsx');
 }
+function reapplyNearby() {
+  if (NBCenter) findNearby(NBCenter.lat, NBCenter.lon);
+}
+
 function expNearbyC() {
   if (!NBData.length) return alert('No data.');
   const ws = XLSX.utils.json_to_sheet(NBData.map(r => ({...r, DISTANCE: r._dist < 1 ? (r._dist*1000).toFixed(0)+' m' : r._dist.toFixed(2)+' km'})));
