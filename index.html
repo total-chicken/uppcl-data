@@ -849,75 +849,59 @@ function autoFetch() {
   document.getElementById('loading').style.display = 'flex';
   sl('CONNECTING TO GITHUB…', 10);
 
-  let completed = 0;
-  const allData = new Array(FILES.length);
+  // Load files sequentially to avoid memory issues
+  const allData = [];
+  let fileIdx = 0;
 
-  function parseCSV(text, idx) {
-    return new Promise(resolve => {
-      const lines = text.split(/\r?\n/);
-      if (lines.length < 2) { allData[idx] = []; resolve(); return; }
-      
-      // Parse header
-      const hdrs = lines[0].split(',').map(h => h.replace(/^"|"$/g,'').trim());
-      const rows = [];
-      
-      // Parse in chunks to avoid blocking UI
-      let i = 1;
-      function chunk() {
-        const end = Math.min(i + 5000, lines.length);
-        while (i < end) {
-          const line = lines[i++];
-          if (!line.trim()) continue;
-          // Handle quoted fields properly
-          const vals = [];
-          let cur = '', inQ = false;
-          for (let c = 0; c < line.length; c++) {
-            if (line[c] === '"') { inQ = !inQ; }
-            else if (line[c] === ',' && !inQ) { vals.push(cur); cur = ''; }
-            else { cur += line[c]; }
-          }
-          vals.push(cur);
-          const obj = {};
-          hdrs.forEach((h, j) => { obj[h] = (vals[j] || '').trim(); });
-          obj.Google_Map_Link = obj['GOOGLE MAP LINK'] || obj['Google_Map_Link'] ||
-            (obj.LAT && obj.LON ? 'https://www.google.com/maps?q=' + obj.LAT + ',' + obj.LON : '');
-          rows.push(obj);
-        }
-        if (i < lines.length) {
-          setTimeout(chunk, 0);
-        } else {
-          allData[idx] = rows;
-          resolve();
-        }
-      }
-      chunk();
-    });
-  }
-
-  const promises = FILES.map((url, idx) => {
-    return fetch(url)
+  function loadNext() {
+    if (fileIdx >= FILES.length) {
+      sl('MERGING DATA…', 90);
+      D = allData.flat().filter(r => r && r.ACCT_ID);
+      sl('BUILDING INDEX…', 96);
+      ia();
+      hl2();
+      return;
+    }
+    const url = FILES[fileIdx];
+    sl('LOADING ' + (fileIdx+1) + ' OF ' + FILES.length + '…', 15 + fileIdx * 20);
+    fetch(url)
       .then(res => {
-        if (!res.ok) throw new Error('Failed to load: ' + url.split('/').pop());
-        sl('DOWNLOADING FILE ' + (idx+1) + ' OF ' + FILES.length + '…', 10 + Math.round(((idx+1) / FILES.length) * 40));
+        if (!res.ok) throw new Error('Failed: ' + url.split('/').pop());
         return res.text();
       })
       .then(text => {
-        completed++;
-        sl('PARSING FILE ' + completed + ' OF ' + FILES.length + '…', 50 + Math.round((completed / FILES.length) * 35));
-        return parseCSV(text, idx);
-      });
-  });
+        sl('PARSING ' + (fileIdx+1) + ' OF ' + FILES.length + '…', 20 + fileIdx * 20);
+        const rows = fastParseCSV(text);
+        allData.push(rows);
+        fileIdx++;
+        loadNext();
+      })
+      .catch(err => { hl2(); showFetchError(err.message); });
+  }
 
-  Promise.all(promises)
-    .then(() => {
-      sl('MERGING DATA…', 88);
-      setTimeout(() => {
-        D = allData.flat().filter(r => r && r.ACCT_ID);
-        sl('BUILDING INDEX…', 95);
-        setTimeout(() => { ia(); hl2(); }, 50);
-      }, 100);
-    })
-    .catch(err => { hl2(); showFetchError(err.message); });
+  loadNext();
+}
+
+function fastParseCSV(text) {
+  const lines = text.split(/\r?\n/);
+  if (lines.length < 2) return [];
+  const hdrs = lines[0].split(',').map(h => h.replace(/"/g,'').trim());
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line) continue;
+    // Simple split - fast for well-formed CSV
+    const vals = line.split(',');
+    const obj = {};
+    hdrs.forEach((h, j) => {
+      obj[h] = vals[j] ? vals[j].replace(/"/g,'').trim() : '';
+    });
+    if (!obj.ACCT_ID) continue;
+    obj.Google_Map_Link = obj['GOOGLE MAP LINK'] || obj['Google_Map_Link'] ||
+      (obj.LAT && obj.LON ? 'https://www.google.com/maps?q=' + obj.LAT + ',' + obj.LON : '');
+    rows.push(obj);
+  }
+  return rows;
 }
 
 function showFetchError(msg) {
