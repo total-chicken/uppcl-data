@@ -111,6 +111,14 @@ mark{background:#F5A62344;color:var(--accent);border-radius:2px;}
 ::-webkit-scrollbar-thumb{background:#1E2D38;border-radius:3px;}
 input::placeholder{color:var(--muted);}
 select option{background:#111920;}
+.atr-select{font-family:var(--fh);font-size:11px;font-weight:700;letter-spacing:.5px;padding:4px 8px;border-radius:6px;border:1.5px solid var(--border);cursor:pointer;outline:none;transition:all .15s;}
+.atr-dc{background:#2A1A1A;color:#FF8080;border-color:#FF4D4D55;}
+.atr-paid{background:#1A3A2A;color:#2ECC71;border-color:#2ECC7155;}
+.atr-lock{background:#2A1A3A;color:#AA80FF;border-color:#AA80FF55;}
+.atr-theft{background:#3A1A1A;color:#FF4D4D;border-color:#FF4D4D88;}
+.atr-other{background:#1A1A2A;color:#8888FF;border-color:#8888FF55;}
+.atr-saved{animation:atrpop .3s ease;}
+@keyframes atrpop{0%{transform:scale(1.2);}100%{transform:scale(1);}}
 </style>
 </head>
 <body>
@@ -300,6 +308,24 @@ select option{background:#111920;}
         </div>
       </div>
 
+      <!-- Google Sheet Sync Config -->
+      <div style="background:var(--card);border:1px solid #00C4FF33;border-left:3px solid #00C4FF;border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <span style="font-family:var(--fh);font-size:12px;color:var(--accent2);letter-spacing:1px;white-space:nowrap">☁️ GOOGLE SHEET SYNC</span>
+        <input id="atr-url-input" type="text" placeholder="Paste your Apps Script Web App URL here…"
+          style="flex:1;min-width:220px;background:#0C1419;border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:12px;outline:none"
+          value=""/>
+        <button onclick="setScriptUrl(document.getElementById('atr-url-input').value)"
+          style="background:#00C4FF22;border:1px solid #00C4FF55;color:var(--accent2);font-family:var(--fh);font-size:12px;font-weight:700;padding:8px 14px;border-radius:6px;cursor:pointer;white-space:nowrap">
+          CONNECT
+        </button>
+        <button onclick="loadAtrFromStorage()"
+          style="background:#1A2A3A;border:1px solid #00C4FF33;color:var(--accent2);font-family:var(--fh);font-size:12px;font-weight:700;padding:8px 14px;border-radius:6px;cursor:pointer;white-space:nowrap">
+          🔄 SYNC NOW
+        </button>
+        <span id="atr-sync-ind" style="font-size:12px;font-family:var(--fh)"></span>
+        <span id="atr-url-status" style="font-size:12px;font-family:var(--fh)"></span>
+      </div>
+
       <!-- Filters -->
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px;margin-bottom:16px">
         <div>
@@ -352,6 +378,7 @@ select option{background:#111920;}
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           <button class="btn btn-acc" onclick="expDcX()">⬇ EXPORT XLSX</button>
           <button class="btn btn-out" onclick="expDcC()">⬇ EXPORT CSV</button>
+          <button class="btn" style="background:#1A3A2A;border:1px solid #2ECC7155;color:#2ECC71;font-family:var(--fh);font-size:13px;font-weight:700;letter-spacing:1px;padding:11px 20px;border-radius:10px;cursor:pointer" onclick="exportAtrXlsx()">📋 EXPORT ATR REPORT</button>
           <button class="btn" style="background:var(--card);border:1px solid var(--border);color:var(--text)" onclick="resetDcFilters()">↺ RESET</button>
         </div>
       </div>
@@ -1025,6 +1052,14 @@ function loadDC() {
       document.getElementById('dc-content').style.display = 'block';
 
       DC_FD = DC;
+      // Pre-fill saved URL
+      const savedUrl = localStorage.getItem('atr_script_url') || '';
+      if (savedUrl) { ATR_SCRIPT_URL = savedUrl; document.getElementById('atr-url-input').value = savedUrl; }
+      loadAtrFromStorage(); // Restore saved ATR statuses
+      document.getElementById('dc-total2').textContent = DC.length.toLocaleString();
+      document.getElementById('dc-shown').textContent = DC.length.toLocaleString();
+      const initOut = DC.reduce((s,r)=>s+r.OUTSTANDING,0);
+      document.getElementById('dc-filt-amt').textContent = '₹' + Math.round(initOut).toLocaleString();
       renderDcTable(1);
     })
     .catch(err => {
@@ -1043,6 +1078,125 @@ function onDcSubChange() {
   const frag = document.createDocumentFragment();
   feeds.forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v; frag.appendChild(o); });
   feedSel.appendChild(frag);
+}
+
+function atrSelectClass(status) {
+  const s = String(status || '').toUpperCase();
+  if (s === 'PAID') return 'atr-paid';
+  if (s === 'LOCK') return 'atr-lock';
+  if (s === 'THEFT') return 'atr-theft';
+  if (s === 'OTHER') return 'atr-other';
+  return 'atr-dc';
+}
+
+function setAtr(acctId, value, selectEl) {
+  // Update in memory
+  const idx = DC.findIndex(r => String(r.ACCT_ID) === acctId);
+  if (idx >= 0) DC[idx].ATR_STATUS = value;
+
+  // Update filtered data too
+  const fidx = DC_FD.findIndex(r => String(r.ACCT_ID) === acctId);
+  if (fidx >= 0) DC_FD[fidx].ATR_STATUS = value;
+
+  // Update select style
+  selectEl.className = 'atr-select ' + atrSelectClass(value);
+  selectEl.classList.add('atr-saved');
+  setTimeout(() => selectEl.classList.remove('atr-saved'), 300);
+
+  // Save to sheet
+  const rec = DC.find(r => String(r.ACCT_ID) === acctId);
+  if (rec) saveAtrToStorage(rec);
+
+  // Update summary cards
+  dcUpdateAtrCards();
+}
+
+// ── Google Sheets ATR Sync ─────────────────────────────────
+// Replace YOUR_SCRIPT_URL with your deployed Apps Script URL
+let ATR_SCRIPT_URL = localStorage.getItem('atr_script_url') || '';
+
+function setScriptUrl(url) {
+  ATR_SCRIPT_URL = url.trim();
+  localStorage.setItem('atr_script_url', ATR_SCRIPT_URL);
+  document.getElementById('atr-url-input').value = ATR_SCRIPT_URL;
+  document.getElementById('atr-url-status').textContent = '✅ URL Saved!';
+  document.getElementById('atr-url-status').style.color = '#2ECC71';
+  setTimeout(() => document.getElementById('atr-url-status').textContent = '', 2000);
+  loadAtrFromStorage(); // Load existing ATR data from sheet
+}
+
+function saveAtrToStorage(r) {
+  // Save to localStorage as backup
+  try {
+    const saved = JSON.parse(localStorage.getItem('uppcl_atr') || '{}');
+    saved[String(r.ACCT_ID)] = r.ATR_STATUS;
+    localStorage.setItem('uppcl_atr', JSON.stringify(saved));
+  } catch(e) {}
+
+  // Save to Google Sheet
+  if (!ATR_SCRIPT_URL) return;
+  fetch(ATR_SCRIPT_URL, {
+    method: 'POST',
+    body: JSON.stringify({
+      action: 'save',
+      acctId: String(r.ACCT_ID),
+      atrStatus: r.ATR_STATUS,
+      name: r.NAME,
+      mobile: String(r.MOBILE_NO || ''),
+      substation: r.SUBSTATION,
+      feeder: r.FEEDER,
+      outstanding: r.OUTSTANDING
+    })
+  }).then(res => res.json())
+    .then(d => {
+      const ind = document.getElementById('atr-sync-ind');
+      if (ind) { ind.textContent = '☁️ Saved to Sheet'; ind.style.color = '#2ECC71'; setTimeout(() => ind.textContent = '', 2000); }
+    })
+    .catch(() => {
+      const ind = document.getElementById('atr-sync-ind');
+      if (ind) { ind.textContent = '⚠️ Sheet sync failed (saved locally)'; ind.style.color = '#F5A623'; setTimeout(() => ind.textContent = '', 3000); }
+    });
+}
+
+function loadAtrFromStorage() {
+  // First load from localStorage (fast)
+  try {
+    const saved = JSON.parse(localStorage.getItem('uppcl_atr') || '{}');
+    DC.forEach(r => { const v = saved[String(r.ACCT_ID)]; if (v) r.ATR_STATUS = v; });
+    dcUpdateAtrCards();
+  } catch(e) {}
+
+  // Then sync from Google Sheet (authoritative)
+  if (!ATR_SCRIPT_URL) return;
+  const ind = document.getElementById('atr-sync-ind');
+  if (ind) { ind.textContent = '☁️ Syncing from Sheet…'; ind.style.color = '#00C4FF'; }
+  fetch(ATR_SCRIPT_URL + '?action=getAll')
+    .then(res => res.json())
+    .then(d => {
+      if (d.status === 'ok' && d.data) {
+        let count = 0;
+        DC.forEach(r => { const v = d.data[String(r.ACCT_ID)]; if (v) { r.ATR_STATUS = v; count++; } });
+        dcUpdateAtrCards();
+        renderDcTable(dcPage || 1);
+        if (ind) { ind.textContent = '✅ ' + count + ' ATR loaded from Sheet'; ind.style.color = '#2ECC71'; setTimeout(() => ind.textContent = '', 3000); }
+        // Update localStorage cache
+        try { localStorage.setItem('uppcl_atr', JSON.stringify(d.data)); } catch(e) {}
+      }
+    })
+    .catch(() => { if (ind) { ind.textContent = '⚠️ Sheet sync failed'; ind.style.color = '#F5A623'; setTimeout(() => ind.textContent = '', 3000); } });
+}
+
+function exportAtrXlsx() {
+  const data = DC.map(r => ({
+    ACCT_ID: r.ACCT_ID, NAME: r.NAME, MOBILE: r.MOBILE_NO,
+    SUBSTATION: r.SUBSTATION, FEEDER: r.FEEDER,
+    OUTSTANDING: r.OUTSTANDING, ATR_STATUS: r.ATR_STATUS || 'DISCONNECTED',
+    METER_NO: r.METER_NO, LMV: r.LMV, DATE_DC: r.DATE_DC
+  }));
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'ATR');
+  XLSX.writeFile(wb, 'ATR_REPORT_' + Date.now() + '.xlsx');
 }
 
 function atrBadgeFn(status) {
@@ -1114,11 +1268,23 @@ function renderDcTable(page) {
   document.getElementById('dc-shown').textContent = DC_FD.length.toLocaleString();
   document.getElementById('dc-tbody').innerHTML = slice.map(r => {
     const mapUrl = (r.LAT && r.LON) ? 'https://www.google.com/maps?q=' + r.LAT + ',' + r.LON : '';
-    const date = r.DATE_DC ? (typeof r.DATE_DC === 'string' ? r.DATE_DC.split('T')[0] : String(r.DATE_DC).split('T')[0]) : '';
+    const date = (() => {
+      if (!r.DATE_DC) return '';
+      const v = r.DATE_DC;
+      // If it's a number (Excel serial date)
+      if (!isNaN(v) && String(v).length <= 6) {
+        const d = new Date(Math.round((v - 25569) * 86400 * 1000));
+        return d.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+      }
+      // If it's a string with T (ISO)
+      if (typeof v === 'string' && v.includes('T')) return v.split('T')[0];
+      return String(v);
+    })();
     const outstanding = parseFloat(r.OUTSTANDING) || 0;
     const outColor = outstanding > 100000 ? '#FF4D4D' : outstanding > 10000 ? '#F5A623' : 'var(--text)';
-    const atrBadge = atrBadgeFn(r.ATR_STATUS);
-    return `<tr>
+    const atrClass = atrSelectClass(r.ATR_STATUS);
+    const acctId = String(r.ACCT_ID);
+    return `<tr id="dc-row-${acctId}">
       <td style="color:var(--muted);font-size:11px">${date}</td>
       <td style="font-family:var(--fh);color:var(--accent2)">${r.ACCT_ID}</td>
       <td style="font-weight:500">${r.NAME}</td>
@@ -1126,7 +1292,16 @@ function renderDcTable(page) {
       <td style="font-size:11px;color:var(--muted)">${r.METER_NO}</td>
       <td><span class="badge b-gov">${r.LMV}</span></td>
       <td style="font-family:var(--fh);font-weight:700;color:${outColor}">₹${Math.round(outstanding).toLocaleString()}</td>
-      <td>${atrBadge}</td>
+      <td>
+        <select class="atr-select ${atrClass}" id="atr-${acctId}"
+          onchange="setAtr('${acctId}', this.value, this)">
+          <option value="DISCONNECTED" ${r.ATR_STATUS==='DISCONNECTED'?'selected':''}>🔴 DISCONNECTED</option>
+          <option value="PAID"         ${r.ATR_STATUS==='PAID'?'selected':''}>✅ PAID</option>
+          <option value="LOCK"         ${r.ATR_STATUS==='LOCK'?'selected':''}>🔒 LOCK</option>
+          <option value="THEFT"        ${r.ATR_STATUS==='THEFT'?'selected':''}>⚠️ THEFT</option>
+          <option value="OTHER"        ${r.ATR_STATUS==='OTHER'?'selected':''}>📋 OTHER</option>
+        </select>
+      </td>
       <td>${r.SUBSTATION}</td>
       <td>${r.FEEDER}</td>
       <td>${mapUrl ? `<a class="ml" href="${mapUrl}" target="_blank">📍 MAP</a>` : ''}</td>
