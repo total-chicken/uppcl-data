@@ -457,6 +457,7 @@ html { scroll-behavior: smooth; }
     <div class="tab active" onclick="st('lookup')">🔍 SEARCH</div>
     <div class="tab" onclick="st('filter')">⚙️ FILTER & EXPORT</div>
     <div class="tab" onclick="st('dc')">🔴 SM UNRECHARGE</div>
+    <div class="tab" onclick="st('defaulter')">⚠️ DEFAULTERS</div>
   </div>
   <!-- FILTER -->
   <div class="panel" id="panel-filter">
@@ -776,6 +777,91 @@ html { scroll-behavior: smooth; }
       </div>
     </div>
   </div>
+
+  <!-- DEFAULTER PANEL -->
+  <div class="panel" id="panel-defaulter">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+      <div>
+        <div style="font-family:var(--fh);font-size:22px;font-weight:700;color:#DC2626;letter-spacing:1px">⚠️ TOP DEFAULTERS</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:3px">Consumers with Outstanding > ₹5,000</div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+        <div>
+          <div class="lbl">MIN OUTSTANDING (₹)</div>
+          <div class="sw" style="min-width:130px">
+            <select id="def-min" onchange="loadDefaulters()">
+              <option value="5000">₹5,000+</option>
+              <option value="10000">₹10,000+</option>
+              <option value="25000">₹25,000+</option>
+              <option value="50000">₹50,000+</option>
+              <option value="100000">₹1,00,000+</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <div class="lbl">SUBSTATION</div>
+          <div class="sw"><select id="def-sub" onchange="loadDefaulters()"><option value="">ALL</option></select></div>
+        </div>
+        <div>
+          <div class="lbl">FEEDER</div>
+          <div class="sw"><select id="def-feed" onchange="loadDefaulters()"><option value="">ALL</option></select></div>
+        </div>
+        <div>
+          <div class="lbl">SORT BY</div>
+          <div class="sw" style="min-width:150px">
+            <select id="def-sort" onchange="loadDefaulters()">
+              <option value="desc">Highest First</option>
+              <option value="asc">Lowest First</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn btn-acc" onclick="expDefaultersX()">⬇ EXPORT XLSX</button>
+      </div>
+    </div>
+
+    <!-- Summary cards -->
+    <div style="display:flex;gap:14px;margin-bottom:20px;flex-wrap:wrap">
+      <div style="background:linear-gradient(135deg,#FEF2F2,#FEE2E2);border:1px solid #FECACA;border-left:4px solid #DC2626;border-radius:12px;padding:14px 20px;min-width:140px">
+        <div style="font-family:var(--fh);font-size:26px;font-weight:700;color:#DC2626" id="def-count">0</div>
+        <div style="font-size:11px;color:#991B1B;font-weight:600">TOTAL DEFAULTERS</div>
+      </div>
+      <div style="background:linear-gradient(135deg,#FFF7ED,#FFEDD5);border:1px solid #FED7AA;border-left:4px solid #EA580C;border-radius:12px;padding:14px 20px;min-width:140px">
+        <div style="font-family:var(--fh);font-size:26px;font-weight:700;color:#EA580C" id="def-total-out">₹0</div>
+        <div style="font-size:11px;color:#9A3412;font-weight:600">TOTAL OUTSTANDING</div>
+      </div>
+      <div style="background:linear-gradient(135deg,#FFFBEB,#FEF3C7);border:1px solid #FDE68A;border-left:4px solid #D97706;border-radius:12px;padding:14px 20px;min-width:140px">
+        <div style="font-family:var(--fh);font-size:26px;font-weight:700;color:#D97706" id="def-avg-out">₹0</div>
+        <div style="font-size:11px;color:#92400E;font-weight:600">AVERAGE OUTSTANDING</div>
+      </div>
+      <div style="background:linear-gradient(135deg,#EFF6FF,#DBEAFE);border:1px solid #BFDBFE;border-left:4px solid #2563EB;border-radius:12px;padding:14px 20px;min-width:140px">
+        <div style="font-family:var(--fh);font-size:26px;font-weight:700;color:#2563EB" id="def-shown-count">0</div>
+        <div style="font-size:11px;color:#1E40AF;font-weight:600">SHOWING</div>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="tw">
+      <table>
+        <thead>
+          <tr>
+            <th>RANK</th>
+            <th>ACCT ID</th>
+            <th>NAME</th>
+            <th>MOBILE</th>
+            <th>OUTSTANDING</th>
+            <th>LAST PAID</th>
+            <th>PAY AMT</th>
+            <th>STATUS</th>
+            <th>SUBSTATION</th>
+            <th>FEEDER</th>
+            <th>MAP</th>
+          </tr>
+        </thead>
+        <tbody id="def-tbody"></tbody>
+      </table>
+    </div>
+    <div class="pg" id="def-pg"></div>
+  </div>
   <!-- Consumer Detail Modal -->
   <div class="modal-overlay" id="detail-modal" style="display:none" onclick="if(event.target===this)closeModal()">
     <div class="modal-box">
@@ -878,6 +964,8 @@ function setHtml(id, val) { var el = gel(id); if(el) el.innerHTML = val; }
 function setStyle(id, prop, val) { var el = gel(id); if(el) el.style[prop] = val; }
 
 let D=[],FD=[],MAP=null,ML=null,SUB_FEED_MAP={};
+let PAY_DATA = {};  // Payment data indexed by ACCT_ID
+const PAY_FILE = 'https://raw.githubusercontent.com/anshu10kumar04-pixel/uppcl-data/main/paymentupdate.csv';
 let DC=[], DC_SUB_FEED_MAP={};  // Disconnected consumers data
 
 const DC_FILES = [
@@ -981,6 +1069,14 @@ function ia(){
 
   // Defer heavy renders to next tick so UI shows first
   FD=D;
+  // Populate defaulter filters
+  var defSub = gel('def-sub'), defFeed = gel('def-feed');
+  if (defSub) {
+    subs.forEach(function(v){ var o=document.createElement('option');o.value=v;o.textContent=v;defSub.appendChild(o); });
+  }
+  if (defFeed) {
+    feeds.forEach(function(v){ var o=document.createElement('option');o.value=v;o.textContent=v;defFeed.appendChild(o); });
+  }
   setTimeout(()=>{ rs(1); af(); }, 0);
 }
 function ps(id,items){
@@ -992,12 +1088,13 @@ function ps(id,items){
 
 // TABS
 function st(name){
-  ['lookup','filter','dc'].forEach((n,i)=>{
+  ['lookup','filter','dc','defaulter'].forEach((n,i)=>{
     document.querySelectorAll('.tab')[i].classList.toggle('active',n===name);
     document.getElementById('panel-'+n).classList.toggle('active',n===name);
   });
   if(name==='dc'&&DC.length===0)loadDC();
   if(name==='dc'&&!DC_NBM)setTimeout(()=>initDcNearbyMap(),500);
+  if(name==='defaulter') loadDefaulters();
 }
 
 // SEARCH
@@ -1092,7 +1189,40 @@ function dl(){
   window.location.hash='lookup='+encodeURIComponent(q);
   const r=D.find(row=>String(row.ACCT_ID)===q||String(row.MOBILE_NO)===q||String(row.SERIAL_NBR)===q);
   if(!r){div.innerHTML=`<div class="nf"><div class="ico">🔎</div>No record found for "<strong>${q}</strong>"<br/><small style="font-size:13px;color:var(--muted)">Try Account ID, Mobile Number, or Serial Number</small></div>`;return;}
-  div.innerHTML=`<div class="dc"><div class="dh"><div><div class="dn">${r.NAME||'Unknown'}</div><div style="margin-top:4px"><span class="da">ACCT: ${r.ACCT_ID}</span> &nbsp;&nbsp;${cb(r.CATEGORY)}</div></div><div style="text-align:right"><div style="color:var(--muted);font-size:11px;font-family:var(--fh);letter-spacing:1px">LOAD</div><div style="font-family:var(--fh);font-size:28px;font-weight:700;color:var(--accent)">${r.LOAD||'-'} <span style="font-size:14px;color:var(--muted)">kW</span></div></div></div><div class="db"><div class="dgrid"><div class="df"><div class="lbl">FATHER'S NAME</div><div class="val">${r.FATHER_NAME||'-'}</div></div><div class="df"><div class="lbl">MOBILE</div><div class="val">${r.MOBILE_NO||'-'}</div></div><div class="df"><div class="lbl">SUBSTATION</div><div class="val">${r.SUBSTATION||'-'}</div></div><div class="df"><div class="lbl">FEEDER</div><div class="val">${r.FEEDER||'-'}</div></div><div class="df"><div class="lbl">SERIAL NUMBER</div><div class="val">${r.SERIAL_NBR||'-'}</div></div><div class="df"><div class="lbl">ST CODE</div><div class="val">${r.ST||'-'}</div></div><div class="df" style="grid-column:span 2"><div class="lbl">ADDRESS</div><div class="val">${r.ADDRESS||'-'}</div></div><div class="df"><div class="lbl">LATITUDE</div><div class="val">${r.LAT||'-'}</div></div><div class="df"><div class="lbl">LONGITUDE</div><div class="val">${r.LON||'-'}</div></div></div><div>${(r.LAT&&r.LON)?`<a class="mb" href="https://www.google.com/maps?q=${r.LAT},${r.LON}" target="_blank">📍 OPEN IN GOOGLE MAPS</a>`:''}</div></div></div>`;
+  
+  var pay = getPayInfo(r.ACCT_ID);
+  var paySection = pay ? `
+    <div style="margin-top:16px;padding:14px 16px;background:linear-gradient(135deg,#EFF6FF,#F0FDF4);border-radius:12px;border:1px solid #BFDBFE;">
+      <div style="font-family:var(--fh);font-size:12px;font-weight:700;letter-spacing:1px;color:#1D4ED8;margin-bottom:10px">💳 PAYMENT DETAILS</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;flex-wrap:wrap;">
+        <div>
+          <div style="font-size:10px;color:#6B7280;font-family:var(--fh);letter-spacing:1px;margin-bottom:3px">LAST PAYMENT</div>
+          <div style="font-size:15px;font-weight:700;color:#059669">₹${parseFloat(pay.PAY_AMT||0).toLocaleString()}</div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:#6B7280;font-family:var(--fh);letter-spacing:1px;margin-bottom:3px">PAYMENT DATE</div>
+          <div style="font-size:14px;font-weight:700;color:#1D4ED8">${pay.PAY_DATE}</div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:#6B7280;font-family:var(--fh);letter-spacing:1px;margin-bottom:3px">OUTSTANDING</div>
+          <div style="font-size:15px;font-weight:700;color:${parseFloat(pay.TOTAL_OUTSTANDING||0)>0?'#DC2626':'#059669'}">₹${parseFloat(pay.TOTAL_OUTSTANDING||0).toLocaleString()}</div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:#6B7280;font-family:var(--fh);letter-spacing:1px;margin-bottom:3px">CLOSING READING</div>
+          <div style="font-size:13px;font-weight:700;color:#374151">${pay.CLOSING_READING} kWh</div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:#6B7280;font-family:var(--fh);letter-spacing:1px;margin-bottom:3px">SUPPLY TYPE</div>
+          <div style="font-size:13px;font-weight:700;color:#374151">${pay.SUPPLY_TYPE}</div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:#6B7280;font-family:var(--fh);letter-spacing:1px;margin-bottom:3px">STATUS</div>
+          <div style="font-size:13px;font-weight:700;color:${pay.STATUS==='ACTIVE'?'#059669':pay.STATUS==='INACTIVE'?'#DC2626':'#D97706'}">${pay.STATUS}</div>
+        </div>
+      </div>
+    </div>` : '<div style="margin-top:12px;padding:10px 14px;background:#FEF9C3;border-radius:8px;font-size:12px;color:#92400E;border:1px solid #FDE68A">⚠️ No payment data found for this account</div>';
+
+  div.innerHTML=`<div class="dc"><div class="dh"><div><div class="dn">${r.NAME||'Unknown'}</div><div style="margin-top:4px"><span class="da">ACCT: ${r.ACCT_ID}</span> &nbsp;&nbsp;${cb(r.CATEGORY)}</div></div><div style="text-align:right"><div style="color:var(--muted);font-size:11px;font-family:var(--fh);letter-spacing:1px">LOAD</div><div style="font-family:var(--fh);font-size:28px;font-weight:700;color:var(--accent)">${r.LOAD||'-'} <span style="font-size:14px;color:var(--muted)">kW</span></div></div></div><div class="db"><div class="dgrid"><div class="df"><div class="lbl">FATHER'S NAME</div><div class="val">${r.FATHER_NAME||'-'}</div></div><div class="df"><div class="lbl">MOBILE</div><div class="val">${r.MOBILE_NO||'-'}</div></div><div class="df"><div class="lbl">SUBSTATION</div><div class="val">${r.SUBSTATION||'-'}</div></div><div class="df"><div class="lbl">FEEDER</div><div class="val">${r.FEEDER||'-'}</div></div><div class="df"><div class="lbl">SERIAL NUMBER</div><div class="val">${r.SERIAL_NBR||'-'}</div></div><div class="df"><div class="lbl">ST CODE</div><div class="val">${r.ST||'-'}</div></div><div class="df" style="grid-column:span 2"><div class="lbl">ADDRESS</div><div class="val">${r.ADDRESS||'-'}</div></div><div class="df"><div class="lbl">LATITUDE</div><div class="val">${r.LAT||'-'}</div></div><div class="df"><div class="lbl">LONGITUDE</div><div class="val">${r.LON||'-'}</div></div></div>${paySection}<div style="margin-top:14px">${(r.LAT&&r.LON)?`<a class="mb" href="https://www.google.com/maps?q=${r.LAT},${r.LON}" target="_blank">📍 OPEN IN GOOGLE MAPS</a>`:''}</div></div></div>`;
 }
 function clk(id){navigator.clipboard.writeText(location.origin+location.pathname+'#lookup='+id).then(()=>toast());}
 
@@ -2260,6 +2390,8 @@ function loginSuccess(role) {
   applyRoleRestrictions(role);
   // Start loading data after login if not already loaded
   if (D.length === 0) autoFetch();
+  // Load payment data
+  if (Object.keys(PAY_DATA).length === 0) loadPaymentData();
 }
 
 function applyRoleRestrictions(role) {
@@ -2486,6 +2618,167 @@ function openConsumerMap(acctId) {
     localStorage.setItem('uppcl_map_data', JSON.stringify({data: data, lat: lat, lon: lon}));
   } catch(e) {}
   window.open('https://anshu10kumar04-pixel.github.io/uppcl-data/map.html', '_blank');
+}
+
+// ─── PAYMENT DATA ──────────────────────────────────────────────────────────
+function loadPaymentData() {
+  fetch(PAY_FILE)
+    .then(function(res) {
+      if (!res.ok) throw new Error('Payment file not found');
+      return res.text();
+    })
+    .then(function(text) {
+      var lines = text.split(/\r?\n/);
+      if (lines.length < 2) return;
+      var hdrs = lines[0].split(',').map(function(h) { return h.trim().replace(/"/g,''); });
+      var acctIdx = hdrs.indexOf('ACCT_ID');
+      var payAmtIdx = hdrs.indexOf('PAY_AMT');
+      var payDateIdx = hdrs.indexOf('PAY_DATE');
+      var outIdx = hdrs.indexOf('TOTAL_OUTSTANDING');
+      var statusIdx = hdrs.indexOf('status');
+      var nameIdx = hdrs.indexOf('NAME');
+      var supplyIdx = hdrs.indexOf('SUPPLY_TYPE');
+      var loadIdx = hdrs.indexOf('LOAD');
+      var closingIdx = hdrs.indexOf('CLOSING_READING_KWH');
+
+      for (var i = 1; i < lines.length; i++) {
+        var line = lines[i].trim();
+        if (!line) continue;
+        var vals = line.split(',').map(function(v) { return v.trim().replace(/^"|"$/g,''); });
+        var acct = vals[acctIdx];
+        if (!acct) continue;
+        PAY_DATA[acct] = {
+          PAY_AMT:           vals[payAmtIdx] || '-',
+          PAY_DATE:          vals[payDateIdx] || '-',
+          TOTAL_OUTSTANDING: vals[outIdx] || '-',
+          STATUS:            vals[statusIdx] || '-',
+          SUPPLY_TYPE:       vals[supplyIdx] || '-',
+          CLOSING_READING:   vals[closingIdx] || '-'
+        };
+      }
+      console.log('Payment data loaded:', Object.keys(PAY_DATA).length, 'records');
+    })
+    .catch(function(err) {
+      console.warn('Payment data not loaded:', err.message);
+    });
+}
+
+function getPayInfo(acctId) {
+  return PAY_DATA[String(acctId)] || null;
+}
+
+// ─── DEFAULTERS ──────────────────────────────────────────────────────────────
+let DEF_DATA = [], defPage = 1;
+
+function openFromDefaulter(acctId) {
+  var li = gel('li');
+  if (li) li.value = acctId;
+  st('lookup');
+  dl();
+}
+
+function loadDefaulters() {
+  var minOut = parseFloat(gel('def-min') ? gel('def-min').value : 5000) || 5000;
+  var sub    = gel('def-sub')  ? gel('def-sub').value  : '';
+  var feed   = gel('def-feed') ? gel('def-feed').value : '';
+  var sortDir = gel('def-sort') ? gel('def-sort').value : 'desc';
+
+  // Build from PAY_DATA (payment file) - filter by outstanding
+  var all = [];
+
+  Object.keys(PAY_DATA).forEach(function(acct) {
+    var p = PAY_DATA[acct];
+    var out = parseFloat(p.TOTAL_OUTSTANDING) || 0;
+    if (out < minOut) return;
+
+    // Find consumer details from main data
+    var consumer = D.find(function(r) { return String(r.ACCT_ID) === String(acct); });
+    var subName  = consumer ? (consumer.SUBSTATION || '-') : '-';
+    var feedName = consumer ? (consumer.FEEDER || '-')     : '-';
+    var mobile   = consumer ? (consumer.MOBILE_NO || '-')  : '-';
+    var lat      = consumer ? consumer.LAT : '';
+    var lon      = consumer ? consumer.LON : '';
+
+    if (sub  && subName  !== sub)  return;
+    if (feed && feedName !== feed) return;
+
+    all.push({
+      ACCT_ID:     acct,
+      NAME:        p.NAME || (consumer ? consumer.NAME : '-'),
+      MOBILE:      mobile,
+      OUTSTANDING: out,
+      PAY_AMT:     parseFloat(p.PAY_AMT) || 0,
+      PAY_DATE:    p.PAY_DATE || '-',
+      STATUS:      p.STATUS || '-',
+      SUBSTATION:  subName,
+      FEEDER:      feedName,
+      LAT:         lat,
+      LON:         lon
+    });
+  });
+
+  // Sort
+  all.sort(function(a, b) {
+    return sortDir === 'desc' ? b.OUTSTANDING - a.OUTSTANDING : a.OUTSTANDING - b.OUTSTANDING;
+  });
+
+  DEF_DATA = all;
+  defPage = 1;
+
+  // Update summary cards
+  var totalOut = all.reduce(function(s, r) { return s + r.OUTSTANDING; }, 0);
+  var avg = all.length > 0 ? totalOut / all.length : 0;
+
+  setText('def-count', all.length.toLocaleString());
+  setText('def-total-out', '₹' + Math.round(totalOut).toLocaleString());
+  setText('def-avg-out', '₹' + Math.round(avg).toLocaleString());
+  setText('def-shown-count', all.length.toLocaleString());
+
+  renderDefaulters(1);
+}
+
+function renderDefaulters(page) {
+  defPage = page;
+  var slice = DEF_DATA.slice((page - 1) * PS, page * PS);
+  var tbody = gel('def-tbody');
+  if (!tbody) return;
+
+  tbody.innerHTML = slice.map(function(r, i) {
+    var rank = (page - 1) * PS + i + 1;
+    var out = Math.round(r.OUTSTANDING);
+    var outColor = out > 100000 ? '#DC2626' : out > 25000 ? '#EA580C' : '#D97706';
+    var rankColor = rank === 1 ? '#F59E0B' : rank === 2 ? '#9CA3AF' : rank === 3 ? '#CD7F32' : 'var(--muted)';
+    var rankIcon = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank;
+    var paid = Math.round(r.PAY_AMT);
+    var lat = parseFloat(r.LAT), lon = parseFloat(r.LON);
+    if (lat > 50) { var t = lat; lat = lon; lon = t; }
+    var mapUrl = (lat && lon) ? 'https://www.google.com/maps?q=' + lat + ',' + lon : '';
+    var statusColor = r.STATUS === 'ACTIVE' ? '#059669' : r.STATUS === 'INACTIVE' ? '#DC2626' : '#D97706';
+
+    return '<tr>' +
+      '<td style="font-family:var(--fh);font-weight:700;color:' + rankColor + ';font-size:14px;text-align:center">' + rankIcon + '</td>' +
+      '<td style="font-family:var(--fh);color:#2563EB;font-weight:700;cursor:pointer" onclick="openFromDefaulter(\''+r.ACCT_ID+'\')">'+r.ACCT_ID+'</td>'+
+      '<td style="font-weight:700">' + (r.NAME || '-') + '</td>' +
+      '<td>' + r.MOBILE + '</td>' +
+      '<td style="font-family:var(--fh);font-weight:700;color:' + outColor + ';font-size:14px">₹' + out.toLocaleString() + '</td>' +
+      '<td style="font-size:11px;color:var(--muted)">' + r.PAY_DATE + '</td>' +
+      '<td style="font-family:var(--fh);color:#059669;font-weight:700">' + (paid > 0 ? '₹' + paid.toLocaleString() : '-') + '</td>' +
+      '<td><span style="font-size:11px;font-weight:700;color:' + statusColor + '">' + r.STATUS + '</span></td>' +
+      '<td>' + r.SUBSTATION + '</td>' +
+      '<td>' + r.FEEDER + '</td>' +
+      '<td>' + (mapUrl ? '<a class="ml" href="' + mapUrl + '" target="_blank">📍 MAP</a>' : '') + '</td>' +
+    '</tr>';
+  }).join('');
+
+  rp('def-pg', page, Math.ceil(DEF_DATA.length / PS), function(p) { renderDefaulters(p); });
+}
+
+function expDefaultersX() {
+  if (!DEF_DATA.length) return alert('No data.');
+  var ws = XLSX.utils.json_to_sheet(DEF_DATA);
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Defaulters');
+  XLSX.writeFile(wb, 'Top_Defaulters_' + Date.now() + '.xlsx');
 }
 
 function showHelp() {
