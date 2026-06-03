@@ -207,7 +207,7 @@ select option{background:#fff;color:#1E1B4B;}
   <div class="login-box">
     <div class="login-logo">⚡</div>
     <div class="login-title">UPP<span>CL</span> TOOL</div>
-    <div class="login-sub">CONSUMER DATA INTELLIGENCE · EUDD2</div>
+    <div class="login-sub">CONSUMER DATA INTELLIGENCE · JHANSI</div>
     <div class="role-tabs">
       <button class="role-tab active" id="tab-admin" onclick="setLoginRole('admin')">👑 ADMIN</button>
       <button class="role-tab" id="tab-user" onclick="setLoginRole('user')">👤 USER</button>
@@ -598,6 +598,8 @@ function ia(){
   setText('s-feed',feedSet.size.toString());
   gel('upload-screen').style.display='none';
   FD=D.slice();
+  // Pre-build defaulter index in background
+  setTimeout(buildDefAll, 500);
 }
 
 // ─── SEARCH ───────────────────────────────────────────────────────────────────
@@ -1075,41 +1077,63 @@ function onDefSubChange(){
   runDefaulterFilter();
 }
 
+// Pre-built full defaulter list (built once after data loads)
+var DEF_ALL = [];
+
+function buildDefAll() {
+  DEF_ALL = [];
+  // Build a D index for fast lookup
+  var dIdx = {};
+  D.forEach(function(r){ dIdx[String(r.ACCT_ID)] = r; });
+  Object.keys(PAY_DATA).forEach(function(acct){
+    var p = PAY_DATA[acct];
+    var out = parseFloat(p.TOTAL_OUTSTANDING) || 0;
+    if (out < 1) return; // skip zero
+    var c = dIdx[acct];
+    DEF_ALL.push({
+      ACCT_ID: acct,
+      NAME: p.NAME || (c ? c.NAME : '-'),
+      MOBILE: c ? (c.MOBILE_NO||'-') : '-',
+      ADDRESS: c ? (c.ADDRESS||'-') : '-',
+      SUPPLY_TYPE: p.SUPPLY_TYPE || '-',
+      OUTSTANDING: out,
+      PAY_AMT: parseFloat(p.PAY_AMT) || 0,
+      PAY_DATE: p.PAY_DATE || '-',
+      STATUS: p.STATUS || 'INSERVICE',
+      SUBSTATION: c ? (c.SUBSTATION||'-') : '-',
+      FEEDER: c ? (c.FEEDER||'-') : '-',
+      LAT: c ? c.LAT : '',
+      LON: c ? c.LON : ''
+    });
+  });
+}
+
 function runDefaulterFilter(){
   if(!gel('def-tbody')){buildDefaulterPanel();return;}
-  var minOut=parseFloat(gel('def-min')?gel('def-min').value:5000)||5000;
-  var sub=gel('def-sub')?gel('def-sub').value:'';
-  var feed=gel('def-feed')?gel('def-feed').value:'';
-  var supply=gel('def-supply')?gel('def-supply').value:'';
-  var sortDir=gel('def-sort')?gel('def-sort').value:'desc';
+  if(!DEF_ALL.length) buildDefAll();
 
-  var all=[];
-  Object.keys(PAY_DATA).forEach(function(acct){
-    var p=PAY_DATA[acct];
-    var out=parseFloat(p.TOTAL_OUTSTANDING)||0;
-    if(out<minOut)return;
-    var consumer=D.find(function(r){return String(r.ACCT_ID)===String(acct);});
-    var subName=consumer?(consumer.SUBSTATION||'-'):'-';
-    var feedName=consumer?(consumer.FEEDER||'-'):'-';
-    var mobile=consumer?(consumer.MOBILE_NO||'-'):'-';
-    var lat=consumer?consumer.LAT:''; var lon=consumer?consumer.LON:'';
-    var addr=consumer?(consumer.ADDRESS||'-'):'-';
-    if(sub&&subName!==sub)return;
-    if(feed&&feedName!==feed)return;
-    if(supply&&(p.SUPPLY_TYPE||'-')!==supply)return;
-    all.push({ACCT_ID:acct,NAME:p.NAME||(consumer?consumer.NAME:'-'),MOBILE:mobile,ADDRESS:addr,
-      SUPPLY_TYPE:p.SUPPLY_TYPE||'-',OUTSTANDING:out,PAY_AMT:parseFloat(p.PAY_AMT)||0,
-      PAY_DATE:p.PAY_DATE||'-',STATUS:p.STATUS||'INSERVICE',
-      SUBSTATION:subName,FEEDER:feedName,LAT:lat,LON:lon});
+  var minOut = parseFloat(gel('def-min') ? gel('def-min').value : 5000) || 5000;
+  var sub    = gel('def-sub')    ? gel('def-sub').value    : '';
+  var feed   = gel('def-feed')   ? gel('def-feed').value   : '';
+  var supply = gel('def-supply') ? gel('def-supply').value : '';
+  var sortDir= gel('def-sort')   ? gel('def-sort').value   : 'desc';
+
+  // Fast filter on pre-built array
+  var all = DEF_ALL.filter(function(r){
+    if(r.OUTSTANDING < minOut) return false;
+    if(sub    && r.SUBSTATION  !== sub)    return false;
+    if(feed   && r.FEEDER      !== feed)   return false;
+    if(supply && r.SUPPLY_TYPE !== supply) return false;
+    return true;
   });
 
   all.sort(function(a,b){return sortDir==='desc'?b.OUTSTANDING-a.OUTSTANDING:a.OUTSTANDING-b.OUTSTANDING;});
-  DEF_DATA=all;
+  DEF_DATA = all;
 
-  var totalOut=all.reduce(function(s,r){return s+r.OUTSTANDING;},0);
-  setText('def-count',all.length.toLocaleString());
+  var totalOut = all.reduce(function(s,r){return s+r.OUTSTANDING;},0);
+  setText('def-count',   all.length.toLocaleString());
   setText('def-total-out','₹'+Math.round(totalOut).toLocaleString());
-  setText('def-avg-out',all.length?'₹'+Math.round(totalOut/all.length).toLocaleString():'₹0');
+  setText('def-avg-out',  all.length?'₹'+Math.round(totalOut/all.length).toLocaleString():'₹0');
   renderDefaulters(1);
 }
 
