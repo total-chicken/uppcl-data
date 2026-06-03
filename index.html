@@ -393,6 +393,7 @@ const FILES_EUDD2 = [
 ];
 const FILES = FILES_EUDD1.concat(FILES_EUDD2); // main index loads all
 const DC_FILE = 'https://raw.githubusercontent.com/anshu10kumar04-pixel/uppcl-data/main/DISCONNECTED.xlsx';
+const DEFAULTER_FILE = 'https://raw.githubusercontent.com/anshu10kumar04-pixel/uppcl-data/main/defaulter.csv';
 const WORKER_URL = 'https://anshu10kumar04-pixel.github.io/uppcl-data/worker.js';
 
 // ─── GLOBALS ─────────────────────────────────────────────────────────────────
@@ -598,8 +599,6 @@ function ia(){
   setText('s-feed',feedSet.size.toString());
   gel('upload-screen').style.display='none';
   FD=D.slice();
-  // Pre-build defaulter index in background
-  setTimeout(buildDefAll, 500);
 }
 
 // ─── SEARCH ───────────────────────────────────────────────────────────────────
@@ -1077,33 +1076,80 @@ function onDefSubChange(){
   runDefaulterFilter();
 }
 
-// Pre-built full defaulter list (built once after data loads)
+// Pre-built full defaulter list (loaded from defaulter.csv)
 var DEF_ALL = [];
+var _defFileLoaded = false;
 
 function buildDefAll() {
+  if (_defFileLoaded) return;
+  _defFileLoaded = true;
+  fetch(DEFAULTER_FILE)
+    .then(function(r){ return r.ok ? r.text() : Promise.reject('defaulter.csv not found'); })
+    .then(function(text){
+      DEF_ALL = [];
+      var nl = text.indexOf('\n'); if(nl<0) return;
+      var hdrs = text.substring(0,nl).replace(/\r/,'').split(',').map(function(h){return h.replace(/"/g,'').trim();});
+      var iAcct=hdrs.indexOf('ACCT_ID'), iMob=hdrs.indexOf('MOBILE_NO'),
+          iName=hdrs.indexOf('NAME'), iAddr=hdrs.indexOf('ADDRESS'),
+          iCat=hdrs.indexOf('CATEGORY'), iLoad=hdrs.indexOf('LOAD'),
+          iLat=hdrs.indexOf('LAT'), iLon=hdrs.indexOf('LON'),
+          iSub=hdrs.indexOf('SUBSTATION'), iFeed=hdrs.indexOf('FEEDER'),
+          iDate=hdrs.indexOf('LP DATE'), iAmt=hdrs.indexOf('LP AMT'),
+          iOut=hdrs.indexOf('TOTAL OUTSTANDING');
+      var pos=nl+1, len=text.length;
+      while(pos<len){
+        var end=text.indexOf('\n',pos); if(end<0)end=len;
+        var line=text.substring(pos,end); pos=end+1;
+        if(!line||line==='\r') continue;
+        var v=line.split(',');
+        var acct=(v[iAcct]||'').replace(/"/g,'').trim(); if(!acct) continue;
+        var lat=(v[iLat]||'').replace(/"/g,'');
+        var lon=(v[iLon]||'').replace(/"/g,'');
+        var out=parseFloat((v[iOut]||'').replace(/"/g,''))||0;
+        if(out<1) continue;
+        DEF_ALL.push({
+          ACCT_ID: acct,
+          NAME: (v[iName]||'').replace(/"/g,''),
+          MOBILE: (v[iMob]||'').replace(/"/g,''),
+          ADDRESS: (v[iAddr]||'').replace(/"/g,''),
+          SUPPLY_TYPE: (v[iCat]||'').replace(/"/g,''),
+          OUTSTANDING: out,
+          PAY_AMT: parseFloat((v[iAmt]||'').replace(/"/g,''))||0,
+          PAY_DATE: (v[iDate]||'').replace(/"/g,''),
+          STATUS: 'INSERVICE',
+          SUBSTATION: (v[iSub]||'').replace(/"/g,''),
+          FEEDER: (v[iFeed]||'').replace(/"/g,''),
+          LAT: lat, LON: lon
+        });
+      }
+      console.log('Defaulter file loaded:', DEF_ALL.length, 'records');
+      // If defaulter panel is open, refresh it
+      if(document.getElementById('panel-defaulter').classList.contains('active')) runDefaulterFilter();
+    })
+    .catch(function(e){
+      console.warn('Defaulter file failed, using PAY_DATA:', e);
+      _defFileLoaded = false; // allow retry via PAY_DATA fallback
+      buildDefAllFromPayData();
+    });
+}
+
+function buildDefAllFromPayData() {
   DEF_ALL = [];
-  // Build a D index for fast lookup
   var dIdx = {};
   D.forEach(function(r){ dIdx[String(r.ACCT_ID)] = r; });
   Object.keys(PAY_DATA).forEach(function(acct){
     var p = PAY_DATA[acct];
     var out = parseFloat(p.TOTAL_OUTSTANDING) || 0;
-    if (out < 1) return; // skip zero
+    if (out < 1) return;
     var c = dIdx[acct];
     DEF_ALL.push({
-      ACCT_ID: acct,
-      NAME: p.NAME || (c ? c.NAME : '-'),
-      MOBILE: c ? (c.MOBILE_NO||'-') : '-',
-      ADDRESS: c ? (c.ADDRESS||'-') : '-',
-      SUPPLY_TYPE: p.SUPPLY_TYPE || '-',
-      OUTSTANDING: out,
-      PAY_AMT: parseFloat(p.PAY_AMT) || 0,
-      PAY_DATE: p.PAY_DATE || '-',
-      STATUS: p.STATUS || 'INSERVICE',
-      SUBSTATION: c ? (c.SUBSTATION||'-') : '-',
-      FEEDER: c ? (c.FEEDER||'-') : '-',
-      LAT: c ? c.LAT : '',
-      LON: c ? c.LON : ''
+      ACCT_ID: acct, NAME: p.NAME||(c?c.NAME:'-'),
+      MOBILE: c?(c.MOBILE_NO||'-'):'-', ADDRESS: c?(c.ADDRESS||'-'):'-',
+      SUPPLY_TYPE: p.SUPPLY_TYPE||'-', OUTSTANDING: out,
+      PAY_AMT: parseFloat(p.PAY_AMT)||0, PAY_DATE: p.PAY_DATE||'-',
+      STATUS: p.STATUS||'INSERVICE',
+      SUBSTATION: c?(c.SUBSTATION||'-'):'-', FEEDER: c?(c.FEEDER||'-'):'-',
+      LAT: c?c.LAT:'', LON: c?c.LON:''
     });
   });
 }
