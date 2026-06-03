@@ -454,10 +454,10 @@ html { scroll-behavior: smooth; }
 </div>
 <div id="app">
   <div class="tabs">
-    <div class="tab active" onclick="st('lookup')">🔍 SEARCH</div>
-    <div class="tab" onclick="st('filter')">⚙️ FILTER & EXPORT</div>
-    <div class="tab" onclick="st('dc')">🔴 SM UNRECHARGE</div>
-    <div class="tab" onclick="st('defaulter')">⚠️ DEFAULTERS</div>
+    <div class="tab active" onclick="st('lookup')" ontouchstart="st('lookup')">🔍 SEARCH</div>
+    <div class="tab" onclick="st('filter')" ontouchstart="st('filter')">⚙️ FILTER & EXPORT</div>
+    <div class="tab" onclick="st('dc')" ontouchstart="st('dc')">🔴 SM UNRECHARGE</div>
+    <div class="tab" onclick="st('defaulter')" ontouchstart="st('defaulter')">⚠️ DEFAULTERS</div>
   </div>
   <!-- FILTER -->
   <div class="panel" id="panel-filter">
@@ -856,6 +856,8 @@ html { scroll-behavior: smooth; }
             <th>ACCT ID</th>
             <th>NAME</th>
             <th>MOBILE</th>
+            <th>SUPPLY TYPE</th>
+            <th>ADDRESS</th>
             <th>OUTSTANDING</th>
             <th>LAST PAID</th>
             <th>PAY AMT</th>
@@ -1030,16 +1032,21 @@ function hl2(){
   ld.style.pointerEvents = 'none';
 }
 
+function filterByStatus() {
+  var allowed = ['INSERVICE','TD','TD>6MONTHS'];
+  D = D.filter(function(r) {
+    var p = PAY_DATA[String(r.ACCT_ID)];
+    if (!p) return false;
+    var s = (p.STATUS||'').toUpperCase().replace(/[\s>]/g,'').replace('6MONTHS','6MONTHS');
+    // Normalize: INSERVICE, TD, TD>6MONTHS
+    return s==='INSERVICE' || s==='TD' || s==='TD>6MONTHS' || s==='TD6MONTHS';
+  });
+}
+
 function ia(){
   // Filter D to only INSERVICE, TD, TD>6 MONTHS
   if (Object.keys(PAY_DATA).length > 0) {
-    var allowed = ['INSERVICE','TD','TD>6 MONTHS','TD>6MONTHS','TD > 6 MONTHS'];
-    D = D.filter(function(r) {
-      var p = PAY_DATA[String(r.ACCT_ID)];
-      if (!p) return false;
-      var s = (p.STATUS||'').toUpperCase().replace(/\s+/g,'');
-      return allowed.some(function(a){ return s === a.replace(/\s+/g,''); });
-    });
+    filterByStatus();
   }
   document.getElementById('upload-screen').style.display='none';
   document.getElementById('app').style.display='block';
@@ -2770,14 +2777,8 @@ function loadPaymentData() {
 
       // Re-filter D to only allowed statuses
       if (D.length > 0) {
-        var allowed2 = ['INSERVICE','TD','TD>6MONTHS','TD>6 MONTHS','TD > 6 MONTHS'];
         var beforeCount = D.length;
-        D = D.filter(function(r) {
-          var p = PAY_DATA[String(r.ACCT_ID)];
-          if (!p) return false;
-          var s = (p.STATUS||'').toUpperCase().replace(/\s+/g,'');
-          return allowed2.some(function(a){ return s === a.replace(/\s+/g,''); });
-        });
+        filterByStatus();
         FD = D.slice();
         console.log('Filtered from', beforeCount, 'to', D.length, 'consumers');
         setText('s-tot', D.length.toLocaleString());
@@ -2906,7 +2907,8 @@ function renderDefaulters(page) {
     var lat = parseFloat(r.LAT), lon = parseFloat(r.LON);
     if (lat > 50) { var t = lat; lat = lon; lon = t; }
     var mapUrl = (lat && lon) ? 'https://www.google.com/maps?q=' + lat + ',' + lon : '';
-    var statusColor = r.STATUS === 'ACTIVE' ? '#059669' : r.STATUS === 'INACTIVE' ? '#DC2626' : '#D97706';
+    var st2 = (r.STATUS||'').toUpperCase();
+    var statusColor = (st2==='INSERVICE'||st2==='IN SERVICE') ? '#059669' : (st2.indexOf('TD')>-1) ? '#D97706' : '#DC2626';
 
     return '<tr>' +
       '<td style="font-family:var(--fh);font-weight:700;color:' + rankColor + ';font-size:14px;text-align:center">' + rankIcon + '</td>' +
