@@ -910,7 +910,7 @@ function renderDcTable(page){
       '<td style="font-family:var(--fh);font-weight:700;color:'+outColor+';">₹'+out.toLocaleString()+'</td>'+
       '<td>'+r.SUBSTATION+'</td>'+
       '<td>'+r.FEEDER+'</td>'+
-      '<td>'+(mapUrl?'<a class="ml" href="'+mapUrl+'" target="_blank">📍</a>':'')+'</td>'+
+      '<td>'+(mapUrl?'<a class="ml" href="#" onclick="event.preventDefault();openDefaulterMap(\''+r.ACCT_ID+'\')">📍</a>':'')+'</td>'+
     '</tr>';
   }).join('');
   rp('dc-pg',page,Math.ceil(DC_FD.length/PS),renderDcTable);
@@ -1390,7 +1390,7 @@ function renderDefaulters(page){
       '<td><span style="font-size:11px;font-weight:700;color:'+stColor+';">'+r.STATUS+'</span></td>'+
       '<td>'+r.SUBSTATION+'</td>'+
       '<td>'+r.FEEDER+'</td>'+
-      '<td>'+(mapUrl?'<a class="ml" href="'+mapUrl+'" target="_blank">📍</a>':'')+'</td>'+
+      '<td>'+(mapUrl?'<a class="ml" href="#" onclick="event.preventDefault();openDefaulterMap(\''+r.ACCT_ID+'\')">📍</a>':'')+'</td>'+
     '</tr>';
   }).join('');
   rp('def-pg',page,Math.ceil(DEF_DATA.length/PS),renderDefaulters);
@@ -1402,6 +1402,44 @@ function openFromDefaulter(acctId){
   if(r){ openMainDetail(acctId); return; }
   var inp=gel('li'); if(inp)inp.value=acctId;
   st('lookup'); dl();
+}
+
+function openDefaulterMap(acctId){
+  var r=DEF_ALL.find(function(x){return String(x.ACCT_ID)===String(acctId);});
+  if(!r||!r.LAT||!r.LON)return;
+  var lat=parseFloat(r.LAT), lon=parseFloat(r.LON);
+  if(lat>50){var t=lat;lat=lon;lon=t;}
+
+  // Find nearby defaulters within 2km
+  var nearby=DEF_ALL.filter(function(x){
+    var lt=parseFloat(x.LAT),lg=parseFloat(x.LON);
+    return String(x.ACCT_ID)!==String(acctId)&&lt&&lg&&!isNaN(lt)&&!isNaN(lg)&&lt>20&&lt<30;
+  }).map(function(x){
+    var xLat=parseFloat(x.LAT),xLon=parseFloat(x.LON);
+    if(xLat>50){var t=xLat;xLat=xLon;xLon=t;}
+    return Object.assign({},x,{_dist:haversine(lat,lon,xLat,xLon),_lat:xLat,_lon:xLon});
+  }).filter(function(x){return x._dist<=5&&x._lat&&x._lon&&!isNaN(x._lat);})
+  .sort(function(a,b){return a._dist-b._dist;})
+  .slice(0,15);
+
+  var data=[{
+    lat:lat,lon:lon,name:r.NAME||'Unknown',acct:String(r.ACCT_ID),
+    mobile:r.MOBILE_NO||r.MOBILE||'-',out:Math.round(r.OUTSTANDING||0),
+    sub:r.SUBSTATION||'-',feed:r.FEEDER||'-',
+    addr:(r.ADDRESS||'-').substring(0,100),
+    lmv:r.SUPPLY_TYPE||'-',atr:'DEFAULTER',main:true,dist:0
+  }].concat(nearby.map(function(x){
+    return {
+      lat:x._lat,lon:x._lon,name:x.NAME||'Unknown',acct:String(x.ACCT_ID),
+      mobile:x.MOBILE_NO||x.MOBILE||'-',out:Math.round(x.OUTSTANDING||0),
+      sub:x.SUBSTATION||'-',feed:x.FEEDER||'-',
+      addr:(x.ADDRESS||'-').substring(0,100),
+      lmv:x.SUPPLY_TYPE||'-',atr:'DEFAULTER',main:false,dist:x._dist
+    };
+  }));
+
+  try{localStorage.setItem('uppcl_map_data',JSON.stringify({data:data,lat:lat,lon:lon}));}catch(e){}
+  window.open('https://anshu10kumar04-pixel.github.io/uppcl-data/map.html','_blank');
 }
 
 function openMainDetail(acctId){
@@ -1470,8 +1508,12 @@ function openMainDetail(acctId){
   } else gel('modal-nearby-section').style.display='none';
 
   var mapBtn=gel('modal-map-btn');
-  if(lat&&lon){mapBtn.href='https://www.google.com/maps?q='+lat+','+lon+'&z=17';mapBtn.style.display='inline-flex';}
-  else mapBtn.style.display='none';
+  if(lat&&lon){
+    mapBtn.href='#';
+    mapBtn.onclick=function(e){e.preventDefault();closeModal();openDefaulterMap(acctId);};
+    mapBtn.innerHTML='📍 VIEW ON MAP WITH NEARBY';
+    mapBtn.style.display='inline-flex';
+  } else mapBtn.style.display='none';
 
   var mo=gel('detail-modal'); mo.classList.add('open'); document.body.style.overflow='hidden';
   modalCurrentAcct=String(acctId); modalIsdc=false;
