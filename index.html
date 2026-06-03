@@ -1291,62 +1291,75 @@ function autoFetch() {
   document.getElementById('loading').style.display = 'flex';
   sl('CONNECTING TO GITHUB…', 10);
 
-  const allData = [];
-  let fileIdx = 0;
+  var completed = 0;
+  var allData = new Array(FILES.length);
 
-  function fetchWithRetry(url, retries) {
+  // Load ALL files in parallel
+  var promises = FILES.map(function(url, idx) {
     return fetch(url)
       .then(function(res) {
-        if (!res.ok) throw new Error('HTTP ' + res.status);
+        if (!res.ok) throw new Error('HTTP ' + res.status + ' for file ' + (idx+1));
         return res.text();
       })
-      .catch(function(err) {
-        if (retries > 0) {
-          sl('RETRYING FILE ' + (fileIdx+1) + '…', 15 + fileIdx * 20);
-          return new Promise(function(resolve) { setTimeout(resolve, 2000); })
-            .then(function() { return fetchWithRetry(url, retries - 1); });
-        }
-        throw err;
-      });
-  }
-
-  function loadNext() {
-    if (fileIdx >= FILES.length) {
-      try {
-        sl('MERGING DATA…', 90);
-        D = allData.flat().filter(function(r) { return r && r.ACCT_ID; });
-        sl('BUILDING INDEX…', 96);
-        ia();
-        hl2();
-      } catch(e) {
-        console.error('Error:', e.message);
-        hl2();
-        showFetchError(e.message);
-      }
-      return;
-    }
-    const url = FILES[fileIdx];
-    sl('LOADING ' + (fileIdx+1) + ' OF ' + FILES.length + '…', 15 + fileIdx * 20);
-    fetchWithRetry(url, 3)
       .then(function(text) {
-        try {
-          sl('PARSING ' + (fileIdx+1) + ' OF ' + FILES.length + '…', 20 + fileIdx * 20);
-          const rows = fastParseCSV(text);
-          allData.push(rows);
-          fileIdx++;
-          loadNext();
-        } catch(e) {
-          hl2();
-          showFetchError('Parse error file ' + (fileIdx+1) + ': ' + e.message);
-        }
-      })
-      .catch(function(err) {
-        hl2();
-        showFetchError('Network error loading file ' + (fileIdx+1) + '. Check internet connection and try again.');
+        completed++;
+        sl('PARSING ' + completed + ' OF ' + FILES.length + '…', 15 + Math.round(completed / FILES.length * 70));
+        allData[idx] = fastParseCSV(text);
       });
-  }
+  });
 
-  loadNext();
+  // Also load payment data in parallel
+  var payPromise = fetch(PAY_FILE)
+    .then(function(res) { return res.ok ? res.text() : ''; })
+    .then(function(text) {
+      if (!text) return;
+      var lines = text.split('\n');
+      if (lines.length < 2) return;
+      var hdrs = lines[0].split(',').map(function(h){ return h.trim().replace(/"/g,''); });
+      var ai = hdrs.indexOf('ACCT_ID');
+      var pi = hdrs.indexOf('PAY_AMT');
+      var di = hdrs.indexOf('PAY_DATE');
+      var oi = hdrs.indexOf('TOTAL_OUTSTANDING');
+      var si = hdrs.indexOf('status');
+      var ni = hdrs.indexOf('NAME');
+      var sui = hdrs.indexOf('SUPPLY_TYPE');
+      var ci = hdrs.indexOf('CLOSING_READING_KWH');
+      for (var i = 1; i < lines.length; i++) {
+        var line = lines[i].trim();
+        if (!line) continue;
+        var vals = line.split(',').map(function(v){ return v.trim().replace(/^"|"$/g,''); });
+        var acct = vals[ai];
+        if (!acct) continue;
+        PAY_DATA[acct] = {
+          PAY_AMT: vals[pi]||'-', PAY_DATE: vals[di]||'-',
+          TOTAL_OUTSTANDING: vals[oi]||'-', STATUS: vals[si]||'-',
+          NAME: vals[ni]||'-', SUPPLY_TYPE: vals[sui]||'-',
+          CLOSING_READING: vals[ci]||'-'
+        };
+      }
+    })
+    .catch(function(e){ console.warn('Payment file:', e.message); });
+
+  Promise.all(promises.concat([payPromise]))
+    .then(function() {
+      sl('MERGING DATA…', 88);
+      D = [];
+      for (var i = 0; i < allData.length; i++) {
+        if (allData[i]) {
+          for (var j = 0; j < allData[i].length; j++) {
+            if (allData[i][j] && allData[i][j].ACCT_ID) D.push(allData[i][j]);
+          }
+        }
+      }
+      sl('BUILDING INDEX…', 95);
+      ia();
+      hl2();
+    })
+    .catch(function(err) {
+      // Retry once on failure
+      sl('RETRYING…', 10);
+      setTimeout(autoFetch, 2000);
+    });
 }
 
 function fastParseCSV(text) {
@@ -2454,8 +2467,7 @@ function loginSuccess(role) {
   applyRoleRestrictions(role);
   // Start loading data after login if not already loaded
   if (D.length === 0) autoFetch();
-  // Load payment data
-  if (Object.keys(PAY_DATA).length === 0) loadPaymentData();
+
 }
 
 function applyRoleRestrictions(role) {
