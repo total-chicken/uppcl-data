@@ -1393,3 +1393,24 @@ function parseFileSync(text) {
   return {rows:rows, pay:pay};
 }
 
+// ─── LOGIN & ROLE ACCESS ──────────────────────────────────────────────────────
+const ADMIN_PIN = '0107';
+const USER_PIN  = '1234';
+let currentPin = '', loginRole = 'admin', CURRENT_ROLE = null;
+function setLoginRole(role){loginRole=role;gel('tab-admin').classList.toggle('active',role==='admin');gel('tab-user').classList.toggle('active',role==='user');pinReset();}
+function pinPress(digit){if(currentPin.length>=4)return;currentPin+=digit;updatePinDots();if(currentPin.length===4)setTimeout(checkPin,150);}
+function pinBackspace(){currentPin=currentPin.slice(0,-1);updatePinDots();if(gel('login-error'))gel('login-error').textContent='';}
+function pinClear(){pinReset();}
+function pinReset(){currentPin='';updatePinDots(false);if(gel('login-error'))gel('login-error').textContent='';}
+function updatePinDots(error){for(var i=0;i<4;i++){var d=gel('pd'+i);if(!d)continue;d.classList.toggle('filled',i<currentPin.length);d.classList.toggle('error',error===true);}}
+function checkPin(){var correct=loginRole==='admin'?ADMIN_PIN:USER_PIN;if(currentPin===correct){loginSuccess(loginRole);}else{updatePinDots(true);if(gel('login-error'))gel('login-error').textContent='✗ INCORRECT PIN';setTimeout(pinReset,800);}}
+function loginSuccess(role){CURRENT_ROLE=role;sessionStorage.setItem('uppcl_role',role);var ls=gel('login-screen');ls.style.display='none';ls.style.pointerEvents='none';var badge=gel('role-indicator');if(badge){badge.textContent=role==='admin'?'👑 ADMIN':'👤 USER';badge.className='role-badge '+(role==='admin'?'badge-admin':'badge-user');}applyRoleRestrictions(role);if(D.length===0)autoFetch();}
+function applyRoleRestrictions(role){if(role==='user'){document.querySelectorAll('button').forEach(function(btn){if(btn.textContent.includes('SHEET SYNC'))btn.style.display='none';if(btn.textContent.includes('EXPORT KML'))btn.style.display='none';});}}
+function logout(){sessionStorage.removeItem('uppcl_role');CURRENT_ROLE=null;currentPin='';loginRole='admin';gel('tab-admin').classList.add('active');gel('tab-user').classList.remove('active');pinReset();var ls=gel('login-screen');ls.style.display='flex';ls.style.pointerEvents='all';}
+window.addEventListener('DOMContentLoaded',function(){sessionStorage.removeItem('uppcl_role');gel('login-screen').style.display='flex';});
+function showHelp(){var m=gel('help-modal');if(m){m.style.display='flex';document.body.style.overflow='hidden';}}
+function closeHelp(){var m=gel('help-modal');if(m){m.style.display='none';document.body.style.overflow='';}}
+
+</script>
+</body>
+</html>
