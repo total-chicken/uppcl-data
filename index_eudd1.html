@@ -526,12 +526,20 @@ function fmtOut(v){ var n=parseFloat(v)||0; return n>0?'<span style="color:#F43F
 function rp(cid,cur,tot,fn){
   var c=gel(cid); if(!c) return;
   if(tot<=1){c.innerHTML='';return;}
-  var h='';
+  var h='<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">';
+  // First page
+  if(cur>1) h+='<button class="pgb" onclick="('+fn+')(1)">«</button>';
   if(cur>1) h+='<button class="pgb" onclick="('+fn+')('+( cur-1)+')">‹</button>';
   var s=Math.max(1,cur-2), e=Math.min(tot,cur+2);
   for(var i=s;i<=e;i++) h+='<button class="pgb'+(i===cur?' active':'')+ '" onclick="('+fn+')('+i+')">'+i+'</button>';
   if(cur<tot) h+='<button class="pgb" onclick="('+fn+')('+( cur+1)+')">›</button>';
+  if(cur<tot) h+='<button class="pgb" onclick="('+fn+')('+tot+')">»</button>';
+  // Page jump input
   h+='<span class="pgi">Page '+cur+' / '+tot+'</span>';
+  h+='<input type="number" min="1" max="'+tot+'" value="'+cur+'" style="width:55px;border:1.5px solid #C7D2FE;border-radius:6px;padding:4px 6px;font-size:12px;text-align:center;outline:none;" '+
+     'onchange="var p=parseInt(this.value);if(p>=1&&p<='+tot+')('+fn+')(p)" '+
+     'onkeydown="if(event.keyCode===13){var p=parseInt(this.value);if(p>=1&&p<='+tot+')('+fn+')(p)}" />';
+  h+='</div>';
   c.innerHTML=h;
 }
 
@@ -902,7 +910,7 @@ function renderDcTable(page){
     return '<tr>'+
       '<td style="font-family:var(--fh);color:var(--muted);font-size:11px;">'+rank+'</td>'+
       '<td style="font-size:11px;color:var(--muted);">'+(r.DATE_DC||'-')+'</td>'+
-      '<td style="font-family:var(--fh);color:#4F46E5;font-weight:700;cursor:pointer;" onclick="openDcDetail(\''+r.ACCT_ID+'\')">'+r.ACCT_ID+'</td>'+
+      '<td style="font-family:var(--fh);color:#4F46E5;font-weight:700;cursor:pointer;" data-id="'+r.ACCT_ID+'" onclick="openDcDetail(this.dataset.id)">'+r.ACCT_ID+'</td>'+
       '<td style="font-weight:600;">'+r.NAME+'</td>'+
       '<td>'+r.MOBILE_NO+'</td>'+
       '<td style="font-family:var(--fh);color:var(--muted);">'+r.METER_NO+'</td>'+
@@ -1379,7 +1387,7 @@ function renderDefaulters(page){
     var stColor=r.STATUS==='INSERVICE'?'#059669':'#F59E0B';
     return '<tr>'+
       '<td style="font-family:var(--fh);font-size:14px;font-weight:700;text-align:center;">'+rIcon+'</td>'+
-      '<td style="font-family:var(--fh);color:#4F46E5;font-weight:700;cursor:pointer;" data-id="'+r.ACCT_ID+'" onclick="defRowClick(this)">'+r.ACCT_ID+'</td>'+
+      '<td style="font-family:var(--fh);color:#4F46E5;font-weight:700;cursor:pointer;" data-id="'+r.ACCT_ID+'" onclick="openFromDefaulter(this.dataset.id)">'+r.ACCT_ID+'</td>'+
       '<td style="font-weight:700;">'+r.NAME+'</td>'+
       '<td>'+r.MOBILE+'</td>'+
       '<td><span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;background:#EEF2FF;color:#4338CA;">'+r.SUPPLY_TYPE+'</span></td>'+
@@ -1390,7 +1398,7 @@ function renderDefaulters(page){
       '<td><span style="font-size:11px;font-weight:700;color:'+stColor+';">'+r.STATUS+'</span></td>'+
       '<td>'+r.SUBSTATION+'</td>'+
       '<td>'+r.FEEDER+'</td>'+
-      '<td>'+(mapUrl?'<a class="ml" href="#" data-id="'+r.ACCT_ID+'" onclick="event.preventDefault();defMapClick(this)">📍</a>':'')+'</td>'+
+      '<td>'+(mapUrl?'<a class="ml" href="#" data-id="'+r.ACCT_ID+'" onclick="event.preventDefault();openDefaulterMap(this.dataset.id)">📍</a>':'')+'</td>'+
     '</tr>';
   }).join('');
   rp('def-pg',page,Math.ceil(DEF_DATA.length/PS),renderDefaulters);
