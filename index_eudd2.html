@@ -384,7 +384,7 @@ html { scroll-behavior: smooth; }
   <div class="login-box">
     <div class="login-logo">⚡</div>
     <div class="login-title">UPP<span style="color:#4F46E5">CL</span> TOOL</div>
-    <div class="login-sub">CONSUMER DATA INTELLIGENCE · EUDD2 · JHANSI</div>
+    <div class="login-sub">CONSUMER DATA INTELLIGENCE · EUDD2 JHANSI</div>
 
     <!-- Role selector -->
     <div class="role-tabs">
@@ -429,7 +429,7 @@ html { scroll-behavior: smooth; }
 <div class="header">
   <div class="logo">
     <div class="logo-icon">⚡</div>
-    <div><div class="logo-text">UPP<span>CL</span> TOOL</div><div class="logo-sub">CONSUMER DATA INTELLIGENCE · EUDD2 &nbsp;<span class="role-badge" id="role-indicator"></span></div></div>
+    <div><div class="logo-text">UPP<span>CL</span> TOOL</div><div class="logo-sub">CONSUMER DATA INTELLIGENCE &nbsp;<span class="role-badge" id="role-indicator"></span></div></div>
   </div>
   <div style="display:flex;align-items:center;gap:16px">
   <button onclick="showHelp()" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.4);color:#FFFFFF;font-family:var(--fh);font-size:11px;font-weight:600;padding:6px 14px;border-radius:6px;cursor:pointer;letter-spacing:1px;transition:all .2s" onmouseover="this.style.borderColor='var(--accent2)';this.style.color='var(--accent2)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">❓ HELP</button>
@@ -1398,6 +1398,10 @@ function autoFetch() {
         iFeed=hdrs.indexOf('FEEDER'), iSerl=hdrs.indexOf('SERIAL_NBR'),
         iPayAmt=hdrs.indexOf('LP AMT'), iPayDate=hdrs.indexOf('LP DATE'),
         iTotOut=hdrs.indexOf('TOTAL OUTSTANDING');
+    // Also handle old column names
+    if(iPayAmt<0) iPayAmt=hdrs.indexOf('PAY_AMT');
+    if(iPayDate<0) iPayDate=hdrs.indexOf('PAY_DATE');
+    if(iTotOut<0) iTotOut=hdrs.indexOf('TOTAL_OUTSTANDING');
 
     function parseChunk() {
       var end = Math.min(pos + CHUNK, totalLines);
