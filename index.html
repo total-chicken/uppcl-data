@@ -1313,14 +1313,22 @@ function autoFetch() {
   function onFetched(idx, text) {
     allTexts[idx] = text || '';
     fetched++;
+    console.log('Fetched', idx, '- size:', (text||'').length, 'bytes');
     sl('DOWNLOADING… ' + fetched + '/' + total, Math.round(fetched/total*55)+5);
     if (fetched === total) setTimeout(startParsing, 30);
   }
 
   FILES.forEach(function(url, idx) {
-    fetch(url).then(function(r){ return r.ok ? r.text() : ''; })
+    fetch(url)
+      .then(function(r){
+        console.log('HTTP', r.status, 'for', url.split('/').pop());
+        return r.ok ? r.text() : Promise.reject('HTTP '+r.status);
+      })
       .then(function(t){ onFetched(idx, t); })
-      .catch(function(){ onFetched(idx, ''); });
+      .catch(function(e){
+        console.error('Fetch failed:', url.split('/').pop(), e);
+        showFetchError('Failed to load ' + url.split('/').pop() + '. Check GitHub repo.');
+      });
   });
 
   // PAY_FILE merged into eudd - skip separate fetch
@@ -1454,11 +1462,11 @@ function fastParseCSV(text) {
 }
 
 function showFetchError(msg) {
+  hl2();
   document.getElementById('upload-screen').style.display = 'flex';
   const p = document.querySelector('.upload-box p');
   if (p) p.innerHTML = '<span style="color:#FF6B6B;font-size:13px">⚠ ' + msg + '</span><br/>' +
-    '<button onclick="autoFetch()" style="margin-top:12px;background:var(--accent);color:#000;font-family:var(--fh);font-size:13px;font-weight:700;padding:10px 24px;border-radius:8px;border:none;cursor:pointer;letter-spacing:1px">🔄 RETRY</button>' +
-    '<br/><span style="font-size:12px;color:var(--muted)">or upload file manually below</span>';
+    '<button onclick="location.reload()" style="margin-top:12px;background:#4F46E5;color:#fff;font-family:var(--fh);font-size:13px;font-weight:700;padding:10px 24px;border-radius:8px;border:none;cursor:pointer;letter-spacing:1px">🔄 RELOAD & RETRY</button>';
   console.error('AutoFetch error:', msg);
 }
 
