@@ -303,7 +303,54 @@ select option{background:#fff;color:#1E1B4B;}
 
   <!-- DEFAULTERS PANEL -->
   <div class="panel" id="panel-defaulter">
-    <!-- filled by loadDefaulters() -->
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+      <div>
+        <div style="font-family:var(--fh);font-size:20px;font-weight:700;color:#F43F5E;">⚠️ TOP DEFAULTERS</div>
+        <div style="font-size:12px;color:var(--muted);">Consumers with Outstanding &gt; ₹5,000</div>
+      </div>
+    </div>
+    <div class="fg" style="margin-bottom:12px;">
+      <div><div class="lbl">MIN OUTSTANDING</div><div class="sw"><select id="def-min" onchange="runDefaulterFilter()">
+        <option value="5000">₹5,000+</option><option value="10000">₹10,000+</option>
+        <option value="25000">₹25,000+</option><option value="50000">₹50,000+</option>
+        <option value="100000">₹1,00,000+</option>
+      </select></div></div>
+      <div><div class="lbl">SUBSTATION</div><div class="sw"><select id="def-sub" onchange="onDefSubChange()"><option value="">ALL</option></select></div></div>
+      <div><div class="lbl">FEEDER</div><div class="sw"><select id="def-feed" onchange="runDefaulterFilter()"><option value="">ALL</option></select></div></div>
+      <div><div class="lbl">SUPPLY TYPE</div><div class="sw"><select id="def-supply" onchange="runDefaulterFilter()"><option value="">ALL</option></select></div></div>
+      <div><div class="lbl">SORT</div><div class="sw"><select id="def-sort" onchange="runDefaulterFilter()">
+        <option value="desc">Highest First</option><option value="asc">Lowest First</option>
+      </select></div></div>
+    </div>
+    <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
+      <div id="def-summary" style="font-family:var(--fh);font-size:13px;font-weight:600;color:var(--muted);flex:1;"></div>
+      <button class="btn btn-acc" onclick="expDefaultersX()">⬇ EXPORT XLSX</button>
+    </div>
+    <div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap;">
+      <div style="background:#FFF1F2;border:1px solid #FECACA;border-left:4px solid #F43F5E;border-radius:10px;padding:12px 16px;min-width:120px;"><div style="font-family:var(--fh);font-size:22px;font-weight:700;color:#F43F5E;" id="def-count">0</div><div style="font-size:10px;color:#991B1B;font-weight:600;">DEFAULTERS</div></div>
+      <div style="background:#FFF7ED;border:1px solid #FED7AA;border-left:4px solid #EA580C;border-radius:10px;padding:12px 16px;min-width:120px;"><div style="font-family:var(--fh);font-size:22px;font-weight:700;color:#EA580C;" id="def-total-out">₹0</div><div style="font-size:10px;color:#9A3412;font-weight:600;">TOTAL OUTSTANDING</div></div>
+      <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-left:4px solid #2563EB;border-radius:10px;padding:12px 16px;min-width:120px;"><div style="font-family:var(--fh);font-size:22px;font-weight:700;color:#2563EB;" id="def-avg-out">₹0</div><div style="font-size:10px;color:#1E40AF;font-weight:600;">AVERAGE</div></div>
+    </div>
+    <div id="def-loading-msg" style="display:none;padding:24px;text-align:center;font-family:var(--fh);color:var(--muted);">⏳ Loading defaulter data…</div>
+    <div class="tw" style="overflow-x:auto;"><table style="table-layout:fixed;min-width:1100px;">
+      <thead><tr>
+        <th style="width:55px">RANK</th>
+        <th style="width:110px;cursor:pointer" onclick="defSort(&#39;ACCT_ID&#39;)">ACCT ID <span id="dsrt-ACCT_ID">⇅</span></th>
+        <th style="width:130px;cursor:pointer" onclick="defSort(&#39;NAME&#39;)">NAME <span id="dsrt-NAME">⇅</span></th>
+        <th style="width:105px">MOBILE</th>
+        <th style="width:90px;cursor:pointer" onclick="defSort(&#39;SUPPLY_TYPE&#39;)">SUPPLY <span id="dsrt-SUPPLY_TYPE">⇅</span></th>
+        <th style="min-width:200px;cursor:pointer" onclick="defSort(&#39;ADDRESS&#39;)">ADDRESS <span id="dsrt-ADDRESS">⇅</span></th>
+        <th style="width:120px;cursor:pointer" onclick="defSort(&#39;OUTSTANDING&#39;)">OUTSTANDING <span id="dsrt-OUTSTANDING">⇅</span></th>
+        <th style="width:95px;cursor:pointer" onclick="defSort(&#39;PAY_DATE&#39;)">LP DATE <span id="dsrt-PAY_DATE">⇅</span></th>
+        <th style="width:95px;cursor:pointer" onclick="defSort(&#39;PAY_AMT&#39;)">LP AMT <span id="dsrt-PAY_AMT">⇅</span></th>
+        <th style="width:80px">STATUS</th>
+        <th style="width:100px;cursor:pointer" onclick="defSort(&#39;SUBSTATION&#39;)">SUBSTATION <span id="dsrt-SUBSTATION">⇅</span></th>
+        <th style="width:110px;cursor:pointer" onclick="defSort(&#39;FEEDER&#39;)">FEEDER <span id="dsrt-FEEDER">⇅</span></th>
+        <th style="width:55px">MAP</th>
+      </tr></thead>
+      <tbody id="def-tbody"></tbody>
+    </table></div>
+    <div class="pg" id="def-pg"></div>
   </div>
 
 </div><!-- end #app -->
@@ -1004,94 +1051,44 @@ function expDcKML(){
 
 // ─── DEFAULTERS ───────────────────────────────────────────────────────────────
 function loadDefaulters(){
-  var panel = gel('panel-defaulter');
-  if(!panel) return;
-  // If already loaded - show immediately
+  // Panel HTML is static - always in DOM
   if(DEF_ALL.length > 0){
-    if(!gel('def-tbody')) buildDefaulterPanel();
-    else runDefaulterFilter();
+    buildDefaulterPanel();
     return;
   }
-  // Still loading in background - show spinner and wait
-  panel.innerHTML = '<div style="padding:40px;text-align:center;font-family:var(--fh);color:var(--muted);">'+
-    '<div style="font-size:32px;margin-bottom:12px;">⏳</div>'+
-    '<div style="font-size:16px;font-weight:700;margin-bottom:8px;">LOADING DEFAULTERS…</div>'+
-    '<div style="font-size:12px;">Please wait a moment…</div>'+
-    '</div>';
-  // Poll until DEF_ALL is ready (loaded in background during autoFetch)
-  var attempts = 0;
-  var poll = setInterval(function(){
+  // Show loading message
+  var msg = gel('def-loading-msg');
+  if(msg) msg.style.display='block';
+  // Poll until background fetch completes
+  var attempts=0;
+  var poll=setInterval(function(){
     attempts++;
-    if(DEF_ALL.length > 0){
+    if(DEF_ALL.length>0){
       clearInterval(poll);
+      if(msg) msg.style.display='none';
       buildDefaulterPanel();
-    } else if(attempts > 30){ // 15 seconds timeout - try loading now
+    } else if(attempts>20){
       clearInterval(poll);
-      buildDefAll();
+      buildDefAll(); // fallback: fetch now
     }
-  }, 500);
+  },500);
 }
 
 function buildDefaulterPanel(){
-  var panel=gel('panel-defaulter');
-  panel.innerHTML=
-    '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;">'+
-      '<div><div style="font-family:var(--fh);font-size:20px;font-weight:700;color:#F43F5E;">⚠️ TOP DEFAULTERS</div>'+
-      '<div style="font-size:12px;color:var(--muted);">Consumers with Outstanding &gt; ₹5,000</div></div>'+
-    '</div>'+
-    '<div class="fg" style="margin-bottom:12px;">'+
-      '<div><div class="lbl">MIN OUTSTANDING</div><div class="sw"><select id="def-min" onchange="runDefaulterFilter()">'+
-        '<option value="5000">₹5,000+</option><option value="10000">₹10,000+</option><option value="25000">₹25,000+</option><option value="50000">₹50,000+</option><option value="100000">₹1,00,000+</option>'+
-      '</select></div></div>'+
-      '<div><div class="lbl">SUBSTATION</div><div class="sw"><select id="def-sub" onchange="onDefSubChange()"><option value="">ALL</option></select></div></div>'+
-      '<div><div class="lbl">FEEDER</div><div class="sw"><select id="def-feed" onchange="runDefaulterFilter()"><option value="">ALL</option></select></div></div>'+
-      '<div><div class="lbl">SUPPLY TYPE</div><div class="sw"><select id="def-supply" onchange="runDefaulterFilter()"><option value="">ALL</option></select></div></div>'+
-      '<div><div class="lbl">SORT</div><div class="sw"><select id="def-sort" onchange="runDefaulterFilter()"><option value="desc">Highest First</option><option value="asc">Lowest First</option></select></div></div>'+
-    '</div>'+
-    '<div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">'+
-      '<div id="def-summary" style="font-family:var(--fh);font-size:13px;font-weight:600;color:var(--muted);flex:1;"></div>'+
-      '<button class="btn btn-acc" onclick="expDefaultersX()">⬇ EXPORT XLSX</button>'+
-    '</div>'+
-    // Summary cards
-    '<div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap;">'+
-      '<div style="background:#FFF1F2;border:1px solid #FECACA;border-left:4px solid #F43F5E;border-radius:10px;padding:12px 16px;min-width:120px;"><div style="font-family:var(--fh);font-size:22px;font-weight:700;color:#F43F5E;" id="def-count">0</div><div style="font-size:10px;color:#991B1B;font-weight:600;">DEFAULTERS</div></div>'+
-      '<div style="background:#FFF7ED;border:1px solid #FED7AA;border-left:4px solid #EA580C;border-radius:10px;padding:12px 16px;min-width:120px;"><div style="font-family:var(--fh);font-size:22px;font-weight:700;color:#EA580C;" id="def-total-out">₹0</div><div style="font-size:10px;color:#9A3412;font-weight:600;">TOTAL OUTSTANDING</div></div>'+
-      '<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-left:4px solid #2563EB;border-radius:10px;padding:12px 16px;min-width:120px;"><div style="font-family:var(--fh);font-size:22px;font-weight:700;color:#2563EB;" id="def-avg-out">₹0</div><div style="font-size:10px;color:#1E40AF;font-weight:600;">AVERAGE</div></div>'+
-    '</div>'+
-    '<div class="tw" style="overflow-x:auto;"><table style="table-layout:fixed;min-width:1100px;">'+
-      '<thead><tr>'+
-        '<th style="width:55px">RANK</th>'+
-        '<th style="width:110px;cursor:pointer" onclick="defSort(&#39;ACCT_ID&#39;)">ACCT ID <span id="dsrt-ACCT_ID">⇅</span></th>'+
-        '<th style="width:130px;cursor:pointer" onclick="defSort(&#39;NAME&#39;)">NAME <span id="dsrt-NAME">⇅</span></th>'+
-        '<th style="width:105px">MOBILE</th>'+
-        '<th style="width:90px;cursor:pointer" onclick="defSort(&#39;SUPPLY_TYPE&#39;)">SUPPLY <span id="dsrt-SUPPLY_TYPE">⇅</span></th>'+
-        '<th style="min-width:200px;cursor:pointer" onclick="defSort(&#39;ADDRESS&#39;)">ADDRESS <span id="dsrt-ADDRESS">⇅</span></th>'+
-        '<th style="width:120px;cursor:pointer" onclick="defSort(&#39;OUTSTANDING&#39;)">OUTSTANDING <span id="dsrt-OUTSTANDING">⇅</span></th>'+
-        '<th style="width:95px;cursor:pointer" onclick="defSort(&#39;PAY_DATE&#39;)">LP DATE <span id="dsrt-PAY_DATE">⇅</span></th>'+
-        '<th style="width:95px;cursor:pointer" onclick="defSort(&#39;PAY_AMT&#39;)">LP AMT <span id="dsrt-PAY_AMT">⇅</span></th>'+
-        '<th style="width:80px">STATUS</th>'+
-        '<th style="width:100px;cursor:pointer" onclick="defSort(&#39;SUBSTATION&#39;)">SUBSTATION <span id="dsrt-SUBSTATION">⇅</span></th>'+
-        '<th style="width:110px;cursor:pointer" onclick="defSort(&#39;FEEDER&#39;)">FEEDER <span id="dsrt-FEEDER">⇅</span></th>'+
-        '<th style="width:55px">MAP</th>'+
-      '</tr></thead>'+
-      '<tbody id="def-tbody"></tbody>'+
-    '</table></div>'+
-    '<div class="pg" id="def-pg"></div>';
-
-  // Populate substation dropdown
-  var subs=[...new Set(Object.keys(PAY_DATA).map(function(acct){var c=D.find(function(r){return String(r.ACCT_ID)===acct;});return c?c.SUBSTATION:'';}).filter(Boolean))].sort();
+  // Panel HTML is static - just populate dropdowns
+  var subs=[...new Set(DEF_ALL.map(function(r){return r.SUBSTATION;}).filter(Boolean))].sort();
   var defSub=gel('def-sub');
-  subs.forEach(function(v){var o=document.createElement('option');o.value=v;o.textContent=v;defSub.appendChild(o);});
-
-  // Populate supply type
-  var supplies=[...new Set(Object.values(PAY_DATA).map(function(p){return p.SUPPLY_TYPE||'';}).filter(Boolean))].sort();
+  if(defSub && defSub.options.length<=1){
+    subs.forEach(function(v){var o=document.createElement('option');o.value=v;o.textContent=v;defSub.appendChild(o);});
+  }
+  var supplies=[...new Set(DEF_ALL.map(function(r){return r.SUPPLY_TYPE;}).filter(Boolean))].sort();
   var defSup=gel('def-supply');
-  supplies.forEach(function(v){var o=document.createElement('option');o.value=v;o.textContent=v;defSup.appendChild(o);});
-
+  if(defSup && defSup.options.length<=1){
+    supplies.forEach(function(v){var o=document.createElement('option');o.value=v;o.textContent=v;defSup.appendChild(o);});
+  }
   // Data already in DEF_ALL - render immediately
   runDefaulterFilter();
 }
-
 function onDefSubChange(){
   var sub=gel('def-sub')?gel('def-sub').value:'';
   var feedSel=gel('def-feed'); if(!feedSel)return;
