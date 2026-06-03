@@ -998,12 +998,16 @@ function expDcKML(){
 
 // ─── DEFAULTERS ───────────────────────────────────────────────────────────────
 function loadDefaulters(){
-  if(!Object.keys(PAY_DATA).length){
-    gel('panel-defaulter').innerHTML='<div style="padding:24px;text-align:center;color:var(--muted);font-family:var(--fh);">Loading data… please wait.</div>';
-    setTimeout(loadDefaulters,1000); return;
+  var panel = gel('panel-defaulter');
+  if(!panel) return;
+  // Build panel HTML once
+  if(!gel('def-tbody')){ 
+    buildDefaulterPanel();
+    return; // buildDefaulterPanel calls buildDefAll which triggers render
   }
-  if(!gel('def-tbody')){ buildDefaulterPanel(); return; }
-  runDefaulterFilter();
+  // Already built - just re-filter
+  if(DEF_ALL.length) { runDefaulterFilter(); return; }
+  buildDefAll(); // load file if not yet loaded
 }
 
 function buildDefaulterPanel(){
@@ -1062,7 +1066,8 @@ function buildDefaulterPanel(){
   var defSup=gel('def-supply');
   supplies.forEach(function(v){var o=document.createElement('option');o.value=v;o.textContent=v;defSup.appendChild(o);});
 
-  runDefaulterFilter();
+  // Load defaulter data
+  setTimeout(function(){ buildDefAll(); }, 50);
 }
 
 function onDefSubChange(){
@@ -1123,8 +1128,8 @@ function buildDefAll() {
         });
       }
       console.log('Defaulter file loaded:', DEF_ALL.length, 'records');
-      // If defaulter panel is open, refresh it
-      if(document.getElementById('panel-defaulter').classList.contains('active')) runDefaulterFilter();
+      // Render
+      if(gel('def-tbody')) runDefaulterFilter();
     })
     .catch(function(e){
       console.warn('Defaulter file failed, using PAY_DATA:', e);
