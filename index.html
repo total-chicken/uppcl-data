@@ -41,11 +41,11 @@ body{background:var(--bg);color:var(--text);font-family:var(--fb);min-height:100
 .upload-btn:hover{opacity:.85;}
 #file-input{display:none;}
 #app{display:none;}
-.tabs{display:flex;gap:0;background:#FFFFFF;border-bottom:2px solid #7DD3FC;padding:0 28px;overflow-x:auto;}
+.tabs{display:flex;gap:0;background:#FFFFFF;border-bottom:2px solid #7DD3FC;padding:0 28px;overflow-x:auto;position:relative;z-index:10;}
 .tab{font-family:var(--fh);font-size:14px;font-weight:700;letter-spacing:1px;padding:14px 24px;border-bottom:3px solid transparent;cursor:pointer;color:#374151;white-space:nowrap;transition:color .15s;}
 .tab:hover{color:#4F46E5;}
 .tab.active{color:#4F46E5;border-bottom-color:#4F46E5;}
-.panel{display:none;padding:28px;background:transparent;contain:layout style;}
+.panel{display:none;padding:28px;background:transparent;position:relative;z-index:5;}
 .panel.active{display:block;}
 .search-bar{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;}
 .siw{flex:1;min-width:220px;position:relative;}
@@ -132,7 +132,7 @@ select option{background:#FFFFFF;color:#212121;}
 .atr-saved{animation:atrpop .3s ease;}
 @keyframes atrpop{0%{transform:scale(1.2);}100%{transform:scale(1);}}
 /* Login Screen */
-#login-screen{position:fixed;inset:0;background:linear-gradient(135deg,#4F46E5 0%,#7C3AED 50%,#0EA5E9 100%);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;pointer-events:all;}
+#login-screen{position:fixed;inset:0;background:linear-gradient(135deg,#4F46E5 0%,#7C3AED 50%,#0EA5E9 100%);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;}
 .login-box{background:#FFFFFF;border:none;border-radius:20px;padding:48px 40px;width:100%;max-width:420px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.2);}
 .login-logo{width:56px;height:56px;background:var(--accent);clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 20px;}
 .login-title{font-family:var(--fh);font-size:28px;font-weight:700;letter-spacing:2px;margin-bottom:4px;color:#4F46E5;}
@@ -1018,8 +1018,17 @@ function hf(file){
   };
   r.readAsBinaryString(file);
 }
-function sl(m,p){const ld=document.getElementById('loading');if(ld)ld.style.display='flex';const lt=document.getElementById('lt');if(lt)lt.textContent=m;const pf=document.getElementById('pf');if(pf)pf.style.width=p+'%';}
-function hl2(){document.getElementById('loading').style.display='none';}
+function sl(m,p){
+  var ld=document.getElementById('loading');
+  if(ld){ld.style.display='flex';ld.style.pointerEvents='none';}
+  var lt=document.getElementById('lt');if(lt)lt.textContent=m;
+  var pf=document.getElementById('pf');if(pf)pf.style.width=p+'%';
+}
+function hl2(){
+  var ld = document.getElementById('loading');
+  ld.style.display = 'none';
+  ld.style.pointerEvents = 'none';
+}
 
 function ia(){
   // Filter D to only INSERVICE, TD, TD>6 MONTHS
@@ -1106,9 +1115,15 @@ function ps(id,items){
 
 // TABS
 function st(name){
-  ['lookup','filter','dc','defaulter'].forEach((n,i)=>{
-    document.querySelectorAll('.tab')[i].classList.toggle('active',n===name);
-    document.getElementById('panel-'+n).classList.toggle('active',n===name);
+  // Toggle tabs by onclick attribute match - not by index
+  document.querySelectorAll('.tab').forEach(function(tab){
+    var match = tab.getAttribute('onclick') && tab.getAttribute('onclick').indexOf("'"+name+"'") > -1;
+    tab.classList.toggle('active', match);
+  });
+  // Toggle panels by ID
+  ['lookup','filter','dc','defaulter'].forEach(function(n){
+    var panel = document.getElementById('panel-'+n);
+    if(panel) panel.classList.toggle('active', n===name);
   });
   if(name==='dc'&&DC.length===0)loadDC();
   if(name==='dc'&&!DC_NBM)setTimeout(()=>initDcNearbyMap(),500);
@@ -1291,102 +1306,123 @@ function autoFetch() {
   document.getElementById('loading').style.display = 'flex';
   sl('CONNECTING TO GITHUB…', 10);
 
-  var completed = 0;
-  var allData = new Array(FILES.length);
+  var allTexts = new Array(FILES.length);
+  var fetchDone = 0;
 
-  // Load ALL files in parallel
-  var promises = FILES.map(function(url, idx) {
+  // Fetch ALL files + payment in parallel
+  var allUrls = FILES.concat([PAY_FILE]);
+  var fetchPromises = allUrls.map(function(url, idx) {
     return fetch(url)
-      .then(function(res) {
-        if (!res.ok) throw new Error('HTTP ' + res.status + ' for file ' + (idx+1));
-        return res.text();
-      })
+      .then(function(res) { return res.ok ? res.text() : ''; })
       .then(function(text) {
-        completed++;
-        sl('PARSING ' + completed + ' OF ' + FILES.length + '…', 15 + Math.round(completed / FILES.length * 70));
-        allData[idx] = fastParseCSV(text);
-      });
+        fetchDone++;
+        sl('DOWNLOADING ' + fetchDone + ' OF ' + allUrls.length + '…',
+           Math.round(fetchDone / allUrls.length * 60) + 10);
+        allTexts[idx] = text;
+      })
+      .catch(function() { allTexts[idx] = ''; });
   });
 
-  // Also load payment data in parallel
-  var payPromise = fetch(PAY_FILE)
-    .then(function(res) { return res.ok ? res.text() : ''; })
-    .then(function(text) {
-      if (!text) return;
-      var lines = text.split('\n');
-      if (lines.length < 2) return;
-      var hdrs = lines[0].split(',').map(function(h){ return h.trim().replace(/"/g,''); });
-      var ai = hdrs.indexOf('ACCT_ID');
-      var pi = hdrs.indexOf('PAY_AMT');
-      var di = hdrs.indexOf('PAY_DATE');
-      var oi = hdrs.indexOf('TOTAL_OUTSTANDING');
-      var si = hdrs.indexOf('status');
-      var ni = hdrs.indexOf('NAME');
-      var sui = hdrs.indexOf('SUPPLY_TYPE');
-      var ci = hdrs.indexOf('CLOSING_READING_KWH');
-      for (var i = 1; i < lines.length; i++) {
-        var line = lines[i].trim();
-        if (!line) continue;
-        var vals = line.split(',').map(function(v){ return v.trim().replace(/^"|"$/g,''); });
-        var acct = vals[ai];
-        if (!acct) continue;
-        PAY_DATA[acct] = {
-          PAY_AMT: vals[pi]||'-', PAY_DATE: vals[di]||'-',
-          TOTAL_OUTSTANDING: vals[oi]||'-', STATUS: vals[si]||'-',
-          NAME: vals[ni]||'-', SUPPLY_TYPE: vals[sui]||'-',
-          CLOSING_READING: vals[ci]||'-'
+  Promise.all(fetchPromises).then(function() {
+    sl('PARSING DATA…', 72);
+
+    // Parse payment first (small file)
+    var payText = allTexts[FILES.length] || '';
+    if (payText) {
+      var plines = payText.split('\n');
+      var phdrs = plines[0].split(',').map(function(h){ return h.trim().replace(/"/g,''); });
+      var ai=phdrs.indexOf('ACCT_ID'), pi=phdrs.indexOf('PAY_AMT'),
+          di=phdrs.indexOf('PAY_DATE'), oi=phdrs.indexOf('TOTAL_OUTSTANDING'),
+          si=phdrs.indexOf('status'), ni=phdrs.indexOf('NAME'),
+          sui=phdrs.indexOf('SUPPLY_TYPE'), ci=phdrs.indexOf('CLOSING_READING_KWH');
+      for (var p=1; p<plines.length; p++) {
+        var pl = plines[p].trim(); if (!pl) continue;
+        var pv = pl.split(',').map(function(v){ return v.replace(/^"|"$/g,'').trim(); });
+        var pa = pv[ai]; if (!pa) continue;
+        PAY_DATA[pa] = {
+          PAY_AMT:pv[pi]||'-', PAY_DATE:pv[di]||'-',
+          TOTAL_OUTSTANDING:pv[oi]||'-', STATUS:pv[si]||'-',
+          NAME:pv[ni]||'-', SUPPLY_TYPE:pv[sui]||'-', CLOSING_READING:pv[ci]||'-'
         };
       }
-    })
-    .catch(function(e){ console.warn('Payment file:', e.message); });
+    }
 
-  Promise.all(promises.concat([payPromise]))
-    .then(function() {
-      sl('MERGING DATA…', 88);
-      D = [];
-      for (var i = 0; i < allData.length; i++) {
-        if (allData[i]) {
-          for (var j = 0; j < allData[i].length; j++) {
-            if (allData[i][j] && allData[i][j].ACCT_ID) D.push(allData[i][j]);
-          }
+    sl('PARSING CSV…', 78);
+
+    // Parse CSV files
+    D = [];
+    for (var i = 0; i < FILES.length; i++) {
+      if (allTexts[i]) {
+        var rows = fastParseCSV(allTexts[i]);
+        for (var j = 0; j < rows.length; j++) {
+          if (rows[j].ACCT_ID) D.push(rows[j]);
         }
       }
-      sl('BUILDING INDEX…', 95);
-      ia();
-      hl2();
-    })
-    .catch(function(err) {
-      // Retry once on failure
-      sl('RETRYING…', 10);
-      setTimeout(autoFetch, 2000);
-    });
+    }
+    allTexts = null; // free memory
+
+    sl('BUILDING INDEX…', 92);
+    ia();
+    hl2();
+  }).catch(function() {
+    sl('RETRYING…', 10);
+    setTimeout(autoFetch, 3000);
+  });
 }
 
 function fastParseCSV(text) {
-  // Ultra-fast CSV parse - simple comma split (our lean CSVs have no commas in fields)
   var nl = text.indexOf('\n');
   if (nl < 0) return [];
-  var headerLine = text.substring(0, nl).replace(/\r/,'');
-  var hdrs = headerLine.split(',').map(function(h){ return h.replace(/"/g,'').trim(); });
+  var hdrs = text.substring(0, nl).replace(/\r/,'').split(',').map(function(h){ return h.replace(/"/g,'').trim(); });
+  
+  // Find column indices once
+  var iAcct = hdrs.indexOf('ACCT_ID');
+  var iMob  = hdrs.indexOf('MOBILE_NO');
+  var iName = hdrs.indexOf('NAME');
+  var iFath = hdrs.indexOf('FATHER_NAME');
+  var iAddr = hdrs.indexOf('ADDRESS');
+  var iCat  = hdrs.indexOf('CATEGORY');
+  var iLoad = hdrs.indexOf('LOAD');
+  var iLat  = hdrs.indexOf('LAT');
+  var iLon  = hdrs.indexOf('LON');
+  var iSub  = hdrs.indexOf('SUBSTATION');
+  var iFeed = hdrs.indexOf('FEEDER');
+  var iSerl = hdrs.indexOf('SERIAL_NBR');
+  
   var rows = [];
   var pos = nl + 1;
   var len = text.length;
+  
   while (pos < len) {
     var end = text.indexOf('\n', pos);
     if (end < 0) end = len;
     var line = text.substring(pos, end);
-    if (line.charCodeAt(line.length-1) === 13) line = line.substring(0, line.length-1);
     pos = end + 1;
-    if (!line) continue;
-    var vals = line.split(',');
-    if (!vals[0]) continue;
-    var obj = {};
-    for (var j = 0; j < hdrs.length; j++) {
-      obj[hdrs[j]] = vals[j] ? vals[j].replace(/"/g,'') : '';
-    }
-    if (!obj.ACCT_ID) continue;
-    if (obj.LAT && obj.LON) obj.Google_Map_Link = 'https://www.google.com/maps?q=' + obj.LAT + ',' + obj.LON;
-    rows.push(obj);
+    if (!line || line === '\r') continue;
+    var v = line.split(',');
+    var acct = v[iAcct];
+    if (!acct) continue;
+    // Strip quotes fast
+    if (acct.charCodeAt(0) === 34) acct = acct.substring(1, acct.length-1);
+    var lat = v[iLat] || '';
+    var lon = v[iLon] || '';
+    if (lat.charCodeAt(0) === 34) lat = lat.substring(1, lat.length-1);
+    if (lon.charCodeAt(0) === 34) lon = lon.substring(1, lon.length-1);
+    rows.push({
+      ACCT_ID:    acct,
+      MOBILE_NO:  (v[iMob]  ||'').replace(/"/g,''),
+      NAME:       (v[iName] ||'').replace(/"/g,''),
+      FATHER_NAME:(v[iFath] ||'').replace(/"/g,''),
+      ADDRESS:    (v[iAddr] ||'').replace(/"/g,''),
+      CATEGORY:   (v[iCat]  ||'').replace(/"/g,''),
+      LOAD:       (v[iLoad] ||'').replace(/"/g,''),
+      LAT:        lat,
+      LON:        lon,
+      SUBSTATION: (v[iSub]  ||'').replace(/"/g,''),
+      FEEDER:     (v[iFeed] ||'').replace(/"/g,''),
+      SERIAL_NBR: (v[iSerl] ||'').replace(/"/g,''),
+      Google_Map_Link: (lat && lon) ? 'https://www.google.com/maps?q='+lat+','+lon : ''
+    });
   }
   return rows;
 }
@@ -2445,7 +2481,9 @@ function checkPin() {
 function loginSuccess(role) {
   CURRENT_ROLE = role;
   sessionStorage.setItem('uppcl_role', role);
-  document.getElementById('login-screen').style.display = 'none';
+  var ls = document.getElementById('login-screen');
+  ls.style.display = 'none';
+  ls.style.pointerEvents = 'none';
 
   // Set role badge
   const badge = document.getElementById('role-indicator');
@@ -2484,7 +2522,9 @@ function logout() {
   document.getElementById('tab-admin').classList.add('active');
   document.getElementById('tab-user').classList.remove('active');
   pinReset();
-  document.getElementById('login-screen').style.display = 'flex';
+  var ls = document.getElementById('login-screen');
+  ls.style.display = 'flex';
+  ls.style.pointerEvents = 'all';
 }
 
 // Check session on load (so refresh doesn't log out)
