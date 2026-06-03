@@ -384,7 +384,7 @@ html { scroll-behavior: smooth; }
   <div class="login-box">
     <div class="login-logo">⚡</div>
     <div class="login-title">UPP<span style="color:#4F46E5">CL</span> TOOL</div>
-    <div class="login-sub">CONSUMER DATA INTELLIGENCE · JHANSI</div>
+    <div class="login-sub">CONSUMER DATA INTELLIGENCE · EUDD2 JHANSI</div>
 
     <!-- Role selector -->
     <div class="role-tabs">
@@ -455,60 +455,11 @@ html { scroll-behavior: smooth; }
 <div id="app">
   <div class="tabs">
     <div class="tab active" onclick="st('lookup')" ontouchstart="st('lookup')">🔍 SEARCH</div>
-    <div class="tab" onclick="st('filter')" ontouchstart="st('filter')">⚙️ FILTER & EXPORT</div>
     <div class="tab" onclick="st('dc')" ontouchstart="st('dc')">🔴 SM UNRECHARGE</div>
     <div class="tab" onclick="st('defaulter')" ontouchstart="st('defaulter')">⚠️ DEFAULTERS</div>
   </div>
   <!-- FILTER -->
-  <div class="panel" id="panel-filter">
-    <div class="fg">
-      <div><div class="lbl">SUBSTATION</div><div class="sw"><select id="fs" onchange="onSubChange('fs','ff');af()"><option value="">ALL</option></select></div></div>
-      <div><div class="lbl">FEEDER</div><div class="sw"><select id="ff" onchange="af()"><option value="">ALL</option></select></div></div>
-      <div><div class="lbl">CATEGORY</div><div class="sw"><select id="fc" onchange="af()"><option value="">ALL</option></select></div></div>
-      <div><div class="lbl">LOAD (kW)</div><div style="display:flex;gap:8px"><input type="number" id="fln" placeholder="Min" oninput="af()" style="width:80px;background:var(--card);border:1.5px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-size:13px;outline:none"/><input type="number" id="flx" placeholder="Max" oninput="af()" style="width:80px;background:var(--card);border:1.5px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-size:13px;outline:none"/></div></div>
-    </div>
-    <div class="rc">
-      <div class="rci"><div class="val" id="fc2">0</div><div class="lbl2">MATCHED</div></div>
-      <div class="rci"><div class="val" id="fd">0</div><div class="lbl2">DOMESTIC</div></div>
-      <div class="rci"><div class="val" id="fco">0</div><div class="lbl2">COMMERCIAL</div></div>
-      <div class="rci"><div class="val" id="fi">0</div><div class="lbl2">INDUSTRIAL</div></div>
-      <div class="rci"><div class="val" id="fg2">0</div><div class="lbl2">GOVT</div></div>
-      <div class="rci"><div class="val" id="ftl">0</div><div class="lbl2">TOTAL LOAD kW</div></div>
-    </div>
-    <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap">
-      <button class="btn btn-acc" onclick="expX()">⬇ EXPORT XLSX</button>
-      <button class="btn" style="background:var(--card);border:1px solid var(--border);color:var(--text)" onclick="rf()">↺ RESET</button>
-    </div>
-    <div class="tw"><table><thead><tr>
-  <th>S.NO</th>
-  <th onclick="sortFt('ACCT_ID')" style="cursor:pointer">ACCT ID <span id="fts-ACCT_ID">⇅</span></th>
-  <th onclick="sortFt('NAME')" style="cursor:pointer">NAME <span id="fts-NAME">⇅</span></th>
-  <th>MOBILE</th>
-  <th onclick="sortFt('CATEGORY')" style="cursor:pointer">CATEGORY <span id="fts-CATEGORY">⇅</span></th>
-  <th onclick="sortFt('LOAD')" style="cursor:pointer">LOAD <span id="fts-LOAD">⇅</span></th>
-  <th onclick="sortFt('SUBSTATION')" style="cursor:pointer">SUBSTATION <span id="fts-SUBSTATION">⇅</span></th>
-  <th onclick="sortFt('FEEDER')" style="cursor:pointer">FEEDER <span id="fts-FEEDER">⇅</span></th>
-  <th>MAP</th>
-</tr></thead><tbody id="ftb"></tbody></table></div>
-    <div class="pg" id="fpg"></div>
-  </div>
 
-  <!-- hidden elements needed by ia() -->
-  <span id="rt" style="display:none"></span>
-  <span id="rc" style="display:none"></span>
-  <span id="sup" style="display:none"></span>
-  <input id="si" style="display:none"/>
-  <tbody id="stb" style="display:none"></tbody>
-  <div id="spg" style="display:none"></div>
-  <!-- LOOKUP -->
-  <div class="panel active" id="panel-lookup">
-    <div class="lw">
-      <div class="ls"><input type="text" id="li" placeholder="Enter Account ID or Mobile Number…" oninput="dl()" onkeydown="if(event.key==='Enter')dl()"/><button class="btn btn-acc" onclick="dl()">FIND</button></div>
-      <div id="lr"></div>
-    </div>
-  </div>
-
-  <!-- DISCONNECTED -->
   <div class="panel" id="panel-dc">
     <!-- Stats bar -->
     <div id="dc-loading" style="text-align:center;padding:40px;color:var(--muted)">
@@ -1116,7 +1067,7 @@ function ps(id,items){
 }
 
 // TABS
-var _lastTab = 'lookup';
+var _lastTab = '';
 function st(name){
   if (name === _lastTab) return; // already on this tab
   _lastTab = name;
@@ -1126,7 +1077,7 @@ function st(name){
     var match = tab.getAttribute('onclick') && tab.getAttribute('onclick').indexOf("'"+name+"'") > -1;
     tab.classList.toggle('active', match);
   });
-  ['lookup','filter','dc','defaulter'].forEach(function(n){
+  ['lookup','dc','defaulter'].forEach(function(n){
     var panel = document.getElementById('panel-'+n);
     if(panel) panel.classList.toggle('active', n===name);
   });
@@ -1135,7 +1086,6 @@ function st(name){
   requestAnimationFrame(function(){
     if(name==='dc' && DC.length===0) loadDC();
     if(name==='dc' && !DC_NBM) setTimeout(function(){ initDcNearbyMap(); },500);
-    if(name==='filter' && FD.length===0) { FD=D.slice(); af(); }
     if(name==='defaulter') setTimeout(loadDefaulters, 50);
   });
 }
@@ -1304,7 +1254,8 @@ function toast(){const t=document.getElementById('toast');t.classList.add('show'
 // ─── AUTO FETCH FROM GITHUB ─────────────────────────────────────────────────
 // 4 split files from GitHub
 const FILES = [
-  'https://raw.githubusercontent.com/anshu10kumar04-pixel/uppcl-data/main/EUDD2.csv'
+  'https://raw.githubusercontent.com/anshu10kumar04-pixel/uppcl-data/main/eudd2a.csv',
+  'https://raw.githubusercontent.com/anshu10kumar04-pixel/uppcl-data/main/eudd2b.csv'
 ];
 
 // DOMContentLoaded handled below
