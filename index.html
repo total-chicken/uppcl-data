@@ -45,7 +45,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--fb);min-height:100
 .tab{font-family:var(--fh);font-size:14px;font-weight:700;letter-spacing:1px;padding:14px 24px;border-bottom:3px solid transparent;cursor:pointer;color:#374151;white-space:nowrap;transition:color .15s;}
 .tab:hover{color:#4F46E5;}
 .tab.active{color:#4F46E5;border-bottom-color:#4F46E5;}
-.panel{display:none;padding:28px;background:transparent;position:relative;z-index:5;}
+.panel{display:none;padding:24px;background:transparent;}
 .panel.active{display:block;}
 .search-bar{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;}
 .siw{flex:1;min-width:220px;position:relative;}
@@ -800,7 +800,7 @@ html { scroll-behavior: smooth; }
         </div>
         <div>
           <div class="lbl">SUBSTATION</div>
-          <div class="sw"><select id="def-sub" onchange="loadDefaulters()"><option value="">ALL</option></select></div>
+          <div class="sw"><select id="def-sub" onchange="onDefSubChange()"><option value="">ALL</option></select></div>
         </div>
         <div>
           <div class="lbl">FEEDER</div>
@@ -848,23 +848,23 @@ html { scroll-behavior: smooth; }
     </div>
 
     <!-- Table -->
-    <div class="tw">
-      <table>
+    <div class="tw" style="overflow-x:auto">
+      <table style="table-layout:fixed;min-width:1200px">
         <thead>
           <tr>
-            <th>RANK</th>
-            <th>ACCT ID</th>
-            <th>NAME</th>
-            <th>MOBILE</th>
-            <th>SUPPLY TYPE</th>
-            <th>ADDRESS</th>
-            <th>OUTSTANDING</th>
-            <th>LP DATE</th>
-            <th>LP AMT</th>
-            <th>STATUS</th>
-            <th>SUBSTATION</th>
-            <th>FEEDER</th>
-            <th>MAP</th>
+            <th style="width:55px">RANK</th>
+            <th style="width:110px;cursor:pointer" onclick="defSort('ACCT_ID')">ACCT ID <span id="dsrt-ACCT_ID">⇅</span></th>
+            <th style="width:130px;cursor:pointer" onclick="defSort('NAME')">NAME <span id="dsrt-NAME">⇅</span></th>
+            <th style="width:105px">MOBILE</th>
+            <th style="width:95px;cursor:pointer" onclick="defSort('SUPPLY_TYPE')">SUPPLY <span id="dsrt-SUPPLY_TYPE">⇅</span></th>
+            <th style="min-width:220px;cursor:pointer" onclick="defSort('ADDRESS')">ADDRESS <span id="dsrt-ADDRESS">⇅</span></th>
+            <th style="width:125px;cursor:pointer" onclick="defSort('OUTSTANDING')">OUTSTANDING <span id="dsrt-OUTSTANDING">⇅</span></th>
+            <th style="width:100px;cursor:pointer" onclick="defSort('PAY_DATE')">LP DATE <span id="dsrt-PAY_DATE">⇅</span></th>
+            <th style="width:100px;cursor:pointer" onclick="defSort('PAY_AMT')">LP AMT <span id="dsrt-PAY_AMT">⇅</span></th>
+            <th style="width:85px">STATUS</th>
+            <th style="width:110px;cursor:pointer" onclick="defSort('SUBSTATION')">SUBSTATION <span id="dsrt-SUBSTATION">⇅</span></th>
+            <th style="width:120px;cursor:pointer" onclick="defSort('FEEDER')">FEEDER <span id="dsrt-FEEDER">⇅</span></th>
+            <th style="width:55px">MAP</th>
           </tr>
         </thead>
         <tbody id="def-tbody"></tbody>
@@ -1116,20 +1116,28 @@ function ps(id,items){
 }
 
 // TABS
+var _lastTab = 'lookup';
 function st(name){
-  // Toggle tabs by onclick attribute match - not by index
+  if (name === _lastTab) return; // already on this tab
+  _lastTab = name;
+
+  // Fast tab switch - just toggle classes
   document.querySelectorAll('.tab').forEach(function(tab){
     var match = tab.getAttribute('onclick') && tab.getAttribute('onclick').indexOf("'"+name+"'") > -1;
     tab.classList.toggle('active', match);
   });
-  // Toggle panels by ID
   ['lookup','filter','dc','defaulter'].forEach(function(n){
     var panel = document.getElementById('panel-'+n);
     if(panel) panel.classList.toggle('active', n===name);
   });
-  if(name==='dc'&&DC.length===0)loadDC();
-  if(name==='dc'&&!DC_NBM)setTimeout(()=>initDcNearbyMap(),500);
-  if(name==='defaulter') loadDefaulters();
+
+  // Lazy load panel content after paint
+  requestAnimationFrame(function(){
+    if(name==='dc' && DC.length===0) loadDC();
+    if(name==='dc' && !DC_NBM) setTimeout(function(){ initDcNearbyMap(); },500);
+    if(name==='filter' && FD.length===0) { FD=D.slice(); af(); }
+    if(name==='defaulter') setTimeout(loadDefaulters, 50);
+  });
 }
 
 // SEARCH
@@ -1375,7 +1383,7 @@ function autoFetch() {
     if (!text) { parseNext(idx + 1); return; }
 
     // Parse in chunks of 5000 rows to avoid blocking UI
-    var CHUNK = 5000;
+    var CHUNK = 3000;
     var lines = text.split('\n');
     text = null; // free memory
     var hdrs = lines[0].replace(/\r/,'').split(',').map(function(h){ return h.replace(/"/g,'').trim(); });
@@ -1391,8 +1399,10 @@ function autoFetch() {
         iFeed=hdrs.indexOf('FEEDER'), iSerl=hdrs.indexOf('SERIAL_NBR'),
         iPayAmt=hdrs.indexOf('LP AMT'), iPayDate=hdrs.indexOf('LP DATE'),
         iTotOut=hdrs.indexOf('TOTAL OUTSTANDING');
-    // Auto-detect LP DATE/LP AMT swap at header level
-    var _lpAmtSwapped = false;
+    // Also handle old column names
+    if(iPayAmt<0) iPayAmt=hdrs.indexOf('PAY_AMT');
+    if(iPayDate<0) iPayDate=hdrs.indexOf('PAY_DATE');
+    if(iTotOut<0) iTotOut=hdrs.indexOf('TOTAL_OUTSTANDING');
 
     function parseChunk() {
       var end = Math.min(pos + CHUNK, totalLines);
@@ -2898,6 +2908,48 @@ function getPayInfo(acctId) {
 // ─── DEFAULTERS ──────────────────────────────────────────────────────────────
 let DEF_DATA = [], defPage = 1;
 
+var _defSortCol = 'OUTSTANDING', _defSortAsc = false;
+function defSort(col) {
+  if (_defSortCol === col) { _defSortAsc = !_defSortAsc; }
+  else { _defSortCol = col; _defSortAsc = col !== 'OUTSTANDING'; }
+  document.querySelectorAll('[id^="dsrt-"]').forEach(function(el){ el.textContent='⇅'; });
+  var icon = gel('dsrt-'+col);
+  if (icon) icon.textContent = _defSortAsc ? '↑' : '↓';
+  var numCols = ['OUTSTANDING','PAY_AMT'];
+  DEF_DATA.sort(function(a,b){
+    var av = numCols.indexOf(col)>=0 ? (parseFloat(a[col])||0) : String(a[col]||'').toLowerCase();
+    var bv = numCols.indexOf(col)>=0 ? (parseFloat(b[col])||0) : String(b[col]||'').toLowerCase();
+    if(av<bv) return _defSortAsc?-1:1;
+    if(av>bv) return _defSortAsc?1:-1;
+    return 0;
+  });
+  renderDefaulters(1);
+}
+
+function onDefSubChange() {
+  var sub = gel('def-sub') ? gel('def-sub').value : '';
+  var feedSel = gel('def-feed');
+  if (!feedSel) return;
+  // Rebuild feeder options based on selected substation
+  var currentFeed = feedSel.value;
+  while (feedSel.options.length > 1) feedSel.remove(1);
+  var feeds = new Set();
+  Object.keys(PAY_DATA).forEach(function(acct) {
+    var consumer = D.find(function(r){ return String(r.ACCT_ID)===acct; });
+    if (!consumer) return;
+    if (sub && consumer.SUBSTATION !== sub) return;
+    if (consumer.FEEDER) feeds.add(consumer.FEEDER);
+  });
+  [...feeds].sort().forEach(function(v){
+    var o = document.createElement('option');
+    o.value = v; o.textContent = v;
+    feedSel.appendChild(o);
+  });
+  // Restore previous selection if still valid
+  feedSel.value = currentFeed;
+  loadDefaulters();
+}
+
 function openFromDefaulter(acctId) {
   // Try to find in main data first
   var r = D.find(function(row) { return String(row.ACCT_ID) === String(acctId); });
@@ -2993,6 +3045,7 @@ function renderDefaulters(page) {
   var tbody = gel('def-tbody');
   if (!tbody) return;
 
+  var _frag = []; // use array join instead of innerHTML concat
   tbody.innerHTML = slice.map(function(r, i) {
     var rank = (page - 1) * PS + i + 1;
     var out = Math.round(r.OUTSTANDING);
