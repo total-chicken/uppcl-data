@@ -1304,71 +1304,72 @@ const FILES = [
 
 function autoFetch() {
   document.getElementById('loading').style.display = 'flex';
-  sl('CONNECTING TO GITHUB…', 10);
+  sl('CONNECTING…', 5);
 
-  var allTexts = new Array(FILES.length);
-  var fetchDone = 0;
+  var allTexts = {};
+  var fetched = 0;
+  var total = FILES.length + 1;
 
-  // Fetch ALL files + payment in parallel
-  var allUrls = FILES.concat([PAY_FILE]);
-  var fetchPromises = allUrls.map(function(url, idx) {
-    return fetch(url)
-      .then(function(res) { return res.ok ? res.text() : ''; })
-      .then(function(text) {
-        fetchDone++;
-        sl('DOWNLOADING ' + fetchDone + ' OF ' + allUrls.length + '…',
-           Math.round(fetchDone / allUrls.length * 60) + 10);
-        allTexts[idx] = text;
-      })
-      .catch(function() { allTexts[idx] = ''; });
+  function onFetched(idx, text) {
+    allTexts[idx] = text || '';
+    fetched++;
+    sl('DOWNLOADING… ' + fetched + '/' + total, Math.round(fetched/total*55)+5);
+    if (fetched === total) setTimeout(startParsing, 30);
+  }
+
+  FILES.forEach(function(url, idx) {
+    fetch(url).then(function(r){ return r.ok ? r.text() : ''; })
+      .then(function(t){ onFetched(idx, t); })
+      .catch(function(){ onFetched(idx, ''); });
   });
 
-  Promise.all(fetchPromises).then(function() {
-    sl('PARSING DATA…', 72);
+  fetch(PAY_FILE).then(function(r){ return r.ok ? r.text() : ''; })
+    .then(function(t){ onFetched('pay', t); })
+    .catch(function(){ onFetched('pay', ''); });
 
-    // Parse payment first (small file)
-    var payText = allTexts[FILES.length] || '';
-    if (payText) {
-      var plines = payText.split('\n');
-      var phdrs = plines[0].split(',').map(function(h){ return h.trim().replace(/"/g,''); });
-      var ai=phdrs.indexOf('ACCT_ID'), pi=phdrs.indexOf('PAY_AMT'),
-          di=phdrs.indexOf('PAY_DATE'), oi=phdrs.indexOf('TOTAL_OUTSTANDING'),
-          si=phdrs.indexOf('status'), ni=phdrs.indexOf('NAME'),
-          sui=phdrs.indexOf('SUPPLY_TYPE'), ci=phdrs.indexOf('CLOSING_READING_KWH');
-      for (var p=1; p<plines.length; p++) {
-        var pl = plines[p].trim(); if (!pl) continue;
-        var pv = pl.split(',').map(function(v){ return v.replace(/^"|"$/g,'').trim(); });
-        var pa = pv[ai]; if (!pa) continue;
-        PAY_DATA[pa] = {
-          PAY_AMT:pv[pi]||'-', PAY_DATE:pv[di]||'-',
-          TOTAL_OUTSTANDING:pv[oi]||'-', STATUS:pv[si]||'-',
-          NAME:pv[ni]||'-', SUPPLY_TYPE:pv[sui]||'-', CLOSING_READING:pv[ci]||'-'
-        };
-      }
-    }
-
-    sl('PARSING CSV…', 78);
-
-    // Parse CSV files
-    D = [];
-    for (var i = 0; i < FILES.length; i++) {
-      if (allTexts[i]) {
-        var rows = fastParseCSV(allTexts[i]);
-        for (var j = 0; j < rows.length; j++) {
-          if (rows[j].ACCT_ID) D.push(rows[j]);
+  function startParsing() {
+    sl('PARSING PAYMENT…', 62);
+    setTimeout(function() {
+      var pt = allTexts['pay'] || '';
+      if (pt) {
+        var lines = pt.split('\n');
+        var h = lines[0].split(',').map(function(v){ return v.replace(/"/g,'').trim(); });
+        var ai=h.indexOf('ACCT_ID'),pi=h.indexOf('PAY_AMT'),di=h.indexOf('PAY_DATE'),
+            oi=h.indexOf('TOTAL_OUTSTANDING'),si=h.indexOf('status'),
+            ni=h.indexOf('NAME'),sui=h.indexOf('SUPPLY_TYPE'),ci=h.indexOf('CLOSING_READING_KWH');
+        for (var i=1;i<lines.length;i++) {
+          var ln=lines[i].trim(); if(!ln) continue;
+          var v=ln.split(',').map(function(x){return x.replace(/^"|"$/g,'').trim();});
+          var a=v[ai]; if(!a) continue;
+          PAY_DATA[a]={PAY_AMT:v[pi]||'-',PAY_DATE:v[di]||'-',TOTAL_OUTSTANDING:v[oi]||'-',
+            STATUS:v[si]||'-',NAME:v[ni]||'-',SUPPLY_TYPE:v[sui]||'-',CLOSING_READING:v[ci]||'-'};
         }
       }
-    }
-    allTexts = null; // free memory
+      allTexts['pay'] = null;
+      parseNext(0);
+    }, 30);
+  }
 
-    sl('BUILDING INDEX…', 92);
-    ia();
-    hl2();
-  }).catch(function() {
-    sl('RETRYING…', 10);
-    setTimeout(autoFetch, 3000);
-  });
+  function parseNext(idx) {
+    if (idx >= FILES.length) {
+      allTexts = null;
+      sl('BUILDING INDEX…', 93);
+      setTimeout(function(){ ia(); hl2(); }, 30);
+      return;
+    }
+    sl('PARSING ' + (idx+1) + ' OF ' + FILES.length + '…', 65 + Math.round(idx/FILES.length*26));
+    setTimeout(function() {
+      var text = allTexts[idx];
+      allTexts[idx] = null;
+      if (text) {
+        var rows = fastParseCSV(text);
+        for (var j=0;j<rows.length;j++) { if(rows[j].ACCT_ID) D.push(rows[j]); }
+      }
+      parseNext(idx + 1);
+    }, 30);
+  }
 }
+
 
 function fastParseCSV(text) {
   var nl = text.indexOf('\n');
