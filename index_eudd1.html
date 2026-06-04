@@ -824,7 +824,7 @@ function buildDCPanel(){
     '<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center;">'+
       '<div id="dc-count-info" style="font-size:13px;color:var(--muted);font-family:var(--fh);font-weight:600;flex:1;"></div>'+
       '<button class="btn btn-acc" onclick="expDcX()">⬇ EXPORT XLSX</button>'+
-      '<button class="btn btn-out" onclick="exportAtrXlsx()">📋 EXPORT ATR</button>'+
+      '<button class="btn btn-out" onclick="exportAtrXlsx()">📋 ATR REPORT</button>'+
       '<button class="btn" style="background:#fff;border:1.5px solid #C7D2FE;color:var(--muted);" onclick="resetDc()">↺ RESET</button>'+
     '</div>'+
     // Sheet Sync Settings (admin only)
@@ -973,7 +973,31 @@ function openDcDetail(acctId){
   sel.value=r.ATR_STATUS||'DISCONNECTED';
   updateAtrSelectStyle();
 
-  if(CURRENT_ROLE!=='admin') gel('modal-atr-section').querySelectorAll('.save-atr-btn').forEach(function(b){b.style.display='none';});
+  // Freeze ATR if already submitted (not DISCONNECTED)
+  var currentAtr = r.ATR_STATUS || 'DISCONNECTED';
+  var isSubmitted = currentAtr !== 'DISCONNECTED';
+  var sel2 = gel('modal-atr-sel');
+  if(sel2){
+    sel2.disabled = isSubmitted;
+    sel2.style.opacity = isSubmitted ? '0.7' : '1';
+    sel2.style.cursor = isSubmitted ? 'not-allowed' : 'pointer';
+  }
+  var saveBtns = gel('modal-atr-section').querySelectorAll('.save-atr-btn');
+  saveBtns.forEach(function(b){
+    if(isSubmitted){
+      b.disabled = true;
+      b.style.opacity = '0.5';
+      b.style.cursor = 'not-allowed';
+      b.textContent = '✅ ATR ALREADY SUBMITTED';
+      b.style.background = '#9CA3AF';
+    } else {
+      b.disabled = false;
+      b.style.opacity = '1';
+      b.style.cursor = 'pointer';
+      b.textContent = '💾 SAVE ATR STATUS';
+      b.style.background = '#F59E0B';
+    }
+  });
 
   // Map button
   var mapBtn=gel('modal-map-btn');
@@ -1015,22 +1039,25 @@ function updateAtrSelectStyle(){
 
 function saveModalAtr(){
   if(!modalCurrentAcct||!modalIsdc)return;
-  if(CURRENT_ROLE!=='admin'){alert('⛔ Admin only');return;}
   var sel=gel('modal-atr-sel'); if(!sel)return;
   var newAtr=sel.value;
   var r=DC.find(function(row){return String(row.ACCT_ID)===String(modalCurrentAcct);});
   if(r){r.ATR_STATUS=newAtr; ATR_DATA[String(modalCurrentAcct)]=newAtr;}
   try{var a=JSON.parse(localStorage.getItem('atr_data')||'{}');a[String(modalCurrentAcct)]=newAtr;localStorage.setItem('atr_data',JSON.stringify(a));}catch(e){}
+  // Freeze ATR select and button after save
+  var sel3 = gel('modal-atr-sel');
+  if(sel3){ sel3.disabled=true; sel3.style.opacity='0.7'; sel3.style.cursor='not-allowed'; }
+  var allBtns = gel('modal-atr-section') ? gel('modal-atr-section').querySelectorAll('.save-atr-btn') : [];
+  allBtns.forEach(function(b){
+    b.disabled=true; b.style.opacity='0.5'; b.style.cursor='not-allowed';
+    b.style.background='#9CA3AF'; b.textContent='✅ ATR ALREADY SUBMITTED';
+  });
+
   // Sync to sheet
   if(ATR_SCRIPT_URL){
-    var btn=document.querySelector('.save-atr-btn');
-    if(btn)btn.textContent='⏳ SYNCING…';
     fetch(ATR_SCRIPT_URL,{method:'POST',body:JSON.stringify({acct:modalCurrentAcct,atr:newAtr,name:r?r.NAME:'',ts:new Date().toISOString()})})
-      .then(function(){if(btn)btn.textContent='✅ SAVED & SYNCED';setTimeout(function(){if(btn)btn.textContent='💾 SAVE ATR STATUS';},2000);})
-      .catch(function(){if(btn)btn.textContent='⚠ Saved locally only';setTimeout(function(){if(btn)btn.textContent='💾 SAVE ATR STATUS';},2000);});
-  } else {
-    var btn2=document.querySelector('.save-atr-btn');
-    if(btn2){btn2.textContent='✅ SAVED';setTimeout(function(){btn2.textContent='💾 SAVE ATR STATUS';},1500);}
+      .then(function(){ console.log('Synced to sheet'); })
+      .catch(function(e){ console.warn('Sync failed:', e); });
   }
   dcFilter();
 }
@@ -1083,12 +1110,37 @@ function expDcX(){
   XLSX.writeFile(wb,'SM_Unrecharge_'+Date.now()+'.xlsx');
 }
 function exportAtrXlsx(){
-  var data=DC.filter(function(r){return r.ATR_STATUS&&r.ATR_STATUS!=='DISCONNECTED';})
-    .map(function(r){return {ACCT_ID:r.ACCT_ID,NAME:r.NAME,MOBILE:r.MOBILE_NO,OUTSTANDING:r.OUTSTANDING,ATR_STATUS:r.ATR_STATUS,SUBSTATION:r.SUBSTATION,FEEDER:r.FEEDER};});
-  if(!data.length)return alert('No ATR data yet.');
-  var ws=XLSX.utils.json_to_sheet(data);
-  var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'ATR Report');
-  XLSX.writeFile(wb,'ATR_Report_'+Date.now()+'.xlsx');
+  // Sheet 1: Summary
+  var counts = {PAID:0, LOCK:0, THEFT:0, OTHER:0, DISCONNECTED:0};
+  DC.forEach(function(r){ counts[r.ATR_STATUS] = (counts[r.ATR_STATUS]||0)+1; });
+  var summary = [
+    {STATUS:'PAID',    COUNT:counts.PAID,    DESCRIPTION:'Consumer has paid dues'},
+    {STATUS:'LOCK',    COUNT:counts.LOCK,    DESCRIPTION:'Meter found locked'},
+    {STATUS:'THEFT',   COUNT:counts.THEFT,   DESCRIPTION:'Theft detected'},
+    {STATUS:'OTHER',   COUNT:counts.OTHER,   DESCRIPTION:'Other reason'},
+    {STATUS:'SM (Pending)', COUNT:counts.DISCONNECTED||DC.length-counts.PAID-counts.LOCK-counts.THEFT-(counts.OTHER||0), DESCRIPTION:'Not yet actioned'},
+    {STATUS:'TOTAL',   COUNT:DC.length,      DESCRIPTION:'Total SM Unrecharge consumers'}
+  ];
+  var wsSummary = XLSX.utils.json_to_sheet(summary);
+
+  // Sheet 2: Detailed ATR records (all actioned)
+  var data = DC.filter(function(r){return r.ATR_STATUS&&r.ATR_STATUS!=='DISCONNECTED';})
+    .map(function(r){
+      return {
+        ACCT_ID:r.ACCT_ID, NAME:r.NAME, MOBILE:r.MOBILE_NO,
+        OUTSTANDING:'₹'+Math.round(r.OUTSTANDING||0).toLocaleString(),
+        ATR_STATUS:r.ATR_STATUS, DATE_DC:r.DATE_DC||'-',
+        SUBSTATION:r.SUBSTATION, FEEDER:r.FEEDER, ADDRESS:r.ADDRESS
+      };
+    });
+
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, wsSummary, 'ATR Summary');
+  if(data.length){
+    var wsDetail = XLSX.utils.json_to_sheet(data);
+    XLSX.utils.book_append_sheet(wb, wsDetail, 'ATR Details');
+  }
+  XLSX.writeFile(wb, 'ATR_Report_'+new Date().toLocaleDateString('en-IN').replace(/\//g,'-')+'.xlsx');
 }
 function expDcKML(){
   if(!DC_FD.length)return alert('No data.');
