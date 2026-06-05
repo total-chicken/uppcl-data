@@ -313,7 +313,7 @@ select option{background:#fff;color:#1E1B4B;}
   <!-- SEARCH PANEL -->
   <div class="panel active" id="panel-lookup">
     <div class="ls">
-      <input type="text" id="li" placeholder="Enter Account ID or Mobile Number…" oninput="debounceSearch()" onkeydown="if(event.key==='Enter')dl()"/>
+      <input type="text" id="li" placeholder="Search by Account ID, Mobile, Meter No or Name…" oninput="debounceSearch()" onkeydown="if(event.key==='Enter')dl()"/>
       <button onclick="dl()">FIND</button>
     </div>
     <div id="lr"></div>
@@ -762,9 +762,10 @@ function dl(){
   if(!D.length){lr.innerHTML='<p style="color:var(--muted);padding:20px">Data still loading…</p>';return;}
   var q2=q.toLowerCase();
   var res=D.filter(function(r){
+    var meterNo = METER_DATA[String(r.ACCT_ID)] || r.SERIAL_NBR || '';
     return String(r.ACCT_ID).includes(q)||
            (r.MOBILE_NO&&r.MOBILE_NO.includes(q))||
-           (r.SERIAL_NBR&&r.SERIAL_NBR.toLowerCase().includes(q2))||
+           (meterNo&&meterNo.toLowerCase().includes(q2))||
            (r.NAME&&r.NAME.toLowerCase().includes(q2));
   }).slice(0,5);
   if(!res.length){lr.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-family:var(--fh)">🔎 No record found for "'+q+'"</div>';return;}
