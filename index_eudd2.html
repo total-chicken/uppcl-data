@@ -377,7 +377,6 @@ select option{background:#fff;color:#1E1B4B;}
       <button class="btn btn-acc" onclick="expDefaultersX()">⬇ EXPORT XLSX</button>
       <button class="btn btn-out" onclick="expDefaulterAtr()">📋 ATR REPORT</button>
       <button class="btn" style="background:#059669;color:#fff;border:none;" onclick="downloadAtrFromSheet()">⬇ DOWNLOAD ATR XLSX</button>
-      <button class="btn" style="background:#10B981;color:#fff;border:none;" onclick="syncAtrFromSheet()">☁️ SYNC ATR</button>
     </div>
     <div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap;">
       <div style="background:#FFF1F2;border:1px solid #FECACA;border-left:4px solid #F43F5E;border-radius:10px;padding:12px 16px;min-width:120px;"><div style="font-family:var(--fh);font-size:22px;font-weight:700;color:#F43F5E;" id="def-count">0</div><div style="font-size:10px;color:#991B1B;font-weight:600;">DEFAULTERS</div></div>
@@ -1334,6 +1333,8 @@ function saveModalAtr(){
     var sb=gel('modal-atr-section').querySelectorAll('.save-atr-btn');
     sb.forEach(function(b){b.disabled=true;b.style.opacity='0.5';b.style.background='#9CA3AF';b.textContent='✅ ATR ALREADY SUBMITTED';});
     renderDefaulters(defPage);
+    // Auto-sync from sheet after 2s to confirm save
+    setTimeout(autoSyncAtr, 2000);
     return;
   }
 
@@ -1347,6 +1348,8 @@ function saveModalAtr(){
   var sel3 = gel('modal-atr-sel');
   if(sel3){ sel3.disabled=true; sel3.style.opacity='0.7'; sel3.style.cursor='not-allowed'; }
   var cbox = gel('modal-atr-comment'); if(cbox){ cbox.disabled=true; cbox.style.opacity='0.7'; }
+  // Auto-sync from sheet after 2s to confirm save
+  setTimeout(autoSyncAtr, 2000);
   var allBtns = gel('modal-atr-section') ? gel('modal-atr-section').querySelectorAll('.save-atr-btn') : [];
   allBtns.forEach(function(b){
     b.disabled=true; b.style.opacity='0.5'; b.style.cursor='not-allowed';
