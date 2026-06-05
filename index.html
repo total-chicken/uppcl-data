@@ -190,6 +190,15 @@ select option{background:#fff;color:#1E1B4B;}
 .ms-clear{padding:6px 12px;border-top:1px solid #EEF2FF;font-size:11px;color:#4F46E5;cursor:pointer;font-weight:600;text-align:center;}
 .ms-clear:hover{background:#EEF2FF;}
 
+/* ── MOBILE TABLE ── */
+@media(max-width:768px){
+  .mob-hide{display:none !important;}
+  .tw{-webkit-overflow-scrolling:touch;overflow-x:auto;}
+  table{table-layout:auto !important;min-width:unset !important;}
+  td,th{white-space:nowrap;padding:7px 8px !important;}
+  .panel{padding:10px 8px !important;}
+}
+
 /* ── SCROLLBAR ── */
 ::-webkit-scrollbar{width:6px;height:6px;}
 ::-webkit-scrollbar-track{background:#F1F5F9;}
@@ -375,20 +384,20 @@ select option{background:#fff;color:#1E1B4B;}
     <div id="def-loading-msg" style="display:none;padding:24px;text-align:center;font-family:var(--fh);color:var(--muted);">⏳ Loading defaulter data…</div>
     <div class="tw" style="overflow-x:auto;"><table style="table-layout:fixed;min-width:1100px;">
       <thead><tr>
-        <th style="width:50px">RANK</th>
-        <th style="width:105px;cursor:pointer" onclick="defSort(&#39;ACCT_ID&#39;)">ACCT ID <span id="dsrt-ACCT_ID">⇅</span></th>
-        <th style="width:125px;cursor:pointer" onclick="defSort(&#39;NAME&#39;)">NAME <span id="dsrt-NAME">⇅</span></th>
-        <th style="width:100px">MOBILE</th>
-        <th style="width:85px">METER NO</th>
-        <th style="width:80px;cursor:pointer" onclick="defSort(&#39;SUPPLY_TYPE&#39;)">SUPPLY <span id="dsrt-SUPPLY_TYPE">⇅</span></th>
-        <th style="min-width:175px;cursor:pointer" onclick="defSort(&#39;ADDRESS&#39;)">ADDRESS <span id="dsrt-ADDRESS">⇅</span></th>
-        <th style="width:115px;cursor:pointer" onclick="defSort(&#39;OUTSTANDING&#39;)">OUTSTANDING <span id="dsrt-OUTSTANDING">⇅</span></th>
-        <th style="width:90px;cursor:pointer" onclick="defSort(&#39;PAY_DATE&#39;)">LP DATE <span id="dsrt-PAY_DATE">⇅</span></th>
-        <th style="width:85px;cursor:pointer" onclick="defSort(&#39;PAY_AMT&#39;)">LP AMT <span id="dsrt-PAY_AMT">⇅</span></th>
-        <th style="width:72px;cursor:pointer" onclick="defSort(&#39;ATR_STATUS&#39;)">ATR <span id="dsrt-ATR_STATUS">⇅</span></th>
-        <th style="width:95px;cursor:pointer" onclick="defSort(&#39;SUBSTATION&#39;)">SUBSTATION <span id="dsrt-SUBSTATION">⇅</span></th>
-        <th style="width:100px;cursor:pointer" onclick="defSort(&#39;FEEDER&#39;)">FEEDER <span id="dsrt-FEEDER">⇅</span></th>
-        <th style="width:50px">MAP</th>
+        <th style="width:40px">RANK</th>
+        <th style="width:100px;cursor:pointer" onclick="defSort(&#39;ACCT_ID&#39;)">ACCT ID <span id="dsrt-ACCT_ID">⇅</span></th>
+        <th style="width:120px;cursor:pointer" onclick="defSort(&#39;NAME&#39;)">NAME <span id="dsrt-NAME">⇅</span></th>
+        <th style="width:100px" class="mob-hide">MOBILE</th>
+        <th style="width:85px" class="mob-hide">METER NO</th>
+        <th style="width:75px;cursor:pointer" onclick="defSort(&#39;SUPPLY_TYPE&#39;)" class="mob-hide">SUPPLY <span id="dsrt-SUPPLY_TYPE">⇅</span></th>
+        <th style="min-width:150px;cursor:pointer" onclick="defSort(&#39;ADDRESS&#39;)" class="mob-hide">ADDRESS <span id="dsrt-ADDRESS">⇅</span></th>
+        <th style="width:110px;cursor:pointer" onclick="defSort(&#39;OUTSTANDING&#39;)">OUTSTANDING <span id="dsrt-OUTSTANDING">⇅</span></th>
+        <th style="width:85px;cursor:pointer" onclick="defSort(&#39;PAY_DATE&#39;)" class="mob-hide">LP DATE <span id="dsrt-PAY_DATE">⇅</span></th>
+        <th style="display:none">LP AMT <span id="dsrt-PAY_AMT">⇅</span></th>
+        <th style="width:70px;cursor:pointer" onclick="defSort(&#39;ATR_STATUS&#39;)">ATR <span id="dsrt-ATR_STATUS">⇅</span></th>
+        <th style="width:90px;cursor:pointer" onclick="defSort(&#39;SUBSTATION&#39;)" class="mob-hide">SUBSTATION <span id="dsrt-SUBSTATION">⇅</span></th>
+        <th style="width:95px;cursor:pointer" onclick="defSort(&#39;FEEDER&#39;)" class="mob-hide">FEEDER <span id="dsrt-FEEDER">⇅</span></th>
+        <th style="width:45px">MAP</th>
       </tr></thead>
       <tbody id="def-tbody"></tbody>
     </table></div>
@@ -1540,16 +1549,16 @@ function renderDefaulters(page){
       '<td style="font-family:var(--fh);font-size:14px;font-weight:700;text-align:center;">'+rIcon+'</td>'+
       '<td style="font-family:var(--fh);color:#4F46E5;font-weight:700;cursor:pointer;" data-id="'+r.ACCT_ID+'" onclick="openFromDefaulter(this.dataset.id)">'+r.ACCT_ID+'</td>'+
       '<td style="font-weight:700;">'+r.NAME+'</td>'+
-      '<td>'+r.MOBILE+'</td>'+
-      '<td style="font-family:var(--fh);font-size:11px;color:#1D4ED8;font-weight:700;">'+meterNo+'</td>'+
-      '<td><span style="font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;background:#EEF2FF;color:#4338CA;">'+r.SUPPLY_TYPE+'</span></td>'+
-      '<td style="font-size:11px;color:#374151;" title="'+r.ADDRESS+'">'+r.ADDRESS+'</td>'+
+      '<td class="mob-hide">'+r.MOBILE+'</td>'+
+      '<td class="mob-hide" style="font-family:var(--fh);font-size:11px;color:#1D4ED8;font-weight:700;">'+meterNo+'</td>'+
+      '<td class="mob-hide"><span style="font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;background:#EEF2FF;color:#4338CA;">'+r.SUPPLY_TYPE+'</span></td>'+
+      '<td class="mob-hide" style="font-size:11px;color:#374151;" title="'+r.ADDRESS+'">'+r.ADDRESS+'</td>'+
       '<td style="font-family:var(--fh);font-weight:700;color:'+outColor+';font-size:13px;">₹'+out.toLocaleString()+'</td>'+
-      '<td style="font-size:11px;color:var(--muted);">'+r.PAY_DATE+'</td>'+
-      '<td style="font-family:var(--fh);color:#059669;font-weight:700;">'+(paid>0?'₹'+paid.toLocaleString():'-')+'</td>'+
+      '<td class="mob-hide" style="font-size:11px;color:var(--muted);">'+r.PAY_DATE+'</td>'+
+      '<td style="display:none">'+(paid>0?'₹'+paid.toLocaleString():'-')+'</td>'+
       '<td><span style="font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;background:'+(atrBgs[atr]||'#F9FAFB')+';color:'+(atrColors[atr]||'#9CA3AF')+';">'+atr+'</span></td>'+
-      '<td>'+r.SUBSTATION+'</td>'+
-      '<td>'+r.FEEDER+'</td>'+
+      '<td class="mob-hide">'+r.SUBSTATION+'</td>'+
+      '<td class="mob-hide">'+r.FEEDER+'</td>'+
       '<td>'+(mapUrl?'<a class="ml" href="#" data-id="'+r.ACCT_ID+'" onclick="event.preventDefault();openDefaulterMap(this.dataset.id)">📍</a>':'')+'</td>'+
     '</tr>';
   }).join('');
