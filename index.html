@@ -413,7 +413,11 @@ select option{background:#fff;color:#1E1B4B;}
         <div style="font-family:var(--fh);font-size:11px;font-weight:700;color:#4F46E5;letter-spacing:1px;margin-bottom:10px;">📋 ATR STATUS — ACTION TAKEN REPORT</div>
         <div id="modal-atr-counts" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;"></div>
         <div class="lbl">UPDATE STATUS FOR THIS CONSUMER:</div>
-        <select id="modal-atr-sel" class="atr-dc" onchange="updateAtrSelectStyle()"></select>
+        <select id="modal-atr-sel" class="atr-dc" onchange="updateAtrSelectStyle();toggleAtrComment()"></select>
+        <div id="modal-atr-comment-wrap" style="display:none;margin-top:8px;">
+          <div class="lbl" style="margin-bottom:4px;">📝 REMARKS / COMMENT:</div>
+          <textarea id="modal-atr-comment" placeholder="Enter remarks here…" style="width:100%;border:1.5px solid #C7D2FE;border-radius:8px;padding:8px 10px;font-family:var(--fb);font-size:13px;font-weight:500;color:#1E1B4B;outline:none;resize:vertical;min-height:60px;max-height:120px;"></textarea>
+        </div>
         <button class="save-atr-btn" onclick="saveModalAtr()">💾 SAVE ATR STATUS</button>
       </div>
       <div id="modal-nearby-section" style="display:none;margin-top:16px;border-top:1px solid #C7D2FE;padding-top:14px;">
@@ -1007,6 +1011,14 @@ function openDcDetail(acctId){
   // Freeze ATR if already submitted (not DISCONNECTED)
   var currentAtr = r.ATR_STATUS || 'DISCONNECTED';
   var isSubmitted = currentAtr !== 'DISCONNECTED';
+  // Load saved comment
+  var savedAtrData = {};
+  try{savedAtrData=JSON.parse(localStorage.getItem('atr_data')||'{}');}catch(e){}
+  var savedEntry = savedAtrData[String(r.ACCT_ID)]||{};
+  var savedComment = typeof savedEntry==='object' ? (savedEntry.comment||'') : '';
+  var commentWrap = gel('modal-atr-comment-wrap');
+  var commentBox = gel('modal-atr-comment');
+  if(commentBox){ commentBox.value = savedComment; commentBox.disabled = isSubmitted; }
   var sel2 = gel('modal-atr-sel');
   if(sel2){
     sel2.disabled = isSubmitted;
@@ -1056,6 +1068,15 @@ function filterDcByAtr(atr){
   dcFilter();
 }
 
+function toggleAtrComment(){
+  var sel = gel('modal-atr-sel');
+  var wrap = gel('modal-atr-comment-wrap');
+  if(!sel || !wrap) return;
+  // Show comment box for OTHER, DISPUTE, PROMISE, PARTIAL (any that need explanation)
+  var showFor = ['OTHER','DISPUTE','PROMISE','PARTIAL'];
+  wrap.style.display = showFor.indexOf(sel.value) >= 0 ? 'block' : 'none';
+}
+
 function updateAtrSelectStyle(){
   var s=gel('modal-atr-sel'); if(!s)return;
   var classes=['atr-dc','atr-paid','atr-lock','atr-theft','atr-other'];
@@ -1076,9 +1097,10 @@ function saveModalAtr(){
 
   if(atrType === 'defaulter'){
     // Save defaulter ATR
+    var defComment = gel('modal-atr-comment') ? gel('modal-atr-comment').value.trim() : '';
     var defRec = DEF_ALL.find(function(x){return String(x.ACCT_ID)===String(modalCurrentAcct);});
-    if(defRec) defRec.ATR_STATUS = newAtr;
-    try{var da=JSON.parse(localStorage.getItem('def_atr_data')||'{}');da[String(modalCurrentAcct)]=newAtr;localStorage.setItem('def_atr_data',JSON.stringify(da));}catch(e){}
+    if(defRec){ defRec.ATR_STATUS=newAtr; defRec.ATR_COMMENT=defComment; }
+    try{var da=JSON.parse(localStorage.getItem('def_atr_data')||'{}');da[String(modalCurrentAcct)]={atr:newAtr,comment:defComment,ts:new Date().toISOString()};localStorage.setItem('def_atr_data',JSON.stringify(da));}catch(e){}
     // Freeze
     sel.disabled=true; sel.style.opacity='0.7';
     var sb=gel('modal-atr-section').querySelectorAll('.save-atr-btn');
@@ -1090,11 +1112,13 @@ function saveModalAtr(){
   // SM Unrecharge ATR
   if(!modalIsdc)return;
   var r=DC.find(function(row){return String(row.ACCT_ID)===String(modalCurrentAcct);});
-  if(r){r.ATR_STATUS=newAtr; ATR_DATA[String(modalCurrentAcct)]=newAtr;}
-  try{var a=JSON.parse(localStorage.getItem('atr_data')||'{}');a[String(modalCurrentAcct)]=newAtr;localStorage.setItem('atr_data',JSON.stringify(a));}catch(e){}
-  // Freeze ATR select and button after save
+  var comment = gel('modal-atr-comment') ? gel('modal-atr-comment').value.trim() : '';
+  if(r){r.ATR_STATUS=newAtr; r.ATR_COMMENT=comment; ATR_DATA[String(modalCurrentAcct)]={atr:newAtr,comment:comment};}
+  try{var a=JSON.parse(localStorage.getItem('atr_data')||'{}');a[String(modalCurrentAcct)]={atr:newAtr,comment:comment,ts:new Date().toISOString()};localStorage.setItem('atr_data',JSON.stringify(a));}catch(e){}
+  // Freeze ATR select, comment and button after save
   var sel3 = gel('modal-atr-sel');
   if(sel3){ sel3.disabled=true; sel3.style.opacity='0.7'; sel3.style.cursor='not-allowed'; }
+  var cbox = gel('modal-atr-comment'); if(cbox){ cbox.disabled=true; cbox.style.opacity='0.7'; }
   var allBtns = gel('modal-atr-section') ? gel('modal-atr-section').querySelectorAll('.save-atr-btn') : [];
   allBtns.forEach(function(b){
     b.disabled=true; b.style.opacity='0.5'; b.style.cursor='not-allowed';
@@ -1634,6 +1658,18 @@ function openMainDetail(acctId){
     var isSubmitted = currentAtr !== 'PENDING';
     sel.disabled = isSubmitted;
     sel.style.opacity = isSubmitted ? '0.7' : '1';
+    // Load saved comment for defaulter
+    var defSaved = {};
+    try{defSaved=JSON.parse(localStorage.getItem('def_atr_data')||'{}');}catch(e){}
+    var defEntry = defSaved[String(acctId)]||{};
+    var defComment = typeof defEntry==='object' ? (defEntry.comment||'') : '';
+    var defCommentBox = gel('modal-atr-comment');
+    var defCommentWrap = gel('modal-atr-comment-wrap');
+    if(defCommentBox){ defCommentBox.value=defComment; defCommentBox.disabled=isSubmitted; }
+    if(defCommentWrap){
+      var showFor=['OTHER','DISPUTE','PROMISE','PARTIAL'];
+      defCommentWrap.style.display=(showFor.indexOf(currentAtr)>=0||defComment)?'block':'none';
+    }
     var saveBtns = atrSec.querySelectorAll('.save-atr-btn');
     saveBtns.forEach(function(b){
       b.disabled = isSubmitted;
@@ -1720,7 +1756,7 @@ function expDefaulterAtr(){
         METER_NO:METER_DATA[String(r.ACCT_ID)]||r.METER_NO||'-',
         OUTSTANDING:'Rs.'+Math.round(r.OUTSTANDING||0).toLocaleString(),
         LP_DATE:r.PAY_DATE||'-', LP_AMT:'Rs.'+(r.PAY_AMT||0),
-        ATR_STATUS:r.ATR_STATUS,
+        ATR_STATUS:r.ATR_STATUS, ATR_COMMENT:r.ATR_COMMENT||'-',
         SUPPLY_TYPE:r.SUPPLY_TYPE||'-',
         SUBSTATION:r.SUBSTATION||'-', FEEDER:r.FEEDER||'-',
         ADDRESS:r.ADDRESS||'-'
