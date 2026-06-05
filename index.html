@@ -375,6 +375,9 @@ select option{background:#fff;color:#1E1B4B;}
     <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
       <div id="def-summary" style="font-family:var(--fh);font-size:13px;font-weight:600;color:var(--muted);flex:1;"></div>
       <button class="btn btn-acc" onclick="expDefaultersX()">⬇ EXPORT XLSX</button>
+      <button class="btn btn-out" onclick="expDefaulterAtr()">📋 ATR REPORT</button>
+      <button class="btn" style="background:#059669;color:#fff;border:none;" onclick="downloadAtrFromSheet()">⬇ DOWNLOAD ATR XLSX</button>
+      <button class="btn" style="background:#10B981;color:#fff;border:none;" onclick="syncAtrFromSheet()">☁️ SYNC ATR</button>
     </div>
     <div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap;">
       <div style="background:#FFF1F2;border:1px solid #FECACA;border-left:4px solid #F43F5E;border-radius:10px;padding:12px 16px;min-width:120px;"><div style="font-family:var(--fh);font-size:22px;font-weight:700;color:#F43F5E;" id="def-count">0</div><div style="font-size:10px;color:#991B1B;font-weight:600;">DEFAULTERS</div></div>
@@ -617,12 +620,83 @@ function autoSyncAtr(){
       var total = Object.keys(smAtr).length + Object.keys(defAtr).length;
       if(total > 0){
         console.log('Auto-synced ATR:', total, 'records from Google Sheet');
-        // Refresh open panels silently
         if(_lastTab==='dc' && DC.length) dcFilter();
         if(_lastTab==='defaulter' && DEF_ALL.length) runDefaulterFilter();
       }
     })
     .catch(function(e){ console.log('ATR auto-sync skipped:', e.message); });
+}
+
+function downloadAtrFromSheet(){
+  var url = getScriptUrl();
+  if(!url){ alert('Sheet URL not configured'); return; }
+  var btn = event ? event.target : null;
+  if(btn){ btn.textContent='⏳ FETCHING…'; btn.disabled=true; }
+  fetch(url, {mode:'cors'})
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      var smRows = [], defRows = [];
+      var smAtr  = data['SM_ATR']       || {};
+      var defAtr = data['Defaulter_ATR'] || {};
+
+      // Build SM ATR rows with consumer details
+      Object.keys(smAtr).forEach(function(acct){
+        var e = smAtr[acct];
+        var dc = DC.find(function(r){ return String(r.ACCT_ID)===acct; });
+        smRows.push({
+          ACCT_ID:    acct,
+          NAME:       dc?dc.NAME:'',
+          MOBILE:     dc?dc.MOBILE_NO:'',
+          METER_NO:   dc?(dc.METER_NO||METER_DATA[acct]||''):'',
+          SUBSTATION: dc?dc.SUBSTATION:'',
+          FEEDER:     dc?dc.FEEDER:'',
+          OUTSTANDING:dc?Math.round(dc.OUTSTANDING||0):0,
+          ATR_STATUS: typeof e==='object'?e.atr:e,
+          COMMENT:    typeof e==='object'?(e.comment||''):'',
+          TIMESTAMP:  typeof e==='object'?(e.ts||''):''
+        });
+      });
+
+      // Build Defaulter ATR rows
+      Object.keys(defAtr).forEach(function(acct){
+        var e = defAtr[acct];
+        var dr = DEF_ALL.find(function(r){ return String(r.ACCT_ID)===acct; });
+        defRows.push({
+          ACCT_ID:    acct,
+          NAME:       dr?dr.NAME:'',
+          MOBILE:     dr?(dr.MOBILE_NO||dr.MOBILE||''):'',
+          METER_NO:   dr?(METER_DATA[acct]||dr.METER_NO||''):'',
+          SUBSTATION: dr?dr.SUBSTATION:'',
+          FEEDER:     dr?dr.FEEDER:'',
+          OUTSTANDING:dr?Math.round(dr.OUTSTANDING||0):0,
+          ATR_STATUS: typeof e==='object'?e.atr:e,
+          COMMENT:    typeof e==='object'?(e.comment||''):'',
+          TIMESTAMP:  typeof e==='object'?(e.ts||''):''
+        });
+      });
+
+      if(!smRows.length && !defRows.length){ alert('No ATR data in Google Sheet yet.'); return; }
+
+      var wb = XLSX.utils.book_new();
+      // Summary sheet
+      var summary = [
+        {TYPE:'SM Unrecharge', COUNT:smRows.length},
+        {TYPE:'Defaulters',    COUNT:defRows.length},
+        {TYPE:'TOTAL',         COUNT:smRows.length+defRows.length}
+      ];
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summary), 'Summary');
+      if(smRows.length)  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(smRows),  'SM_ATR');
+      if(defRows.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(defRows), 'Defaulter_ATR');
+
+      var date = new Date().toLocaleDateString('en-IN').replace(/\//g,'-');
+      XLSX.writeFile(wb, 'ATR_Full_Report_'+date+'.xlsx');
+
+      if(btn){ btn.textContent='✅ DOWNLOADED'; setTimeout(function(){ btn.textContent='⬇ DOWNLOAD ATR XLSX'; btn.disabled=false; },2000); }
+    })
+    .catch(function(e){
+      if(btn){ btn.textContent='⬇ DOWNLOAD ATR XLSX'; btn.disabled=false; }
+      alert('Failed: ' + e.message);
+    });
 }
 
 function getScriptUrl(){
@@ -999,6 +1073,7 @@ function buildDCPanel(){
       '<div id="dc-count-info" style="font-size:13px;color:var(--muted);font-family:var(--fh);font-weight:600;flex:1;"></div>'+
       '<button class="btn btn-acc" onclick="expDcX()">⬇ EXPORT XLSX</button>'+
       '<button class="btn btn-out" onclick="exportAtrXlsx()">📋 ATR REPORT</button>'+
+      '<button class="btn" style="background:#059669;color:#fff;border:none;" onclick="downloadAtrFromSheet()">⬇ DOWNLOAD ATR XLSX</button>'+
       '<button class="btn" style="background:#fff;border:1.5px solid #C7D2FE;color:var(--muted);" onclick="resetDc()">↺ RESET</button>'+
     '</div>'+
     // Sheet Sync Settings (admin only)
