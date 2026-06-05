@@ -823,15 +823,28 @@ function loadDC(){
       var wb=XLSX.read(buf,{type:'array'});
       var ws=wb.Sheets[wb.SheetNames[0]];
       var rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+      // Load saved ATR from localStorage
+      var _savedAtr = {};
+      try{ _savedAtr = JSON.parse(localStorage.getItem('atr_data')||'{}'); }catch(e){}
+
       DC=rows.map(function(r){
+        var acct = String(r['account_id']||r['ACCT_ID']||'');
+        var savedEntry = _savedAtr[acct];
+        var atrStatus = 'DISCONNECTED';
+        if(savedEntry){
+          atrStatus = typeof savedEntry==='object' ? (savedEntry.atr||'DISCONNECTED') : savedEntry;
+        } else if(ATR_DATA[acct]){
+          atrStatus = typeof ATR_DATA[acct]==='object' ? ATR_DATA[acct].atr : ATR_DATA[acct];
+        }
         return {
-          DATE_DC:r['Date of DC']||'',ACCT_ID:String(r['account_id']||r['ACCT_ID']||''),
+          DATE_DC:r['Date of DC']||'',ACCT_ID:acct,
           NAME:r['NAME']||'',ADDRESS:r['ADDRES']||r['ADDRESS']||'',MOBILE_NO:String(r['MOBILE NO']||r['MOBILE_NO']||''),
           METER_NO:r['meterno']||r['METER_NO']||'',LOAD:r['load']||r['LOAD']||'',LMV:r['LMV']||'',
           OUTSTANDING:parseFloat(r['TOTAL OUTSTANDING']||r['OUTSTANDING'])||0,
           SUBSTATION:r['SUBSTATION']||'',FEEDER:r['FEEDER']||'',
           LAT:String(r['LAT']||''),LON:String(r['LONG']||r['LON']||''),
-          ATR_STATUS:ATR_DATA[String(r['account_id']||r['ACCT_ID']||'')]||'DISCONNECTED'
+          ATR_STATUS:atrStatus,
+          ATR_COMMENT: typeof savedEntry==='object' ? (savedEntry.comment||'') : ''
         };
       }).filter(function(r){return r.ACCT_ID;});
       // Fix LAT/LON swap
@@ -1194,38 +1207,47 @@ function expDcX(){
   XLSX.writeFile(wb,'SM_Unrecharge_'+Date.now()+'.xlsx');
 }
 function exportAtrXlsx(){
-  // Sheet 1: Summary
-  var counts = {PAID:0, LOCK:0, THEFT:0, OTHER:0, DISCONNECTED:0};
-  DC.forEach(function(r){ counts[r.ATR_STATUS] = (counts[r.ATR_STATUS]||0)+1; });
-  var summary = [
-    {STATUS:'PAID',    COUNT:counts.PAID,    DESCRIPTION:'Consumer has paid dues'},
-    {STATUS:'LOCK',    COUNT:counts.LOCK,    DESCRIPTION:'Meter found locked'},
-    {STATUS:'THEFT',   COUNT:counts.THEFT,   DESCRIPTION:'Theft detected'},
-    {STATUS:'OTHER',   COUNT:counts.OTHER,   DESCRIPTION:'Other reason'},
-    {STATUS:'SM (Pending)', COUNT:counts.DISCONNECTED||DC.length-counts.PAID-counts.LOCK-counts.THEFT-(counts.OTHER||0), DESCRIPTION:'Not yet actioned'},
-    {STATUS:'TOTAL',   COUNT:DC.length,      DESCRIPTION:'Total SM Unrecharge consumers'}
-  ];
-  var wsSummary = XLSX.utils.json_to_sheet(summary);
+  // Read from localStorage (source of truth)
+  var savedAtr={};
+  try{savedAtr=JSON.parse(localStorage.getItem('atr_data')||'{}');}catch(e){}
 
-  // Sheet 2: Detailed ATR records (all actioned)
-  var data = DC.filter(function(r){return r.ATR_STATUS&&r.ATR_STATUS!=='DISCONNECTED';})
+  // Merge into DC
+  DC.forEach(function(r){
+    var e=savedAtr[String(r.ACCT_ID)];
+    if(e){ r.ATR_STATUS=typeof e==='object'?(e.atr||r.ATR_STATUS):e; r.ATR_COMMENT=typeof e==='object'?(e.comment||''):''; }
+  });
+
+  var counts={PAID:0,LOCK:0,THEFT:0,OTHER:0};
+  DC.forEach(function(r){ if(r.ATR_STATUS!=='DISCONNECTED') counts[r.ATR_STATUS]=(counts[r.ATR_STATUS]||0)+1; });
+  var pending=DC.length-counts.PAID-counts.LOCK-counts.THEFT-(counts.OTHER||0);
+
+  var summary=[
+    {STATUS:'PAID',       COUNT:counts.PAID,     DESCRIPTION:'Consumer has paid dues'},
+    {STATUS:'LOCK',       COUNT:counts.LOCK,     DESCRIPTION:'Meter found locked'},
+    {STATUS:'THEFT',      COUNT:counts.THEFT,    DESCRIPTION:'Theft detected'},
+    {STATUS:'OTHER',      COUNT:counts.OTHER||0, DESCRIPTION:'Other reason'},
+    {STATUS:'SM PENDING', COUNT:pending,         DESCRIPTION:'Not yet actioned'},
+    {STATUS:'TOTAL',      COUNT:DC.length,       DESCRIPTION:'Total SM Unrecharge consumers'}
+  ];
+
+  var actioned=DC.filter(function(r){return r.ATR_STATUS&&r.ATR_STATUS!=='DISCONNECTED';})
     .map(function(r){
       return {
         ACCT_ID:r.ACCT_ID, NAME:r.NAME, MOBILE:r.MOBILE_NO,
-        OUTSTANDING:'₹'+Math.round(r.OUTSTANDING||0).toLocaleString(),
-        ATR_STATUS:r.ATR_STATUS, DATE_DC:r.DATE_DC||'-',
-        SUBSTATION:r.SUBSTATION, FEEDER:r.FEEDER, ADDRESS:r.ADDRESS
+        METER_NO:r.METER_NO||METER_DATA[String(r.ACCT_ID)]||'-',
+        OUTSTANDING:Math.round(r.OUTSTANDING||0),
+        ATR_STATUS:r.ATR_STATUS, ATR_COMMENT:r.ATR_COMMENT||'-',
+        DATE_DC:r.DATE_DC||'-', SUBSTATION:r.SUBSTATION, FEEDER:r.FEEDER, ADDRESS:r.ADDRESS
       };
     });
 
-  var wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, wsSummary, 'ATR Summary');
-  if(data.length){
-    var wsDetail = XLSX.utils.json_to_sheet(data);
-    XLSX.utils.book_append_sheet(wb, wsDetail, 'ATR Details');
-  }
-  XLSX.writeFile(wb, 'ATR_Report_'+new Date().toLocaleDateString('en-IN').replace(/\//g,'-')+'.xlsx');
+  if(!actioned.length) return alert('No ATR submissions yet.');
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(summary),'ATR Summary');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(actioned),'ATR Details');
+  XLSX.writeFile(wb,'SM_ATR_Report_'+new Date().toLocaleDateString('en-IN').replace(/\//g,'-')+'.xlsx');
 }
+
 function expDcKML(){
   if(!DC_FD.length)return alert('No data.');
   var kml='<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2">\n<Document>\n<name>SM Unrecharge</name>\n';
@@ -1747,9 +1769,16 @@ function openMainDetail(acctId){
 
 function expDefaulterAtr(){
   if(!DEF_ALL.length)return alert('No defaulter data loaded.');
+  // Restore from localStorage first
+  var defSaved={};
+  try{defSaved=JSON.parse(localStorage.getItem('def_atr_data')||'{}');}catch(e){}
+  DEF_ALL.forEach(function(r){
+    var e=defSaved[String(r.ACCT_ID)];
+    if(e){ r.ATR_STATUS=typeof e==='object'?(e.atr||r.ATR_STATUS):e; r.ATR_COMMENT=typeof e==='object'?(e.comment||''):''; }
+  });
   // Summary
   var counts={PAID:0,PARTIAL:0,PROMISE:0,LOCK:0,DISPUTE:0,OTHER:0,PENDING:0};
-  DEF_ALL.forEach(function(r){counts[r.ATR_STATUS]=(counts[r.ATR_STATUS]||0)+1;});
+  DEF_ALL.forEach(function(r){counts[r.ATR_STATUS||'PENDING']=(counts[r.ATR_STATUS||'PENDING']||0)+1;});
   var summary=[
     {STATUS:'PAID',     COUNT:counts.PAID,    DESC:'Consumer paid dues'},
     {STATUS:'PARTIAL',  COUNT:counts.PARTIAL, DESC:'Partial payment received'},
