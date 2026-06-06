@@ -332,10 +332,6 @@ select option{background:#fff;color:#1E1B4B;}
         <div style="font-size:12px;color:var(--muted);">Consumers with Outstanding &gt; ₹5,000</div>
       </div>
     </div>
-    <div class="ls" style="margin-bottom:12px;">
-      <input type="text" id="def-search" placeholder="Search by Name, Acct ID, Mobile, Meter No…" oninput="runDefaulterFilter()" style="flex:1;background:#fff;border:1.5px solid #C7D2FE;border-radius:10px;padding:11px 16px;font-family:var(--fh);font-size:14px;font-weight:600;letter-spacing:1px;outline:none;"/>
-      <button onclick="clearDefSearch()">✕ CLEAR</button>
-    </div>
     <div class="fg" style="margin-bottom:12px;">
       <div><div class="lbl">MIN OUTSTANDING</div><div class="sw"><select id="def-min" onchange="runDefaulterFilter()">
         <option value="5000">₹5,000+</option><option value="10000">₹10,000+</option>
@@ -388,6 +384,13 @@ select option{background:#fff;color:#1E1B4B;}
       <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-left:4px solid #2563EB;border-radius:10px;padding:12px 16px;min-width:120px;"><div style="font-family:var(--fh);font-size:22px;font-weight:700;color:#2563EB;" id="def-avg-out">₹0</div><div style="font-size:10px;color:#1E40AF;font-weight:600;">AVERAGE</div></div>
     </div>
     <div id="def-loading-msg" style="display:none;padding:24px;text-align:center;font-family:var(--fh);color:var(--muted);">⏳ Loading defaulter data…</div>
+    <!-- Search bar just above table -->
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <input type="text" id="def-search" placeholder="🔍  Search by Name, Acct ID, Mobile, Meter No, Address…"
+        oninput="runDefaulterFilter()"
+        style="flex:1;background:#fff;border:1.5px solid #C7D2FE;border-radius:10px;padding:10px 16px;font-family:var(--fh);font-size:13px;font-weight:600;letter-spacing:0.5px;outline:none;color:#1E1B4B;"/>
+      <button onclick="clearDefSearch()" style="background:#EEF2FF;border:1.5px solid #C7D2FE;border-radius:10px;padding:10px 16px;font-family:var(--fh);font-size:12px;font-weight:700;color:#4F46E5;cursor:pointer;white-space:nowrap;">✕ CLEAR</button>
+    </div>
     <div class="tw" style="overflow-x:auto;"><table style="table-layout:fixed;min-width:1100px;">
       <thead><tr>
         <th style="width:40px" class="mob-hide">RANK</th>
@@ -1734,17 +1737,27 @@ function runDefaulterFilter(){
   if(!DEF_ALL.length) buildDefAll();
 
   var minOut = parseFloat(gel('def-min') ? gel('def-min').value : 5000) || 5000;
-  var sub    = _defSelSubs;   // array
-  var feed   = _defSelFeeds;  // array
-  var supply = _defSelSupplies; // array
-  var sortDir= gel('def-sort')   ? gel('def-sort').value   : 'desc';
+  var sub    = _defSelSubs;
+  var feed   = _defSelFeeds;
+  var supply = _defSelSupplies;
+  var sortDir= gel('def-sort') ? gel('def-sort').value : 'desc';
+  var q      = gel('def-search') ? gel('def-search').value.trim().toLowerCase() : '';
 
   // Fast filter on pre-built array
   var all = DEF_ALL.filter(function(r){
     if(r.OUTSTANDING < minOut) return false;
-    if(sub.length    && sub.indexOf(r.SUBSTATION)<0)  return false;
-    if(feed.length   && feed.indexOf(r.FEEDER)<0)     return false;
+    if(sub.length    && sub.indexOf(r.SUBSTATION)<0)    return false;
+    if(feed.length   && feed.indexOf(r.FEEDER)<0)        return false;
     if(supply.length && supply.indexOf(r.SUPPLY_TYPE)<0) return false;
+    if(q){
+      var meter = METER_DATA[String(r.ACCT_ID)] || r.METER_NO || '';
+      if(!String(r.ACCT_ID).includes(q) &&
+         !(r.NAME    && r.NAME.toLowerCase().includes(q))    &&
+         !(r.MOBILE  && r.MOBILE.toLowerCase().includes(q))  &&
+         !(meter     && meter.toLowerCase().includes(q))     &&
+         !(r.ADDRESS && r.ADDRESS.toLowerCase().includes(q)))
+        return false;
+    }
     return true;
   });
 
