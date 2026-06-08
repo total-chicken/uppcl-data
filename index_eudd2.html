@@ -1813,9 +1813,17 @@ function renderDefaulters(page){
     var atr=r.ATR_STATUS||'PENDING';
     var atrColors={'PAID':'#059669','LOCK':'#7C3AED','THEFT':'#DC2626','OTHER':'#374151','PENDING':'#9CA3AF'};
     var atrBgs={'PAID':'#D1FAE5','LOCK':'#EDE9FE','THEFT':'#FEE2E2','OTHER':'#F3F4F6','PENDING':'#F9FAFB'};
+    var rowJson = encodeURIComponent(JSON.stringify({
+      ACCT_ID:r.ACCT_ID, NAME:r.NAME, MOBILE:r.MOBILE, ADDRESS:r.ADDRESS,
+      SUPPLY_TYPE:r.SUPPLY_TYPE, OUTSTANDING:r.OUTSTANDING,
+      PAY_AMT:r.PAY_AMT, PAY_DATE:r.PAY_DATE,
+      SUBSTATION:r.SUBSTATION, FEEDER:r.FEEDER,
+      LAT:r.LAT, LON:r.LON, ATR_STATUS:r.ATR_STATUS||'PENDING',
+      METER_NO:meterNo
+    }));
     return '<tr>'+
       '<td class="mob-hide" style="font-family:var(--fh);font-size:14px;font-weight:700;text-align:center;">'+rIcon+'</td>'+
-      '<td style="font-family:var(--fh);color:#4F46E5;font-weight:700;cursor:pointer;" data-id="'+r.ACCT_ID+'" onclick="openFromDefaulter(this.dataset.id)">'+r.ACCT_ID+'</td>'+
+      '<td style="font-family:var(--fh);color:#4F46E5;font-weight:700;cursor:pointer;" data-id="'+r.ACCT_ID+'" data-row="'+rowJson+'" onclick="openFromDefRow(this)">'+r.ACCT_ID+'</td>'+
       '<td style="font-weight:700;">'+r.NAME+'</td>'+
       '<td>'+r.MOBILE+'</td>'+
       '<td style="font-family:var(--fh);font-size:11px;color:#1D4ED8;font-weight:700;">'+meterNo+'</td>'+
@@ -1836,10 +1844,207 @@ function renderDefaulters(page){
 function defRowClick(el){ openFromDefaulter(el.getAttribute('data-id')); }
 function defMapClick(el){ openDefaulterMap(el.getAttribute('data-id')); }
 
+function openDefaulterModal(acctId){
+  var defRec = DEF_ALL.find(function(x){return String(x.ACCT_ID)===String(acctId);});
+  if(!defRec){ alert('Consumer not found in defaulter data.'); return; }
+  console.log('openDefaulterModal:', acctId, 'OUT:', defRec.OUTSTANDING, 'AMT:', defRec.PAY_AMT, 'DATE:', defRec.PAY_DATE);
+
+  var r = D.find(function(row){return String(row.ACCT_ID)===String(acctId);});
+  var lat = parseFloat(defRec.LAT||0), lon = parseFloat(defRec.LON||0);
+  if(lat>50){var t=lat;lat=lon;lon=t;}
+  var meterNo = METER_DATA[String(acctId)] || (r?r.SERIAL_NBR:'') || defRec.METER_NO || '-';
+
+  gel('modal-title').textContent = defRec.NAME || 'Consumer Details';
+  gel('modal-grid').innerHTML =
+    '<div class="modal-field"><div class="lbl">MOBILE</div><div class="val">'+(defRec.MOBILE||defRec.MOBILE_NO||'-')+'</div></div>'+
+    '<div class="modal-field"><div class="lbl">METER NO</div><div class="val" style="font-family:var(--fh);color:#1D4ED8;font-weight:700;">'+meterNo+'</div></div>'+
+    '<div class="modal-field"><div class="lbl">SUPPLY TYPE</div><div class="val">'+catBadge(defRec.SUPPLY_TYPE)+'</div></div>'+
+    '<div class="modal-field"><div class="lbl">LOAD</div><div class="val">'+(r?r.LOAD:'-')+' kW</div></div>'+
+    '<div class="modal-field"><div class="lbl">SUBSTATION</div><div class="val">'+(defRec.SUBSTATION||'-')+'</div></div>'+
+    '<div class="modal-field"><div class="lbl">FEEDER</div><div class="val">'+(defRec.FEEDER||'-')+'</div></div>'+
+    '<div class="modal-field" style="grid-column:span 2"><div class="lbl">ADDRESS</div><div class="val">'+(defRec.ADDRESS||'-')+'</div></div>';
+
+  // Payment from DEF_ALL (always latest)
+  gel('modal-pay-section').style.display = 'block';
+  gel('modal-pay-grid').innerHTML =
+    '<div><div style="font-size:9px;color:#6B7280;font-family:var(--fh);">LAST PAID AMT</div>'+
+    '<div style="font-size:14px;font-weight:700;color:#059669;">₹'+Math.round(defRec.PAY_AMT||0).toLocaleString()+'</div></div>'+
+    '<div><div style="font-size:9px;color:#6B7280;font-family:var(--fh);">PAID DATE</div>'+
+    '<div style="font-size:12px;font-weight:700;color:#1D4ED8;">'+(defRec.PAY_DATE||'-')+'</div></div>'+
+    '<div><div style="font-size:9px;color:#6B7280;font-family:var(--fh);">OUTSTANDING</div>'+
+    '<div style="font-size:14px;font-weight:700;color:'+(defRec.OUTSTANDING>0?'#F43F5E':'#059669')+';">₹'+Math.round(defRec.OUTSTANDING||0).toLocaleString()+'</div></div>';
+
+  // ATR section
+  var atrSec = gel('modal-atr-section');
+  atrSec.style.display = 'block';
+  atrSec.querySelector('div:first-child').textContent = '📋 ATR STATUS — DEFAULTER ACTION REPORT';
+  var sel = gel('modal-atr-sel');
+  sel.innerHTML = '<option value="PENDING">⏳ PENDING</option><option value="PAID">✅ PAID</option><option value="PARTIAL">💰 PARTIAL PAYMENT</option><option value="PROMISE">🤝 PROMISE TO PAY</option><option value="LOCK">🔒 LOCK / AWAY</option><option value="DISPUTE">⚖️ DISPUTE</option><option value="OTHER">📝 OTHER</option>';
+  var currentAtr = defRec.ATR_STATUS || 'PENDING';
+  sel.value = currentAtr;
+  updateAtrSelectStyle();
+  var isSubmitted = currentAtr !== 'PENDING';
+  sel.disabled = isSubmitted;
+  sel.style.opacity = isSubmitted ? '0.7' : '1';
+  var defSaved = {};
+  try{ defSaved = JSON.parse(localStorage.getItem('def_atr_data')||'{}'); }catch(e){}
+  var defEntry = defSaved[String(acctId)] || {};
+  var defComment = typeof defEntry==='object' ? (defEntry.comment||'') : '';
+  var defCommentBox = gel('modal-atr-comment');
+  var defCommentWrap = gel('modal-atr-comment-wrap');
+  if(defCommentBox){ defCommentBox.value=defComment; defCommentBox.disabled=isSubmitted; }
+  if(defCommentWrap){
+    var showFor=['OTHER','DISPUTE','PROMISE','PARTIAL'];
+    defCommentWrap.style.display=(showFor.indexOf(currentAtr)>=0||defComment)?'block':'none';
+  }
+  atrSec.querySelectorAll('.save-atr-btn').forEach(function(b){
+    b.disabled=isSubmitted; b.style.opacity=isSubmitted?'0.5':'1';
+    b.style.cursor=isSubmitted?'not-allowed':'pointer';
+    b.style.background=isSubmitted?'#9CA3AF':'#F59E0B';
+    b.textContent=isSubmitted?'✅ ATR ALREADY SUBMITTED':'💾 SAVE ATR STATUS';
+  });
+  atrSec.dataset.type = 'defaulter';
+
+  // Nearby defaulters
+  if(lat&&lon){
+    gel('modal-nearby-section').style.display='block';
+    gel('modal-nearby-section').querySelector('div:first-child').textContent='📍 NEARBY DEFAULTERS';
+    modalNearbyLat=lat; modalNearbyLon=lon;
+    var nearby=DEF_ALL.filter(function(x){
+      return String(x.ACCT_ID)!==String(acctId)&&x.LAT&&x.LON;
+    }).map(function(x){
+      var xl=parseFloat(x.LAT),xo=parseFloat(x.LON);
+      return Object.assign({},x,{_dist:haversine(lat,lon,xl,xo),_lat:xl,_lon:xo});
+    }).filter(function(x){return x._dist<=0.5;})
+    .sort(function(a,b){return a._dist-b._dist;}).slice(0,8);
+    var cnt=gel('modal-nb-count'); if(cnt) cnt.textContent=nearby.length+' FOUND';
+    var lst=gel('modal-nb-list'); if(lst) lst.innerHTML=nearby.length?nearby.map(function(x){
+      var dist=x._dist<1?(x._dist*1000).toFixed(0)+'m':x._dist.toFixed(2)+'km';
+      var out=Math.round(x.OUTSTANDING||0);
+      return '<div class="nb-card" onclick="closeModal();setTimeout(function(){openFromDefaulter(\''+x.ACCT_ID+'\');},100)">'+
+        '<div style="display:flex;justify-content:space-between;">'+
+          '<div><div style="font-size:12px;font-weight:700;">'+x.NAME+'</div>'+
+          '<div style="font-size:10px;color:var(--muted);">'+x.ACCT_ID+'</div></div>'+
+          '<div><div style="font-size:11px;font-weight:700;color:#4F46E5;">'+dist+'</div>'+
+          '<div style="font-size:12px;font-weight:700;color:#F43F5E;">₹'+out.toLocaleString()+'</div></div>'+
+        '</div></div>';
+    }).join(''):'<div style="padding:10px;text-align:center;color:var(--muted);font-size:12px;">No nearby defaulters within 500m</div>';
+  } else gel('modal-nearby-section').style.display='none';
+
+  var mapBtn=gel('modal-map-btn');
+  if(lat&&lon){
+    mapBtn.href='#';
+    mapBtn.onclick=function(e){e.preventDefault();closeModal();openDefaulterMap(String(acctId));};
+    mapBtn.innerHTML='📍 VIEW ON MAP WITH NEARBY';
+    mapBtn.style.display='inline-flex';
+  } else mapBtn.style.display='none';
+
+  gel('detail-modal').classList.add('open');
+  document.body.style.overflow='hidden';
+  modalCurrentAcct=String(acctId); modalIsdc=false;
+}
+
+function openFromDefRow(el){
+  try{
+    var data = JSON.parse(decodeURIComponent(el.dataset.row));
+    openDefaulterModalDirect(data);
+  } catch(e){
+    openFromDefaulter(el.dataset.id);
+  }
+}
+
+function openDefaulterModalDirect(d){
+  var lat=parseFloat(d.LAT||0), lon=parseFloat(d.LON||0);
+  if(lat>50){var t=lat;lat=lon;lon=t;}
+
+  gel('modal-title').textContent = d.NAME || 'Consumer Details';
+  gel('modal-grid').innerHTML =
+    '<div class="modal-field"><div class="lbl">MOBILE</div><div class="val">'+(d.MOBILE||'-')+'</div></div>'+
+    '<div class="modal-field"><div class="lbl">METER NO</div><div class="val" style="font-family:var(--fh);color:#1D4ED8;font-weight:700;">'+(d.METER_NO||'-')+'</div></div>'+
+    '<div class="modal-field"><div class="lbl">SUPPLY TYPE</div><div class="val">'+catBadge(d.SUPPLY_TYPE)+'</div></div>'+
+    '<div class="modal-field"><div class="lbl">SUBSTATION</div><div class="val">'+(d.SUBSTATION||'-')+'</div></div>'+
+    '<div class="modal-field"><div class="lbl">FEEDER</div><div class="val">'+(d.FEEDER||'-')+'</div></div>'+
+    '<div class="modal-field" style="grid-column:span 2"><div class="lbl">ADDRESS</div><div class="val">'+(d.ADDRESS||'-')+'</div></div>';
+
+  // Payment - directly from row data (same source as table)
+  gel('modal-pay-section').style.display='block';
+  gel('modal-pay-grid').innerHTML =
+    '<div><div style="font-size:9px;color:#6B7280;font-family:var(--fh);">LAST PAID AMT</div>'+
+    '<div style="font-size:14px;font-weight:700;color:#059669;">₹'+Math.round(d.PAY_AMT||0).toLocaleString()+'</div></div>'+
+    '<div><div style="font-size:9px;color:#6B7280;font-family:var(--fh);">PAID DATE</div>'+
+    '<div style="font-size:12px;font-weight:700;color:#1D4ED8;">'+(d.PAY_DATE||'-')+'</div></div>'+
+    '<div><div style="font-size:9px;color:#6B7280;font-family:var(--fh);">OUTSTANDING</div>'+
+    '<div style="font-size:14px;font-weight:700;color:'+(d.OUTSTANDING>0?'#F43F5E':'#059669')+';">₹'+Math.round(d.OUTSTANDING||0).toLocaleString()+'</div></div>';
+
+  // ATR section
+  var atrSec=gel('modal-atr-section');
+  atrSec.style.display='block';
+  atrSec.querySelector('div:first-child').textContent='📋 ATR STATUS — DEFAULTER ACTION REPORT';
+  var sel=gel('modal-atr-sel');
+  sel.innerHTML='<option value="PENDING">⏳ PENDING</option><option value="PAID">✅ PAID</option><option value="PARTIAL">💰 PARTIAL PAYMENT</option><option value="PROMISE">🤝 PROMISE TO PAY</option><option value="LOCK">🔒 LOCK / AWAY</option><option value="DISPUTE">⚖️ DISPUTE</option><option value="OTHER">📝 OTHER</option>';
+  var currentAtr=d.ATR_STATUS||'PENDING';
+  sel.value=currentAtr;
+  updateAtrSelectStyle();
+  var isSubmitted=currentAtr!=='PENDING';
+  sel.disabled=isSubmitted; sel.style.opacity=isSubmitted?'0.7':'1';
+  var defSaved={};
+  try{defSaved=JSON.parse(localStorage.getItem('def_atr_data')||'{}');}catch(e){}
+  var defEntry=defSaved[String(d.ACCT_ID)]||{};
+  var defComment=typeof defEntry==='object'?(defEntry.comment||''):'';
+  var cb=gel('modal-atr-comment'), cw=gel('modal-atr-comment-wrap');
+  if(cb){cb.value=defComment;cb.disabled=isSubmitted;}
+  if(cw){var sf=['OTHER','DISPUTE','PROMISE','PARTIAL'];cw.style.display=(sf.indexOf(currentAtr)>=0||defComment)?'block':'none';}
+  atrSec.querySelectorAll('.save-atr-btn').forEach(function(b){
+    b.disabled=isSubmitted;b.style.opacity=isSubmitted?'0.5':'1';
+    b.style.background=isSubmitted?'#9CA3AF':'#F59E0B';
+    b.textContent=isSubmitted?'✅ ATR ALREADY SUBMITTED':'💾 SAVE ATR STATUS';
+  });
+  atrSec.dataset.type='defaulter';
+
+  // Nearby
+  if(lat&&lon&&DEF_ALL.length){
+    gel('modal-nearby-section').style.display='block';
+    modalNearbyLat=lat; modalNearbyLon=lon;
+    var nearby=DEF_ALL.filter(function(x){return String(x.ACCT_ID)!==String(d.ACCT_ID)&&x.LAT&&x.LON;})
+      .map(function(x){var xl=parseFloat(x.LAT),xo=parseFloat(x.LON);return Object.assign({},x,{_dist:haversine(lat,lon,xl,xo)});})
+      .filter(function(x){return x._dist<=0.5;}).sort(function(a,b){return a._dist-b._dist;}).slice(0,8);
+    var cnt=gel('modal-nb-count');if(cnt)cnt.textContent=nearby.length+' FOUND';
+    var lst=gel('modal-nb-list');
+    if(lst)lst.innerHTML=nearby.length?nearby.map(function(x){
+      var dist=x._dist<1?(x._dist*1000).toFixed(0)+'m':x._dist.toFixed(2)+'km';
+      return '<div class="nb-card" onclick="closeModal();setTimeout(function(){openFromDefaulter(\''+x.ACCT_ID+'\');},100)">'+
+        '<div style="display:flex;justify-content:space-between;">'+
+        '<div><div style="font-size:12px;font-weight:700;">'+x.NAME+'</div>'+
+        '<div style="font-size:10px;color:var(--muted);">'+x.ACCT_ID+'</div></div>'+
+        '<div><div style="font-family:var(--fh);font-size:12px;font-weight:700;color:#F43F5E;">₹'+Math.round(x.OUTSTANDING||0).toLocaleString()+'</div>'+
+        '<div style="font-size:10px;color:#4F46E5;">'+dist+'</div></div></div></div>';
+    }).join(''):'<div style="padding:10px;text-align:center;color:var(--muted);font-size:12px;">None within 500m</div>';
+  } else gel('modal-nearby-section').style.display='none';
+
+  var mapBtn=gel('modal-map-btn');
+  if(lat&&lon){
+    mapBtn.href='#';
+    mapBtn.onclick=function(e){e.preventDefault();closeModal();openDefaulterMap(String(d.ACCT_ID));};
+    mapBtn.innerHTML='📍 VIEW ON MAP WITH NEARBY';
+    mapBtn.style.display='inline-flex';
+  } else mapBtn.style.display='none';
+
+  gel('detail-modal').classList.add('open');
+  document.body.style.overflow='hidden';
+  modalCurrentAcct=String(d.ACCT_ID); modalIsdc=false;
+}
+
 function openFromDefaulter(acctId){
-  // Find in main data
-  var r=D.find(function(row){return String(row.ACCT_ID)===String(acctId);});
-  if(r){ openMainDetail(acctId); return; }
+  // ALWAYS use DEF_ALL for defaulter tab - never use EUDD/PAY_DATA
+  if(DEF_ALL.length){
+    var defRec = DEF_ALL.find(function(x){return String(x.ACCT_ID)===String(acctId);});
+    if(defRec){ openDefaulterModal(acctId); return; }
+  }
+  // DEF_ALL not loaded yet - show loading message
+  if(!DEF_ALL.length){
+    alert('⏳ Defaulter data still loading. Please wait a moment and try again.');
+    return;
+  }
   var inp=gel('li'); if(inp)inp.value=acctId;
   st('lookup'); dl();
 }
@@ -1883,46 +2088,43 @@ function openDefaulterMap(acctId){
 }
 
 function openMainDetail(acctId){
-  var r=D.find(function(row){return String(row.ACCT_ID)===String(acctId);});
-  if(!r)return;
-  var pay=PAY_DATA[String(acctId)]||null;
-  var lat=parseFloat(r.LAT),lon=parseFloat(r.LON);
-  if(lat>50){var t=lat;lat=lon;lon=t;}
+  var r = D.find(function(row){ return String(row.ACCT_ID)===String(acctId); });
+  if(!r) return;
 
-  gel('modal-title').textContent=r.NAME||'Consumer Details';
-  gel('modal-grid').innerHTML=
+  // Get latest data from DEF_ALL (defaulter.csv - most up to date)
+  var defRec = DEF_ALL.find(function(x){ return String(x.ACCT_ID)===String(acctId); });
+  var pay    = PAY_DATA[String(acctId)] || null;
+
+  var lat=parseFloat(r.LAT), lon=parseFloat(r.LON);
+  if(lat>50){ var t=lat; lat=lon; lon=t; }
+
+  var meterNo = METER_DATA[String(acctId)] || r.SERIAL_NBR || '-';
+
+  gel('modal-title').textContent = r.NAME || 'Consumer Details';
+  gel('modal-grid').innerHTML =
     '<div class="modal-field"><div class="lbl">MOBILE</div><div class="val">'+(r.MOBILE_NO||'-')+'</div></div>'+
+    '<div class="modal-field"><div class="lbl">METER NO</div><div class="val" style="font-family:var(--fh);color:#1D4ED8;font-weight:700;">'+meterNo+'</div></div>'+
     '<div class="modal-field"><div class="lbl">CATEGORY</div><div class="val">'+catBadge(r.CATEGORY)+'</div></div>'+
     '<div class="modal-field"><div class="lbl">LOAD</div><div class="val">'+(r.LOAD||'-')+' kW</div></div>'+
-
     '<div class="modal-field"><div class="lbl">SUBSTATION</div><div class="val">'+(r.SUBSTATION||'-')+'</div></div>'+
     '<div class="modal-field"><div class="lbl">FEEDER</div><div class="val">'+(r.FEEDER||'-')+'</div></div>'+
     '<div class="modal-field" style="grid-column:span 2"><div class="lbl">ADDRESS</div><div class="val">'+(r.ADDRESS||'-')+'</div></div>'+
     '<div class="modal-field"><div class="lbl">LATITUDE</div><div class="val">'+(lat||'-')+'</div></div>'+
     '<div class="modal-field"><div class="lbl">LONGITUDE</div><div class="val">'+(lon||'-')+'</div></div>';
 
-  if(pay){
-    var out=parseFloat(pay.TOTAL_OUTSTANDING)||0;
-    gel('modal-pay-section').style.display='block';
-    gel('modal-pay-grid').innerHTML=
-      '<div><div style="font-size:9px;color:#6B7280;font-family:var(--fh);">LAST PAID AMT</div><div style="font-size:14px;font-weight:700;color:#059669;">₹'+Math.round(parseFloat(pay.PAY_AMT)||0).toLocaleString()+'</div></div>'+
-      '<div><div style="font-size:9px;color:#6B7280;font-family:var(--fh);">PAID DATE</div><div style="font-size:12px;font-weight:700;color:#1D4ED8;">'+pay.PAY_DATE+'</div></div>'+
-      '<div><div style="font-size:9px;color:#6B7280;font-family:var(--fh);">OUTSTANDING</div><div style="font-size:14px;font-weight:700;color:'+(out>0?'#F43F5E':'#059669')+';">₹'+Math.round(out).toLocaleString()+'</div></div>';
-  } else gel('modal-pay-section').style.display='none';
+  // Payment data: prefer DEF_ALL (latest defaulter.csv) over PAY_DATA (EUDD)
+  var dispOut  = defRec ? defRec.OUTSTANDING : (pay ? parseFloat(pay.TOTAL_OUTSTANDING)||0 : 0);
+  var dispAmt  = defRec ? defRec.PAY_AMT     : (pay ? parseFloat(pay.PAY_AMT)||0           : 0);
+  var dispDate = defRec ? defRec.PAY_DATE    : (pay ? pay.PAY_DATE                         : '-');
 
-  gel('modal-atr-section').style.display='none';
-
-  // Show Meter No in modal
-  var meterNo = METER_DATA[String(acctId)] || (r ? r.SERIAL_NBR : '') || '-';
-  var defRec = DEF_ALL.find(function(x){return String(x.ACCT_ID)===String(acctId);});
-  var currentAtr = defRec ? (defRec.ATR_STATUS||'PENDING') : 'PENDING';
-
-  // Add meter no to grid
-  var meterField = document.createElement('div');
-  meterField.className = 'modal-field';
-  meterField.innerHTML = '<div class="lbl">METER NUMBER</div><div class="val" style="font-family:var(--fh);color:#1D4ED8;font-weight:700;">' + meterNo + '</div>';
-  var grid = gel('modal-grid');
-  if(grid) grid.appendChild(meterField);
+  gel('modal-pay-section').style.display = 'block';
+  gel('modal-pay-grid').innerHTML =
+    '<div><div style="font-size:9px;color:#6B7280;font-family:var(--fh);">LAST PAID AMT</div>'+
+    '<div style="font-size:14px;font-weight:700;color:#059669;">₹'+Math.round(dispAmt).toLocaleString()+'</div></div>'+
+    '<div><div style="font-size:9px;color:#6B7280;font-family:var(--fh);">PAID DATE</div>'+
+    '<div style="font-size:12px;font-weight:700;color:#1D4ED8;">'+(dispDate||'-')+'</div></div>'+
+    '<div><div style="font-size:9px;color:#6B7280;font-family:var(--fh);">OUTSTANDING</div>'+
+    '<div style="font-size:14px;font-weight:700;color:'+(dispOut>0?'#F43F5E':'#059669')+';">₹'+Math.round(dispOut).toLocaleString()+'</div></div>';
 
   // ATR section for defaulter consumers
   if(defRec){
@@ -1931,16 +2133,16 @@ function openMainDetail(acctId){
     atrSec.querySelector('div:first-child').textContent = '📋 ATR STATUS — DEFAULTER ACTION REPORT';
     var sel = gel('modal-atr-sel');
     sel.innerHTML = '<option value="PENDING">⏳ PENDING</option><option value="PAID">✅ PAID</option><option value="PARTIAL">💰 PARTIAL PAYMENT</option><option value="PROMISE">🤝 PROMISE TO PAY</option><option value="LOCK">🔒 LOCK / AWAY</option><option value="DISPUTE">⚖️ DISPUTE</option><option value="OTHER">📝 OTHER</option>';
+    var currentAtr = defRec.ATR_STATUS || 'PENDING';
     sel.value = currentAtr;
     updateAtrSelectStyle();
-    // Freeze if already actioned
     var isSubmitted = currentAtr !== 'PENDING';
     sel.disabled = isSubmitted;
     sel.style.opacity = isSubmitted ? '0.7' : '1';
-    // Load saved comment for defaulter
+    // Load saved comment
     var defSaved = {};
-    try{defSaved=JSON.parse(localStorage.getItem('def_atr_data')||'{}');}catch(e){}
-    var defEntry = defSaved[String(acctId)]||{};
+    try{ defSaved = JSON.parse(localStorage.getItem('def_atr_data')||'{}'); }catch(e){}
+    var defEntry = defSaved[String(acctId)] || {};
     var defComment = typeof defEntry==='object' ? (defEntry.comment||'') : '';
     var defCommentBox = gel('modal-atr-comment');
     var defCommentWrap = gel('modal-atr-comment-wrap');
@@ -1957,31 +2159,27 @@ function openMainDetail(acctId){
       b.style.background = isSubmitted ? '#9CA3AF' : '#F59E0B';
       b.textContent = isSubmitted ? '✅ ATR ALREADY SUBMITTED' : '💾 SAVE ATR STATUS';
     });
-    // Override saveModalAtr for defaulter context
     gel('modal-atr-section').dataset.type = 'defaulter';
-    gel('modal-atr-counts').innerHTML = '';
   } else {
     gel('modal-atr-section').style.display = 'none';
     gel('modal-atr-section').dataset.type = '';
   }
 
-  // Show nearby defaulters if LAT/LON available
+  // Nearby defaulters
   if(lat&&lon){
-    gel('modal-nearby-section').style.display='block';
-    gel('modal-nearby-section').querySelector('div:first-child').textContent='📍 NEARBY DEFAULTERS (500m)';
+    gel('modal-nearby-section').style.display = 'block';
+    gel('modal-nearby-section').querySelector('div:first-child').textContent = '📍 NEARBY DEFAULTERS (500m)';
     modalNearbyLat=lat; modalNearbyLon=lon;
-    // Find nearby from DEF_ALL
-    var nearby=DEF_ALL.filter(function(x){
-      return String(x.ACCT_ID)!==String(acctId)&&x.LAT&&x.LON;
+    var nearby = DEF_ALL.filter(function(x){
+      return String(x.ACCT_ID)!==String(acctId) && x.LAT && x.LON;
     }).map(function(x){
-      var xLat=parseFloat(x.LAT),xLon=parseFloat(x.LON);
+      var xLat=parseFloat(x.LAT), xLon=parseFloat(x.LON);
       return Object.assign({},x,{_dist:haversine(lat,lon,xLat,xLon),_lat:xLat,_lon:xLon});
-    }).filter(function(x){return x._dist<=0.5;})
-    .sort(function(a,b){return a._dist-b._dist;})
+    }).filter(function(x){ return x._dist<=0.5; })
+    .sort(function(a,b){ return a._dist-b._dist; })
     .slice(0,8);
-
-    var cnt=gel('modal-nb-count'); if(cnt)cnt.textContent=nearby.length+' FOUND';
-    var lst=gel('modal-nb-list'); if(!lst)return;
+    var cnt=gel('modal-nb-count'); if(cnt) cnt.textContent=nearby.length+' FOUND';
+    var lst=gel('modal-nb-list'); if(!lst) return;
     if(!nearby.length){
       lst.innerHTML='<div style="padding:10px;text-align:center;color:var(--muted);font-size:12px;">No nearby defaulters within 500m</div>';
     } else {
@@ -2012,60 +2210,6 @@ function openMainDetail(acctId){
   modalCurrentAcct=String(acctId); modalIsdc=false;
 }
 
-function expDefaulterAtr(){
-  if(!DEF_ALL.length)return alert('No defaulter data loaded.');
-  // Restore from localStorage first
-  var defSaved={};
-  try{defSaved=JSON.parse(localStorage.getItem('def_atr_data')||'{}');}catch(e){}
-  DEF_ALL.forEach(function(r){
-    var e=defSaved[String(r.ACCT_ID)];
-    if(e){ r.ATR_STATUS=typeof e==='object'?(e.atr||r.ATR_STATUS):e; r.ATR_COMMENT=typeof e==='object'?(e.comment||''):''; }
-  });
-  // Summary
-  var counts={PAID:0,PARTIAL:0,PROMISE:0,LOCK:0,DISPUTE:0,OTHER:0,PENDING:0};
-  DEF_ALL.forEach(function(r){counts[r.ATR_STATUS||'PENDING']=(counts[r.ATR_STATUS||'PENDING']||0)+1;});
-  var summary=[
-    {STATUS:'PAID',     COUNT:counts.PAID,    DESC:'Consumer paid dues'},
-    {STATUS:'PARTIAL',  COUNT:counts.PARTIAL, DESC:'Partial payment received'},
-    {STATUS:'PROMISE',  COUNT:counts.PROMISE, DESC:'Promise to pay'},
-    {STATUS:'LOCK',     COUNT:counts.LOCK,    DESC:'Premises locked / consumer away'},
-    {STATUS:'DISPUTE',  COUNT:counts.DISPUTE, DESC:'Bill under dispute'},
-    {STATUS:'OTHER',    COUNT:counts.OTHER,   DESC:'Other reason'},
-    {STATUS:'PENDING',  COUNT:counts.PENDING, DESC:'Not yet actioned'},
-    {STATUS:'TOTAL',    COUNT:DEF_ALL.length, DESC:'Total defaulters'}
-  ];
-  // Detail — all actioned
-  var detail=DEF_ALL.filter(function(r){return r.ATR_STATUS&&r.ATR_STATUS!=='PENDING';})
-    .map(function(r){
-      return {
-        ACCT_ID:r.ACCT_ID, NAME:r.NAME, MOBILE:r.MOBILE_NO||r.MOBILE||'-',
-        METER_NO:METER_DATA[String(r.ACCT_ID)]||r.METER_NO||'-',
-        OUTSTANDING:'Rs.'+Math.round(r.OUTSTANDING||0).toLocaleString(),
-        LP_DATE:r.PAY_DATE||'-', LP_AMT:'Rs.'+(r.PAY_AMT||0),
-        ATR_STATUS:r.ATR_STATUS, ATR_COMMENT:r.ATR_COMMENT||'-',
-        SUPPLY_TYPE:r.SUPPLY_TYPE||'-',
-        SUBSTATION:r.SUBSTATION||'-', FEEDER:r.FEEDER||'-',
-        ADDRESS:r.ADDRESS||'-'
-      };
-    });
-  var wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(summary),'ATR Summary');
-  if(detail.length) XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(detail),'ATR Details');
-  // All defaulters sheet
-  var all=DEF_ALL.map(function(r){
-    return {
-      ACCT_ID:r.ACCT_ID, NAME:r.NAME, MOBILE:r.MOBILE_NO||r.MOBILE||'-',
-      METER_NO:METER_DATA[String(r.ACCT_ID)]||r.METER_NO||'-',
-      OUTSTANDING:Math.round(r.OUTSTANDING||0),
-      LP_DATE:r.PAY_DATE||'-', LP_AMT:r.PAY_AMT||0,
-      ATR_STATUS:r.ATR_STATUS||'PENDING',
-      SUPPLY_TYPE:r.SUPPLY_TYPE||'-',
-      SUBSTATION:r.SUBSTATION||'-', FEEDER:r.FEEDER||'-'
-    };
-  });
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(all),'All Defaulters');
-  XLSX.writeFile(wb,'Defaulter_ATR_'+new Date().toLocaleDateString('en-IN').replace(/\//g,'-')+'.xlsx');
-}
 
 function expDefaultersX(){
   if(!DEF_DATA.length)return alert('No data.');
