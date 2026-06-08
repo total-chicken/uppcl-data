@@ -1645,12 +1645,24 @@ function parseDefaulterText(text){
     var lat=(v[iLat]||'').replace(/"/g,''), lon=(v[iLon]||'').replace(/"/g,'');
     try{if(parseFloat(lat)>50){var t=lat;lat=lon;lon=t;}}catch(e){}
     var out=parseFloat((v[iOut]||'').replace(/"/g,''))||0;
+    // Fix LP DATE/LP AMT swap - if LP DATE looks like a number it's actually the amount
+    var rawDate = iDate>=0 ? (v[iDate]||'').replace(/"/g,'').trim() : '';
+    var rawAmt  = iAmt>=0  ? (v[iAmt] ||'').replace(/"/g,'').trim() : '';
+    var lpDate, lpAmt;
+    if(rawDate && !isNaN(parseFloat(rawDate)) && !/\d{2}[-\/]\d{2}[-\/]\d{4}/.test(rawDate)){
+      // LP DATE is actually a number = amount, LP AMT is the date
+      lpAmt  = parseFloat(rawDate)||0;
+      lpDate = rawAmt;
+    } else {
+      lpDate = rawDate;
+      lpAmt  = parseFloat(rawAmt)||0;
+    }
     DEF_ALL.push({
       ACCT_ID:acct, NAME:(v[iName]||'').replace(/"/g,''),
       MOBILE:(v[iMob]||'').replace(/"/g,''), ADDRESS:(v[iAddr]||'').replace(/"/g,''),
       SUPPLY_TYPE:(v[iCat]||'').replace(/"/g,''), OUTSTANDING:out,
-      PAY_AMT:parseFloat((v[iAmt]||'').replace(/"/g,''))||0,
-      PAY_DATE:(v[iDate]||'').replace(/"/g,''), STATUS:'INSERVICE',
+      PAY_AMT:lpAmt,
+      PAY_DATE:lpDate, STATUS:'INSERVICE',
       SUBSTATION:(v[iSub]||'').replace(/"/g,''), FEEDER:(v[iFeed]||'').replace(/"/g,''),
       LAT:lat, LON:lon
     });
