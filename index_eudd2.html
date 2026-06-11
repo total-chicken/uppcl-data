@@ -511,39 +511,44 @@ const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzd-Lq9Tx1dP
 const DEFAULTER_FILE = 'https://raw.githubusercontent.com/anshu10kumar04-pixel/uppcl-data/main/defaulter.csv';
 const METERNO_FILE  = 'https://raw.githubusercontent.com/anshu10kumar04-pixel/uppcl-data/main/METERNO.csv';
 const WORKER_URL = 'https://anshu10kumar04-pixel.github.io/uppcl-data/worker.js';
-const CONFIG_URL = RAW_BASE + 'config.json';
-var FTP_CONFIG = {};
-
-function loadFtpConfig(){
-  fetch(CONFIG_URL)
-    .then(function(r){ return r.ok ? r.json() : null; })
-    .then(function(cfg){
-      if(cfg && cfg.ftp){
-        FTP_CONFIG = cfg.ftp;
-        var el = gel('ftp-config-preview');
-        if(el) el.textContent = 'Host: ' + (FTP_CONFIG.host||'?') + ':' + (FTP_CONFIG.port||21) + ' | Path: ' + (FTP_CONFIG.path||'/');
-      }
-    })
-    .catch(function(){});
-}
+const LOCAL_SYNC_URL = 'http://localhost:7321';
+var _syncPollTimer = null;
 
 function triggerFtpSync(){
   var btn = event ? event.target : null;
-  if(btn){ btn.textContent='⏳ SYNCING…'; btn.disabled=true; }
-  var proxyUrl = FTP_CONFIG.proxy_url || localStorage.getItem('ftp_proxy_url') || '';
-  if(!proxyUrl){ alert('No FTP proxy URL configured in config.json'); if(btn){btn.textContent='🔄 SYNC FROM FTP';btn.disabled=false;} return; }
-  fetch(proxyUrl, { method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ host:FTP_CONFIG.host, port:FTP_CONFIG.port||21,
-      user:FTP_CONFIG.user, pass:FTP_CONFIG.pass, path:FTP_CONFIG.path||'/' })
-  }).then(function(r){ return r.json(); })
-    .then(function(d){
-      if(btn){ btn.textContent='✅ SYNCED'; setTimeout(function(){ btn.textContent='🔄 SYNC FROM FTP'; btn.disabled=false; },2500); }
-      console.log('FTP sync result:', d);
+  var logEl = gel('ftp-sync-log');
+  fetch(LOCAL_SYNC_URL + '/ping', {mode:'cors'})
+    .catch(function(){
+      alert('⚠ Local sync server not running.\n\nRun this command on your PC:\n  python local_server.py\n\nKeep that window open, then try again.');
+      return Promise.reject('no_server');
     })
-    .catch(function(e){
-      if(btn){ btn.textContent='🔄 SYNC FROM FTP'; btn.disabled=false; }
-      alert('FTP sync failed: ' + e.message);
-    });
+    .then(function(r){ return r.json(); })
+    .then(function(p){
+      if(!p.script_exists){ alert('⚠ ftp_sync.py not found next to local_server.py'); return; }
+      if(btn){ btn.textContent='⏳ SYNCING…'; btn.disabled=true; }
+      if(logEl){ logEl.style.display='block'; logEl.innerHTML=''; }
+      return fetch(LOCAL_SYNC_URL + '/sync', {method:'POST', mode:'cors'});
+    })
+    .then(function(r){ if(r) return r.json(); })
+    .then(function(d){
+      if(!d) return;
+      if(!d.ok){ alert('⚠ ' + d.message); if(btn){btn.disabled=false;btn.textContent='🔄 SYNC FROM FTP';} return; }
+      clearInterval(_syncPollTimer);
+      _syncPollTimer = setInterval(function(){
+        fetch(LOCAL_SYNC_URL + '/status', {mode:'cors'})
+          .then(function(r){ return r.json(); })
+          .then(function(s){
+            if(logEl) logEl.innerHTML = s.log.join('\n');
+            if(!s.running){
+              clearInterval(_syncPollTimer);
+              if(btn){ btn.disabled=false; btn.textContent='🔄 SYNC FROM FTP'; }
+              var last = s.log[s.log.length-1]||'';
+              if(last.includes('DONE')) setTimeout(function(){ alert('✅ FTP sync complete! Reload the page to use fresh data.'); }, 200);
+            }
+          }).catch(function(){ clearInterval(_syncPollTimer); });
+      }, 1500);
+    })
+    .catch(function(e){ if(e!=='no_server') console.warn(e); });
 }
 
 // ─── GLOBALS ─────────────────────────────────────────────────────────────────
@@ -741,13 +746,17 @@ function buildSettingsPanel(){
     '</div>'+
 
     '<div style="background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:12px;padding:16px;">'+
-      '<div style="font-family:var(--fh);font-size:14px;font-weight:700;margin-bottom:10px;">📡 FTP DATA SYNC</div>'+
-      '<div style="font-size:12px;color:var(--muted);margin-bottom:12px;">FTP credentials are stored in <code>config.json</code> on GitHub. Use the button below to trigger a fresh data pull from FTP server.</div>'+
-      '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">'+
+      '<div style="font-family:var(--fh);font-size:14px;font-weight:700;margin-bottom:8px;">📡 FTP DATA SYNC</div>'+
+      '<div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Credentials are in <b>config.json</b> on GitHub. Run <code>local_server.py</code> on your PC first, then click Sync.</div>'+
+      '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">'+
         '<button class="btn" style="background:#EA580C;color:#fff;border:none;" onclick="triggerFtpSync()">🔄 SYNC FROM FTP</button>'+
-        '<div id="ftp-config-preview" style="font-size:11px;color:var(--muted);font-family:monospace;"></div>'+
+        '<span style="font-size:11px;color:var(--muted);" id="ftp-server-status"></span>'+
       '</div>'+
+      '<pre id="ftp-sync-log" style="display:none;background:#0F172A;color:#A7F3D0;font-size:10px;font-family:monospace;padding:10px;border-radius:8px;max-height:200px;overflow-y:auto;white-space:pre-wrap;"></pre>'+
     '</div>';
+  fetch(LOCAL_SYNC_URL + '/ping', {mode:'cors'})
+    .then(function(){ var el=gel('ftp-server-status'); if(el) el.innerHTML='<span style="color:#10B981;">● Server running</span>'; })
+    .catch(function(){ var el=gel('ftp-server-status'); if(el) el.innerHTML='<span style="color:#F43F5E;">● Server offline — run local_server.py</span>'; });
 }
 
 
@@ -1159,7 +1168,6 @@ function ia(){
   FD=D.slice();
   // Auto-sync ATR from Google Sheet on load
   setTimeout(autoSyncAtr, 1500);
-  loadFtpConfig();
 }
 
 // ─── SEARCH ───────────────────────────────────────────────────────────────────
