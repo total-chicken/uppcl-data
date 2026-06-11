@@ -678,11 +678,12 @@ function buildSettingsPanel(){
   var subs=[...new Set((D.length?D:[]).map(function(r){return r.SUBSTATION;}).filter(Boolean))].sort();
   if(!subs.length) subs=Object.keys(SUB_DIVISION_MAP);
 
+  var localMap={}; try{localMap=JSON.parse(localStorage.getItem('sub_division_map')||'{}');}catch(e){}
   var rowsHtml=subs.map(function(s){
-    var div=SUB_DIVISION_MAP[s]||'eudd1';
+    var div=localMap[s]||SUB_DIVISION_MAP[s]||'eudd1';
     return '<tr><td style="padding:6px 10px;font-size:12px;font-weight:600;">'+s+'</td>'+
-      '<td style="text-align:center"><input type="radio" name="div_'+s.replace(/[^a-zA-Z0-9]/g,'_')+'" value="eudd1" '+(div==='eudd1'?'checked':'')+' data-sub="'+s+'" class="sub-div-radio"></td>'+
-      '<td style="text-align:center"><input type="radio" name="div_'+s.replace(/[^a-zA-Z0-9]/g,'_')+'" value="eudd2" '+(div==='eudd2'?'checked':'')+' data-sub="'+s+'" class="sub-div-radio"></td></tr>';
+      '<td style="text-align:center"><input type="radio" name="div_'+s.replace(/[^a-zA-Z0-9]/g,'_')+'" value="eudd1" '+(div==='eudd1'?'checked':'')+' data-sub="'+s+'" class="sub-div-radio" onchange="saveSubDivMap()"></td>'+
+      '<td style="text-align:center"><input type="radio" name="div_'+s.replace(/[^a-zA-Z0-9]/g,'_')+'" value="eudd2" '+(div==='eudd2'?'checked':'')+' data-sub="'+s+'" class="sub-div-radio" onchange="saveSubDivMap()"></td></tr>';
   }).join('');
 
   gel('panel-settings').innerHTML =
@@ -725,6 +726,11 @@ function saveFtpConfig(){
   alert('✅ FTP config saved locally.');
 }
 
+function saveSubDivMap(){
+  var m={}; document.querySelectorAll('.sub-div-radio:checked').forEach(function(r){ m[r.dataset.sub]=r.value; });
+  localStorage.setItem('sub_division_map',JSON.stringify(m));
+}
+
 function processAndUpload(){
   var fEl=gel('settings-file');
   if(!fEl||!fEl.files[0]) return alert('Choose a file first.');
@@ -732,6 +738,7 @@ function processAndUpload(){
 
   var subDivMap={};
   document.querySelectorAll('.sub-div-radio:checked').forEach(function(r){ subDivMap[r.dataset.sub]=r.value; });
+  localStorage.setItem('sub_division_map',JSON.stringify(subDivMap));
 
   var logEl=gel('settings-log'); logEl.style.display='block'; logEl.innerHTML='';
   settingsLog('⏳ Reading file…');
