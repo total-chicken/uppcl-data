@@ -514,41 +514,88 @@ const WORKER_URL = 'https://anshu10kumar04-pixel.github.io/uppcl-data/worker.js'
 const LOCAL_SYNC_URL = 'http://localhost:7321';
 var _syncPollTimer = null;
 
-function triggerFtpSync(){
-  var btn = event ? event.target : null;
-  var logEl = gel('ftp-sync-log');
+function checkSyncServer(){
+  var dot = gel('ftp-dot'), txt = gel('ftp-status-text'), btn = gel('ftp-sync-btn');
+  if(txt) txt.textContent = 'Checking…';
   fetch(LOCAL_SYNC_URL + '/ping', {mode:'cors'})
-    .catch(function(){
-      alert('⚠ Local sync server not running.\n\nRun this command on your PC:\n  python local_server.py\n\nKeep that window open, then try again.');
-      return Promise.reject('no_server');
-    })
     .then(function(r){ return r.json(); })
-    .then(function(p){
-      if(!p.script_exists){ alert('⚠ ftp_sync.py not found next to local_server.py'); return; }
-      if(btn){ btn.textContent='⏳ SYNCING…'; btn.disabled=true; }
-      if(logEl){ logEl.style.display='block'; logEl.innerHTML=''; }
-      return fetch(LOCAL_SYNC_URL + '/sync', {method:'POST', mode:'cors'});
+    .then(function(){
+      if(dot) dot.style.background = '#10B981';
+      if(txt) txt.textContent = '● Server running — ready to sync';
+      if(btn) btn.disabled = false;
     })
-    .then(function(r){ if(r) return r.json(); })
+    .catch(function(){
+      if(dot) dot.style.background = '#F43F5E';
+      if(txt) txt.textContent = '● Server offline — run start_sync_server.bat';
+      if(btn) btn.disabled = true;
+    });
+}
+
+function loadSyncStatus(){
+  var card = gel('ftp-synced-info'), tbl = gel('ftp-synced-table'), upd = gel('ftp-synced-updated');
+  fetch(LOCAL_SYNC_URL + '/sync-status', {mode:'cors'})
+    .then(function(r){ return r.json(); })
     .then(function(d){
-      if(!d) return;
-      if(!d.ok){ alert('⚠ ' + d.message); if(btn){btn.disabled=false;btn.textContent='🔄 SYNC FROM FTP';} return; }
-      clearInterval(_syncPollTimer);
-      _syncPollTimer = setInterval(function(){
-        fetch(LOCAL_SYNC_URL + '/status', {mode:'cors'})
-          .then(function(r){ return r.json(); })
-          .then(function(s){
-            if(logEl) logEl.innerHTML = s.log.join('\n');
-            if(!s.running){
-              clearInterval(_syncPollTimer);
-              if(btn){ btn.disabled=false; btn.textContent='🔄 SYNC FROM FTP'; }
-              var last = s.log[s.log.length-1]||'';
-              if(last.includes('DONE')) setTimeout(function(){ alert('✅ FTP sync complete! Reload the page to use fresh data.'); }, 200);
-            }
-          }).catch(function(){ clearInterval(_syncPollTimer); });
-      }, 1500);
+      if(!d.ok || !d.summary) return;
+      if(card) card.style.display = 'block';
+      var rows = Object.entries(d.summary).map(function(e){
+        var code = e[0], s = e[1];
+        return '<tr style="font-size:11px;">'+
+          '<td style="padding:3px 8px;font-weight:700;font-family:var(--fh);">DIV'+code+'</td>'+
+          '<td style="padding:3px 8px;">Master: <b>'+s.master_period+'</b></td>'+
+          '<td style="padding:3px 8px;">Billed: <b>'+s.billed_date+'</b></td>'+
+          '<td style="padding:3px 8px;">Unbilled: <b>'+s.unbilled_date+'</b></td>'+
+        '</tr>';
+      }).join('');
+      if(tbl) tbl.innerHTML = '<table style="border-collapse:collapse;">'+rows+'</table>';
+      if(upd && d.updated) upd.textContent = 'Last updated: ' + new Date(d.updated).toLocaleString('en-IN');
     })
-    .catch(function(e){ if(e!=='no_server') console.warn(e); });
+    .catch(function(){});
+}
+
+function triggerFtpSync(){
+  var btn   = gel('ftp-sync-btn');
+  var logEl = gel('ftp-sync-log');
+  var types = [];
+  if(gel('sync-type-master')   && gel('sync-type-master').checked)   types.push('master');
+  if(gel('sync-type-billed')   && gel('sync-type-billed').checked)   types.push('billed');
+  if(gel('sync-type-unbilled') && gel('sync-type-unbilled').checked) types.push('unbilled');
+  var force = gel('sync-force') && gel('sync-force').checked;
+  if(!types.length){ alert('Select at least one data type to download.'); return; }
+  if(force && !confirm('⚠ FORCE RE-DOWNLOAD will re-fetch data that is already synced.\n\nThis may take several minutes and consume bandwidth.\n\nProceed?')) return;
+  if(logEl){ logEl.style.display='block'; logEl.innerHTML='Starting…\n'; }
+  if(btn){ btn.textContent='⏳ SYNCING…'; btn.disabled=true; }
+  fetch(LOCAL_SYNC_URL + '/sync', {
+    method:'POST', mode:'cors',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({types: types, force: force})
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    if(!d.ok){
+      if(logEl) logEl.innerHTML += '\n❌ ' + d.message;
+      if(btn){ btn.disabled=false; btn.textContent='🔄 SYNC FROM FTP'; }
+      return;
+    }
+    clearInterval(_syncPollTimer);
+    _syncPollTimer = setInterval(function(){
+      fetch(LOCAL_SYNC_URL + '/status', {mode:'cors'})
+        .then(function(r){ return r.json(); })
+        .then(function(s){
+          if(logEl){ logEl.innerHTML = s.log.join('\n'); logEl.scrollTop = logEl.scrollHeight; }
+          if(!s.running){
+            clearInterval(_syncPollTimer);
+            if(btn){ btn.disabled=false; btn.textContent='🔄 SYNC FROM FTP'; }
+            var last = s.log[s.log.length-1]||'';
+            if(last.includes('DONE')){ loadSyncStatus(); alert('✅ FTP sync complete! Reload the page to use fresh data.'); }
+          }
+        }).catch(function(){ clearInterval(_syncPollTimer); });
+    }, 1500);
+  })
+  .catch(function(){
+    if(logEl) logEl.innerHTML += '\n❌ Server not reachable. Run start_sync_server.bat first.';
+    if(btn){ btn.disabled=false; btn.textContent='🔄 SYNC FROM FTP'; }
+  });
 }
 
 // ─── GLOBALS ─────────────────────────────────────────────────────────────────
@@ -746,17 +793,40 @@ function buildSettingsPanel(){
     '</div>'+
 
     '<div style="background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:12px;padding:16px;">'+
-      '<div style="font-family:var(--fh);font-size:14px;font-weight:700;margin-bottom:8px;">📡 FTP DATA SYNC</div>'+
-      '<div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Credentials are in <b>config.json</b> on GitHub. Run <code>local_server.py</code> on your PC first, then click Sync.</div>'+
-      '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">'+
-        '<button class="btn" style="background:#EA580C;color:#fff;border:none;" onclick="triggerFtpSync()">🔄 SYNC FROM FTP</button>'+
-        '<span style="font-size:11px;color:var(--muted);" id="ftp-server-status"></span>'+
+      '<div style="font-family:var(--fh);font-size:14px;font-weight:700;margin-bottom:10px;">📡 FTP DATA SYNC</div>'+
+      '<div id="ftp-server-status" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;background:#F1F5F9;margin-bottom:12px;font-family:var(--fh);font-size:12px;font-weight:600;">'+
+        '<span id="ftp-dot" style="width:10px;height:10px;border-radius:50%;background:#9CA3AF;flex-shrink:0;display:inline-block;"></span>'+
+        '<span id="ftp-status-text">Checking server…</span>'+
+        '<button onclick="checkSyncServer()" style="margin-left:auto;background:transparent;border:1px solid #C7D2FE;border-radius:6px;padding:3px 8px;font-family:var(--fh);font-size:10px;font-weight:700;color:#4F46E5;cursor:pointer;">REFRESH</button>'+
       '</div>'+
-      '<pre id="ftp-sync-log" style="display:none;background:#0F172A;color:#A7F3D0;font-size:10px;font-family:monospace;padding:10px;border-radius:8px;max-height:200px;overflow-y:auto;white-space:pre-wrap;"></pre>'+
+      '<div id="ftp-synced-info" style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:11px;display:none;">'+
+        '<div style="font-family:var(--fh);font-size:11px;font-weight:700;color:#1D4ED8;margin-bottom:6px;">📋 LAST SYNCED (from manifest.json)</div>'+
+        '<div id="ftp-synced-table"></div>'+
+        '<div id="ftp-synced-updated" style="margin-top:5px;color:#64748B;"></div>'+
+      '</div>'+
+      '<div style="font-family:var(--fh);font-size:11px;font-weight:700;color:#374151;margin-bottom:8px;letter-spacing:1px;">SELECT DATA TO DOWNLOAD:</div>'+
+      '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px;">'+
+        '<label style="display:flex;align-items:center;gap:6px;font-family:var(--fh);font-size:13px;font-weight:600;cursor:pointer;">'+
+          '<input type="checkbox" id="sync-type-master" checked style="accent-color:#4F46E5;width:15px;height:15px;"> MASTER DATA'+
+        '</label>'+
+        '<label style="display:flex;align-items:center;gap:6px;font-family:var(--fh);font-size:13px;font-weight:600;cursor:pointer;">'+
+          '<input type="checkbox" id="sync-type-billed" checked style="accent-color:#4F46E5;width:15px;height:15px;"> BILLED'+
+        '</label>'+
+        '<label style="display:flex;align-items:center;gap:6px;font-family:var(--fh);font-size:13px;font-weight:600;cursor:pointer;">'+
+          '<input type="checkbox" id="sync-type-unbilled" checked style="accent-color:#4F46E5;width:15px;height:15px;"> UNBILLED'+
+        '</label>'+
+      '</div>'+
+      '<label style="display:flex;align-items:center;gap:8px;margin-bottom:12px;cursor:pointer;">'+
+        '<input type="checkbox" id="sync-force" style="accent-color:#EA580C;width:15px;height:15px;">'+
+        '<span style="font-family:var(--fh);font-size:12px;font-weight:600;color:#EA580C;">⚠ FORCE RE-DOWNLOAD (ignores already-synced check)</span>'+
+      '</label>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">'+
+        '<button class="btn" style="background:#EA580C;color:#fff;border:none;" id="ftp-sync-btn" onclick="triggerFtpSync()">🔄 SYNC FROM FTP</button>'+
+      '</div>'+
+      '<pre id="ftp-sync-log" style="display:none;background:#0F172A;color:#A7F3D0;font-size:10px;font-family:monospace;padding:10px;border-radius:8px;max-height:240px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;"></pre>'+
     '</div>';
-  fetch(LOCAL_SYNC_URL + '/ping', {mode:'cors'})
-    .then(function(){ var el=gel('ftp-server-status'); if(el) el.innerHTML='<span style="color:#10B981;">● Server running</span>'; })
-    .catch(function(){ var el=gel('ftp-server-status'); if(el) el.innerHTML='<span style="color:#F43F5E;">● Server offline — run local_server.py</span>'; });
+  checkSyncServer();
+  loadSyncStatus();
 }
 
 

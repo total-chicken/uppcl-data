@@ -42,8 +42,9 @@ def run_sync_bg():
     sync_log.append(f"[{ts}] Starting FTP sync...")
 
     try:
+        sync_log.append(f"[debug] Using python: {sys.executable}")
         proc = subprocess.Popen(
-            [sys.executable, '-u', FTP_SYNC_SCRIPT],
+            [r"C:\Users\wasif\AppData\Local\Python\pythoncore-3.14-64\python.exe", '-u', FTP_SYNC_SCRIPT],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
