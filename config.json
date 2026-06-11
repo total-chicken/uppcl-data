@@ -1,0 +1,23 @@
+{
+  "ftp": {
+    "host": "ftp.uppclonline.com",
+    "port": 21,
+    "user": "dvftpreport",
+    "pass": "Dvftp@321"
+  },
+  "divisions": {
+    "233511": "eudd1",
+    "233512": "eudd2"
+  },
+  "folders": {
+    "master": "01-MASTER_DATA",
+    "billed": "03_CSV_BILLED",
+    "unbilled": "04_CSV_UNBILLED"
+  },
+  "github": {
+    "owner": "anshu10kumar04-pixel",
+    "repo": "uppcl-data",
+    "branch": "main",
+    "token": "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"
+  }
+}

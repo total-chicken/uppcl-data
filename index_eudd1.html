@@ -511,6 +511,40 @@ const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzd-Lq9Tx1dP
 const DEFAULTER_FILE = 'https://raw.githubusercontent.com/anshu10kumar04-pixel/uppcl-data/main/defaulter.csv';
 const METERNO_FILE  = 'https://raw.githubusercontent.com/anshu10kumar04-pixel/uppcl-data/main/METERNO.csv';
 const WORKER_URL = 'https://anshu10kumar04-pixel.github.io/uppcl-data/worker.js';
+const CONFIG_URL = RAW_BASE + 'config.json';
+var FTP_CONFIG = {};
+
+function loadFtpConfig(){
+  fetch(CONFIG_URL)
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(cfg){
+      if(cfg && cfg.ftp){
+        FTP_CONFIG = cfg.ftp;
+        var el = gel('ftp-config-preview');
+        if(el) el.textContent = 'Host: ' + (FTP_CONFIG.host||'?') + ':' + (FTP_CONFIG.port||21) + ' | Path: ' + (FTP_CONFIG.path||'/');
+      }
+    })
+    .catch(function(){});
+}
+
+function triggerFtpSync(){
+  var btn = event ? event.target : null;
+  if(btn){ btn.textContent='⏳ SYNCING…'; btn.disabled=true; }
+  var proxyUrl = FTP_CONFIG.proxy_url || localStorage.getItem('ftp_proxy_url') || '';
+  if(!proxyUrl){ alert('No FTP proxy URL configured in config.json'); if(btn){btn.textContent='🔄 SYNC FROM FTP';btn.disabled=false;} return; }
+  fetch(proxyUrl, { method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ host:FTP_CONFIG.host, port:FTP_CONFIG.port||21,
+      user:FTP_CONFIG.user, pass:FTP_CONFIG.pass, path:FTP_CONFIG.path||'/' })
+  }).then(function(r){ return r.json(); })
+    .then(function(d){
+      if(btn){ btn.textContent='✅ SYNCED'; setTimeout(function(){ btn.textContent='🔄 SYNC FROM FTP'; btn.disabled=false; },2500); }
+      console.log('FTP sync result:', d);
+    })
+    .catch(function(e){
+      if(btn){ btn.textContent='🔄 SYNC FROM FTP'; btn.disabled=false; }
+      alert('FTP sync failed: ' + e.message);
+    });
+}
 
 // ─── GLOBALS ─────────────────────────────────────────────────────────────────
 let D = [], PAY_DATA = {}, FD = [], METER_DATA = {}; // acct_id -> meter_no
@@ -707,24 +741,15 @@ function buildSettingsPanel(){
     '</div>'+
 
     '<div style="background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:12px;padding:16px;">'+
-      '<div style="font-family:var(--fh);font-size:14px;font-weight:700;margin-bottom:10px;">📡 FTP SERVER (CONFIG ONLY — fetch not yet implemented)</div>'+
-      '<div class="fg">'+
-        '<div><div class="lbl">HOST</div><div class="sw"><input type="text" id="ftp-host" value="'+(localStorage.getItem('ftp_host')||'')+'" placeholder="ftp.example.com"/></div></div>'+
-        '<div><div class="lbl">PORT</div><div class="sw"><input type="text" id="ftp-port" value="'+(localStorage.getItem('ftp_port')||'21')+'"/></div></div>'+
-        '<div><div class="lbl">USERNAME</div><div class="sw"><input type="text" id="ftp-user" value="'+(localStorage.getItem('ftp_user')||'')+'"/></div></div>'+
-        '<div><div class="lbl">PASSWORD</div><div class="sw"><input type="password" id="ftp-pass" value="'+(localStorage.getItem('ftp_pass')||'')+'"/></div></div>'+
-        '<div><div class="lbl">REMOTE PATH</div><div class="sw"><input type="text" id="ftp-path" value="'+(localStorage.getItem('ftp_path')||'/')+'"/></div></div>'+
+      '<div style="font-family:var(--fh);font-size:14px;font-weight:700;margin-bottom:10px;">📡 FTP DATA SYNC</div>'+
+      '<div style="font-size:12px;color:var(--muted);margin-bottom:12px;">FTP credentials are stored in <code>config.json</code> on GitHub. Use the button below to trigger a fresh data pull from FTP server.</div>'+
+      '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">'+
+        '<button class="btn" style="background:#EA580C;color:#fff;border:none;" onclick="triggerFtpSync()">🔄 SYNC FROM FTP</button>'+
+        '<div id="ftp-config-preview" style="font-size:11px;color:var(--muted);font-family:monospace;"></div>'+
       '</div>'+
-      '<button class="btn" style="background:#EA580C;color:#fff;border:none;margin-top:8px;" onclick="saveFtpConfig()">💾 SAVE FTP CONFIG</button>'+
     '</div>';
 }
 
-function saveFtpConfig(){
-  ['host','port','user','pass','path'].forEach(function(k){
-    var el=gel('ftp-'+k); if(el) localStorage.setItem('ftp_'+k,el.value);
-  });
-  alert('✅ FTP config saved locally.');
-}
 
 function saveSubDivMap(){
   var m={}; document.querySelectorAll('.sub-div-radio:checked').forEach(function(r){ m[r.dataset.sub]=r.value; });
@@ -1134,6 +1159,7 @@ function ia(){
   FD=D.slice();
   // Auto-sync ATR from Google Sheet on load
   setTimeout(autoSyncAtr, 1500);
+  loadFtpConfig();
 }
 
 // ─── SEARCH ───────────────────────────────────────────────────────────────────
