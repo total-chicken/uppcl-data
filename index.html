@@ -561,6 +561,10 @@ function triggerFtpSync(){
   fetch(LOCAL_SYNC_URL+'/sync-status',{mode:'cors'})
     .then(function(r){return r.json();})
     .then(function(d){
+      if(!d.ok){
+        doSync(types, false, btn, logEl);
+        return;
+      }
       var ss=d.sync_status||{};
       var alreadySynced=[];
       var today=new Date();
