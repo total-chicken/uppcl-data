@@ -624,6 +624,8 @@ function doSync(types, force, btn, logEl){
 
 // ─── GLOBALS ─────────────────────────────────────────────────────────────────
 let D = [], PAY_DATA = {}, FD = [], METER_DATA = {}; // acct_id -> meter_no
+let MASTER_MAP = {}; // acct_id -> {outstanding, lp_date, lp_amt}
+let MASTER_CUTOFF = null; // Date object for last day of master month
 let DC = [], DC_FD = [], ATR_DATA = {}, ATR_SCRIPT_URL = '';
 let DEF_DATA = [];
 const PS = 30;
@@ -643,6 +645,26 @@ function sl(m,p){ var ld=gel('loading'); if(ld)ld.style.display='flex'; setText(
 function hl2(){ var ld=gel('loading'); if(ld){ld.style.display='none';ld.style.pointerEvents='none';} }
 function toast(){ var t=gel('toast'); t.classList.add('show'); setTimeout(function(){t.classList.remove('show');},2000); }
 function haversine(lat1,lon1,lat2,lon2){ var R=6371,dLat=(lat2-lat1)*Math.PI/180,dLon=(lon2-lon1)*Math.PI/180,a=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)*Math.sin(dLon/2); return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a)); }
+
+function parseDate(s){
+  if(!s || s==='-') return null;
+  s = String(s).trim().toUpperCase();
+  // Handle DD-MMM-YY (e.g. 18-MAY-26)
+  var parts = s.split(/[-\/]/);
+  if(parts.length===3){
+    var d = parseInt(parts[0]), m, y = parseInt(parts[2]);
+    if(isNaN(d)) return null;
+    if(parts[1].length===3){
+        var months = {JAN:0,FEB:1,MAR:2,APR:3,MAY:4,JUN:5,JUL:6,AUG:7,SEP:8,OCT:9,NOV:10,DEC:11};
+        m = months[parts[1]];
+    } else {
+        m = parseInt(parts[1]) - 1;
+    }
+    if(y < 100) y += 2000;
+    return new Date(y, m, d);
+  }
+  return null;
+}
 
 function catBadge(cat){
   var c=(cat||'').toUpperCase();
@@ -1126,14 +1148,41 @@ function resolveFiles(){
   return fetch(MANIFEST_URL).then(function(r){return r.ok?r.json():null;})
     .then(function(m){
       if(m){
-        if(m.eudd1&&m.eudd1.length) FILES_EUDD1=m.eudd1.map(function(f){return RAW_BASE+f;});
-        if(m.eudd2&&m.eudd2.length) FILES_EUDD2=m.eudd2.map(function(f){return RAW_BASE+f;});
         if(m.substation_division) SUB_DIVISION_MAP=m.substation_division;
+        
+        // Parse Master Cutoff Date
+        if(m.sync_status){
+          for(var k in m.sync_status){
+            var mp = m.sync_status[k].master_period;
+            if(mp){
+              var p = mp.split('_');
+              var months = {JAN:0,FEB:1,MAR:2,APR:3,MAY:4,JUN:5,JUL:6,AUG:7,SEP:8,OCT:9,NOV:10,DEC:11};
+              var lastDay = new Date(parseInt(p[1]), months[p[0].toUpperCase()] + 1, 0);
+              MASTER_CUTOFF = lastDay;
+              break;
+            }
+          }
+        }
+
+        var div = DIVISION.toLowerCase();
+        var m_files = [], b_files = [], u_files = [];
+        
+        if(div==='all'){
+          m_files = (m.eudd1||[]).concat(m.eudd2||[]);
+          b_files = (m.billed_eudd1||[]).concat(m.billed_eudd2||[]);
+          u_files = (m.unbilled_eudd1||[]).concat(m.unbilled_eudd2||[]);
+        } else {
+          m_files = m[div]||[];
+          b_files = m['billed_'+div]||[];
+          u_files = m['unbilled_'+div]||[];
+        }
+
+        FILES = [];
+        m_files.forEach(function(f){ FILES.push({url:RAW_BASE+f, type:'master'}); });
+        b_files.forEach(function(f){ FILES.push({url:RAW_BASE+f, type:'billed'}); });
+        u_files.forEach(function(f){ FILES.push({url:RAW_BASE+f, type:'unbilled'}); });
       }
     }).catch(function(){})
-    .then(function(){
-      FILES = DIVISION==='EUDD1'?FILES_EUDD1.slice():DIVISION==='EUDD2'?FILES_EUDD2.slice():FILES_EUDD1.concat(FILES_EUDD2);
-    });
 }
 
 function autoFetch(){
@@ -1155,7 +1204,8 @@ function startDownloads(){
     .then(function(t){ if(t) parseMeterData(t); })
     .catch(function(){});
 
-  FILES.forEach(function(url,idx){
+  FILES.forEach(function(item,idx){
+    var url = typeof item === 'string' ? item : item.url;
     fetch(url)
       .then(function(r){ return r.ok?r.text():Promise.reject('HTTP '+r.status+' '+url.split('/').pop()); })
       .then(function(t){
@@ -1183,8 +1233,10 @@ function startDownloads(){
       }
       sl('PARSING '+(idx+1)+'/'+FILES.length+'…',68+Math.round(idx/FILES.length*24));
       var text=allTexts[idx]; allTexts[idx]=null;
+      var item=FILES[idx];
+      var type = typeof item === 'string' ? 'master' : item.type;
       setTimeout(function(){
-        if(text) parseFileInto(text);
+        if(text) parseFileInto(text, type);
         idx++; next();
       },15);
     }
@@ -1192,18 +1244,33 @@ function startDownloads(){
   }
 }
 
-function parseFileInto(text){
+function findCol(hdrs, options){
+  for(var i=0; i<options.length; i++){
+    var idx = hdrs.indexOf(options[i]);
+    if(idx>=0) return idx;
+  }
+  return -1;
+}
+
+function parseFileInto(text, type){
   var nl=text.indexOf('\n'); if(nl<0)return;
-  var hdrs=text.substring(0,nl).replace(/\r/,'').split(',').map(function(h){return h.replace(/"/g,'').trim();});
-  var iAcct=hdrs.indexOf('ACCT_ID'),iMob=hdrs.indexOf('MOBILE_NO'),iName=hdrs.indexOf('NAME'),
-      iFath=hdrs.indexOf('FATHER_NAME'),iAddr=hdrs.indexOf('ADDRESS'),iCat=hdrs.indexOf('CATEGORY'),
-      iLoad=hdrs.indexOf('LOAD'),iLat=hdrs.indexOf('LAT'),iLon=hdrs.indexOf('LON'),
-      iSub=hdrs.indexOf('SUBSTATION'),iFeed=hdrs.indexOf('FEEDER'),iSerl=hdrs.indexOf('SERIAL_NBR'),
-      iPayAmt=hdrs.indexOf('LP AMT'),iPayDate=hdrs.indexOf('LP DATE'),
-      iTotOut=hdrs.indexOf('TOTAL OUTSTANDING');
-  if(iPayAmt<0)iPayAmt=hdrs.indexOf('PAY_AMT');
-  if(iPayDate<0)iPayDate=hdrs.indexOf('PAY_DATE');
-  if(iTotOut<0)iTotOut=hdrs.indexOf('TOTAL_OUTSTANDING');
+  var hdrs=text.substring(0,nl).replace(/\r/,'').split(',').map(function(h){return h.replace(/"/g,'').trim().toUpperCase();});
+  
+  var iAcct = findCol(hdrs, ['ACCT_ID']);
+  var iMob  = findCol(hdrs, ['MOBILE_NO', 'MOBILE']);
+  var iName = findCol(hdrs, ['NAME']);
+  var iFath = findCol(hdrs, ['FATHER_NAME']);
+  var iAddr = findCol(hdrs, ['ADDRESS', 'ADDRES']);
+  var iCat  = findCol(hdrs, ['CATEGORY', 'TARIFF_TYPE', 'SUPPLY_TYPE']);
+  var iLoad = findCol(hdrs, ['LOAD', 'SANCTION_LOAD']);
+  var iLat  = findCol(hdrs, ['LAT', 'LATITUDE']);
+  var iLon  = findCol(hdrs, ['LON', 'LONGITUDE', 'LONG']);
+  var iSub  = findCol(hdrs, ['SUBSTATION']);
+  var iFeed = findCol(hdrs, ['FEEDER']);
+  var iSerl = findCol(hdrs, ['SERIAL_NBR', 'METER_SERIAL_NBR', 'MTR_SRL_NO']);
+  var iPayAmt  = findCol(hdrs, ['LP AMT', 'PAY_AMT', 'LAST_PAY_AMT', 'LAST_PAYMENT_AMOUNT', 'LAST_PAY_AMT']);
+  var iPayDate = findCol(hdrs, ['LP DATE', 'PAY_DATE', 'LAST_PAY_DATE']);
+  var iTotOut  = findCol(hdrs, ['TOTAL OUTSTANDING', 'TOTAL_OUTSTANDING', 'AMOUNT_PAYABLE']);
 
   var pos=nl+1,len=text.length;
   while(pos<len){
@@ -1212,20 +1279,66 @@ function parseFileInto(text){
     if(!line||line==='\r')continue;
     var v=line.split(',');
     var acct=(v[iAcct]||'').replace(/"/g,'').trim(); if(!acct)continue;
+    
+    var rawAmt  = iPayAmt>=0  ? (v[iPayAmt] ||'').replace(/"/g,'') : '-';
+    var rawDate = iPayDate>=0 ? (v[iPayDate]||'').replace(/"/g,'') : '-';
+    var outValue= iTotOut>=0  ? (v[iTotOut] ||'-').replace(/"/g,'') : '-';
+    
+    // Auto-swap amount/date if swapped in CSV
+    if(rawAmt && rawDate && /\d{2}-\d{2}-\d{4}/.test(rawAmt)){var tmp=rawAmt;rawAmt=rawDate;rawDate=tmp;}
+
+    if(type==='master'){
+      MASTER_MAP[acct] = {
+        TOTAL_OUTSTANDING: outValue,
+        LP_DATE: rawDate,
+        LP_AMT: rawAmt
+      };
+      // For now, we only search in current Billed/Unbilled. 
+      // If a consumer is in master but not billed/unbilled, they might be inactive.
+      continue;
+    }
+
     var lat=(v[iLat]||'').replace(/"/g,''), lon=(v[iLon]||'').replace(/"/g,'');
     var fLat=parseFloat(lat); if(fLat>50){var t=lat;lat=lon;lon=t;}
-    var rawAmt=iPayAmt>=0?(v[iPayAmt]||'').replace(/"/g,''):'-';
-    var rawDate=iPayDate>=0?(v[iPayDate]||'').replace(/"/g,''):'-';
-    if(rawAmt&&rawDate&&/\d{2}-\d{2}-\d{4}/.test(rawAmt)){var tmp=rawAmt;rawAmt=rawDate;rawDate=tmp;}
-    var row={ACCT_ID:acct,MOBILE_NO:(v[iMob]||'').replace(/"/g,''),NAME:(v[iName]||'').replace(/"/g,''),
-      FATHER_NAME:iFath>=0?(v[iFath]||'').replace(/"/g,''):'',ADDRESS:(v[iAddr]||'').replace(/"/g,''),
-      CATEGORY:(v[iCat]||'').replace(/"/g,''),LOAD:(v[iLoad]||'').replace(/"/g,''),LAT:lat,LON:lon,
-      SUBSTATION:(v[iSub]||'').replace(/"/g,''),FEEDER:(v[iFeed]||'').replace(/"/g,''),
+    
+    var row={
+      ACCT_ID:acct,
+      MOBILE_NO:(v[iMob]||'').replace(/"/g,''),
+      NAME:(v[iName]||'').replace(/"/g,''),
+      FATHER_NAME:iFath>=0?(v[iFath]||'').replace(/"/g,''):'',
+      ADDRESS:(v[iAddr]||'').replace(/"/g,''),
+      CATEGORY:(v[iCat]||'').replace(/"/g,''),
+      LOAD:(v[iLoad]||'').replace(/"/g,''),
+      LAT:lat, LON:lon,
+      SUBSTATION:(v[iSub]||'').replace(/"/g,''),
+      FEEDER:(v[iFeed]||'').replace(/"/g,''),
       SERIAL_NBR:iSerl>=0?(v[iSerl]||'').replace(/"/g,''):'',
-      Google_Map_Link:(lat&&lon)?'https://www.google.com/maps?q='+lat+','+lon:''};
-    if(iPayAmt>=0) PAY_DATA[acct]={PAY_AMT:rawAmt,PAY_DATE:rawDate,
-      TOTAL_OUTSTANDING:iTotOut>=0?(v[iTotOut]||'-').replace(/"/g,''):'-',
-      STATUS:'INSERVICE',NAME:row.NAME,SUPPLY_TYPE:row.CATEGORY||'-'};
+      SOURCE: type,
+      Google_Map_Link:(lat&&lon)?'https://www.google.com/maps?q='+lat+','+lon:''
+    };
+    
+    if(type==='unbilled'){
+      var master = MASTER_MAP[acct];
+      if(master){
+        var mOut = parseFloat(master.TOTAL_OUTSTANDING) || 0;
+        var curLpDate = parseDate(rawDate);
+        if(curLpDate && MASTER_CUTOFF && curLpDate > MASTER_CUTOFF){
+          mOut -= parseFloat(rawAmt) || 0;
+        }
+        outValue = mOut.toString();
+      } else {
+        outValue = '0';
+      }
+    }
+
+    PAY_DATA[acct]={
+      PAY_AMT:rawAmt,
+      PAY_DATE:rawDate,
+      TOTAL_OUTSTANDING:outValue,
+      STATUS:'INSERVICE',
+      NAME:row.NAME,
+      SUPPLY_TYPE:row.CATEGORY||'-'
+    };
     D.push(row);
   }
 }
@@ -1267,39 +1380,72 @@ function dl(){
   lr.innerHTML=res.map(function(r){return buildConsumerCard(r,q);}).join('');
 }
 
-function buildConsumerCard(r,q){
-  var pay=PAY_DATA[String(r.ACCT_ID)]||null;
-  var payHtml='';
+function buildConsumerCard(r, q){
+  var pay = PAY_DATA[String(r.ACCT_ID)] || null;
+  var payHtml = '';
+  
+  var out = 0;
+  var lpAmt = 0;
+  var lpDateStr = '-';
+  var sourceLabel = r.SOURCE ? r.SOURCE.toUpperCase() : 'MASTER';
+  var sourceColor = r.SOURCE==='billed' ? '#10B981' : (r.SOURCE==='unbilled' ? '#F59E0B' : '#64748B');
+
   if(pay){
-    var out=parseFloat(pay.TOTAL_OUTSTANDING)||0;
-    payHtml='<div style="margin-top:12px;padding:12px;background:linear-gradient(135deg,#EFF6FF,#F0FDF4);border-radius:10px;border:1px solid #BFDBFE;">'+
-      '<div style="font-family:var(--fh);font-size:10px;font-weight:700;color:#1D4ED8;letter-spacing:1px;margin-bottom:8px;">💳 PAYMENT DETAILS</div>'+
+    lpAmt = parseFloat(pay.PAY_AMT) || 0;
+    lpDateStr = pay.PAY_DATE || '-';
+    
+    if(r.SOURCE === 'billed'){
+      out = parseFloat(pay.TOTAL_OUTSTANDING) || 0;
+    } else if(r.SOURCE === 'unbilled'){
+      var master = MASTER_MAP[String(r.ACCT_ID)];
+      if(master){
+        out = parseFloat(master.TOTAL_OUTSTANDING) || 0;
+        // Logic: If last payment date in current data is > master cutoff, deduct it
+        var curLpDate = parseDate(lpDateStr);
+        if(curLpDate && MASTER_CUTOFF && curLpDate > MASTER_CUTOFF){
+          out -= lpAmt;
+        }
+      } else {
+        out = 0; // New consumer or not in master
+      }
+    } else {
+      out = parseFloat(pay.TOTAL_OUTSTANDING) || 0;
+    }
+    
+    payHtml = '<div style="margin-top:12px;padding:12px;background:linear-gradient(135deg,#EFF6FF,#F0FDF4);border-radius:10px;border:1px solid #BFDBFE;">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">'+
+        '<div style="font-family:var(--fh);font-size:10px;font-weight:700;color:#1D4ED8;letter-spacing:1px;">💳 PAYMENT DETAILS</div>'+
+        '<div style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:'+sourceColor+';color:#fff;">'+sourceLabel+'</div>'+
+      '</div>'+
       '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">'+
-        '<div><div style="font-size:9px;color:#6B7280;font-family:var(--fh);">LAST PAID AMT</div><div style="font-size:14px;font-weight:700;color:#059669;">₹'+Math.round(parseFloat(pay.PAY_AMT)||0).toLocaleString()+'</div></div>'+
-        '<div><div style="font-size:9px;color:#6B7280;font-family:var(--fh);">PAID DATE</div><div style="font-size:12px;font-weight:700;color:#1D4ED8;">'+pay.PAY_DATE+'</div></div>'+
+        '<div><div style="font-size:9px;color:#6B7280;font-family:var(--fh);">LAST PAID AMT</div><div style="font-size:14px;font-weight:700;color:#059669;">₹'+Math.round(lpAmt).toLocaleString()+'</div></div>'+
+        '<div><div style="font-size:9px;color:#6B7280;font-family:var(--fh);">PAID DATE</div><div style="font-size:12px;font-weight:700;color:#1D4ED8;">'+lpDateStr+'</div></div>'+
         '<div><div style="font-size:9px;color:#6B7280;font-family:var(--fh);">OUTSTANDING</div><div style="font-size:14px;font-weight:700;color:'+(out>0?'#F43F5E':'#059669')+';">₹'+Math.round(out).toLocaleString()+'</div></div>'+
       '</div></div>';
   }
-  var lat=parseFloat(r.LAT),lon=parseFloat(r.LON);
-  if(lat>50){var t=lat;lat=lon;lon=t;}
-  var mapBtn=lat&&lon?'<a class="mb" href="https://www.google.com/maps?q='+lat+','+lon+'&z=17" target="_blank">📍 OPEN IN GOOGLE MAPS</a>':'';
-  function hl(t){if(!q||!t)return t;var i=t.toLowerCase().indexOf(q.toLowerCase());if(i<0)return t;return t.slice(0,i)+'<mark>'+t.slice(i,i+q.length)+'</mark>'+t.slice(i+q.length);}
+
+  var lat = parseFloat(r.LAT), lon = parseFloat(r.LON);
+  if(lat > 50){ var t = lat; lat = lon; lon = t; }
+  var mapBtn = lat && lon ? '<a class="mb" href="https://www.google.com/maps?q='+lat+','+lon+'&z=17" target="_blank">📍 OPEN IN GOOGLE MAPS</a>' : '';
+  
+  function hl(t){ if(!q || !t) return t; var i = String(t).toLowerCase().indexOf(q.toLowerCase()); if(i < 0) return t; return t.slice(0,i)+'<mark>'+t.slice(i,i+q.length)+'</mark>'+t.slice(i+q.length); }
+  
   return '<div class="dc"><div class="dh"><div>'+
-    '<div class="dn">'+hl(r.NAME||'Unknown')+'</div>'+
+    '<div class="dn">'+hl(r.NAME || 'Unknown')+'</div>'+
     '<div style="margin-top:4px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">'+
     '<span class="da">ACCT: '+hl(String(r.ACCT_ID))+'</span>'+
     catBadge(r.CATEGORY)+'</div></div>'+
     '<div style="text-align:right"><div style="color:rgba(255,255,255,0.7);font-size:10px;font-family:var(--fh);">LOAD</div>'+
-    '<div style="font-family:var(--fh);font-size:26px;font-weight:700;color:#FCD34D;">'+(r.LOAD||'-')+' <span style="font-size:13px;color:rgba(255,255,255,0.7);">kW</span></div></div></div>'+
+    '<div style="font-family:var(--fh);font-size:26px;font-weight:700;color:#FCD34D;">'+(r.LOAD || '-')+' <span style="font-size:13px;color:rgba(255,255,255,0.7);">kW</span></div></div></div>'+
     '<div class="db"><div class="dgrid">'+
-      '<div class="df"><div class="lbl">MOBILE</div><div class="val">'+(r.MOBILE_NO||'-')+'</div></div>'+
-      '<div class="df"><div class="lbl">METER NO</div><div class="val" style="font-family:var(--fh);color:#1D4ED8;font-weight:700;">'+(METER_DATA[String(r.ACCT_ID)]||r.SERIAL_NBR||'-')+'</div></div>'+
-      '<div class="df"><div class="lbl">SUBSTATION</div><div class="val">'+(r.SUBSTATION||'-')+'</div></div>'+
-      '<div class="df"><div class="lbl">FEEDER</div><div class="val">'+(r.FEEDER||'-')+'</div></div>'+
+      '<div class="df"><div class="lbl">MOBILE</div><div class="val">'+(r.MOBILE_NO || '-')+'</div></div>'+
+      '<div class="df"><div class="lbl">METER NO</div><div class="val" style="font-family:var(--fh);color:#1D4ED8;font-weight:700;">'+(METER_DATA[String(r.ACCT_ID)] || r.SERIAL_NBR || '-')+'</div></div>'+
+      '<div class="df"><div class="lbl">SUBSTATION</div><div class="val">'+(r.SUBSTATION || '-')+'</div></div>'+
+      '<div class="df"><div class="lbl">FEEDER</div><div class="val">'+(r.FEEDER || '-')+'</div></div>'+
 
-      '<div class="df" style="grid-column:span 2"><div class="lbl">ADDRESS</div><div class="val">'+(r.ADDRESS||'-')+'</div></div>'+
-      '<div class="df"><div class="lbl">LATITUDE</div><div class="val">'+(lat||r.LAT||'-')+'</div></div>'+
-      '<div class="df"><div class="lbl">LONGITUDE</div><div class="val">'+(lon||r.LON||'-')+'</div></div>'+
+      '<div class="df" style="grid-column:span 2"><div class="lbl">ADDRESS</div><div class="val">'+(r.ADDRESS || '-')+'</div></div>'+
+      '<div class="df"><div class="lbl">LATITUDE</div><div class="val">'+(lat || r.LAT || '-')+'</div></div>'+
+      '<div class="df"><div class="lbl">LONGITUDE</div><div class="val">'+(lon || r.LON || '-')+'</div></div>'+
     '</div>'+payHtml+
     '<div style="margin-top:12px;">'+mapBtn+'</div>'+
     '</div></div>';
