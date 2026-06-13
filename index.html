@@ -102,20 +102,32 @@ tr:hover td{background:#EEF2FF;}
 .pgi{font-size:11px;color:var(--muted);font-family:var(--fh);}
 
 /* ── SEARCH TAB ── */
-.ls{display:flex;gap:10px;margin-bottom:20px;}
+.ls{display:flex;gap:10px;margin-bottom:20px;max-width:800px;margin-left:auto;margin-right:auto;}
 .ls input{flex:1;background:#fff;border:1.5px solid #C7D2FE;border-radius:10px;padding:12px 16px;color:var(--text);font-family:var(--fh);font-size:15px;font-weight:600;letter-spacing:1px;outline:none;}
 .ls input:focus{border-color:#4F46E5;}
 .ls button{background:#4F46E5;color:#fff;border:none;border-radius:10px;padding:12px 24px;font-family:var(--fh);font-size:14px;font-weight:700;cursor:pointer;letter-spacing:1px;}
-.dc{background:#fff;border:1px solid #BAE6FD;border-radius:14px;overflow:hidden;box-shadow:0 2px 12px rgba(14,165,233,0.1);}
-.dh{display:flex;justify-content:space-between;align-items:flex-start;padding:16px 20px;background:linear-gradient(135deg,#4F46E5,#4338CA);}
-.dn{font-family:var(--fh);font-size:22px;font-weight:700;letter-spacing:1px;color:#fff;}
+
+/* Grid container for search results - Exactly 2 columns on desktop */
+#lr{display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:10px 0;}
+
+.dc{background:#fff;border:1px solid #BAE6FD;border-radius:14px;overflow:hidden;box-shadow:0 2px 12px rgba(14,165,233,0.1);height:100%;display:flex;flex-direction:column;}
+.dh{display:flex;justify-content:space-between;align-items:flex-start;padding:16px 20px;background:linear-gradient(135deg,#4F46E5,#4338CA);flex-shrink:0;}
+.dn{font-family:var(--fh);font-size:20px;font-weight:700;letter-spacing:1px;color:#fff;line-height:1.2;}
 .da{font-family:var(--fh);font-size:12px;color:rgba(255,255,255,0.8);}
-.db{padding:16px 20px;}
+.db{padding:16px 20px;flex:1;}
 .dgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;}
 .df .lbl{font-size:10px;color:var(--muted);letter-spacing:1px;font-family:var(--fh);font-weight:700;margin-bottom:3px;}
-.df .val{font-size:13px;font-weight:600;color:var(--text);}
+.df .val{font-size:13px;font-weight:600;color:var(--text);word-break:break-word;}
 .mb{display:inline-flex;align-items:center;gap:6px;background:#0EA5E9;color:#fff;text-decoration:none;font-family:var(--fh);font-size:13px;font-weight:700;padding:10px 20px;border-radius:10px;letter-spacing:1px;}
 mark{background:#EDE9FE;color:#4F46E5;border-radius:2px;}
+
+@media(max-width:768px){
+  #lr{grid-template-columns:1fr;gap:16px;}
+  .ls{flex-direction:column;}
+  .ls button{width:100%;}
+  .dn{font-size:18px;}
+  .dgrid{grid-template-columns:1fr;}
+}
 
 /* ── FORMS ── */
 .sw select,.sw input{width:100%;background:#fff;border:1.5px solid #C7D2FE;border-radius:10px;padding:10px 12px;color:var(--text);font-family:var(--fb);font-size:13px;font-weight:500;outline:none;appearance:none;cursor:pointer;}
@@ -676,12 +688,13 @@ function ac(id){
 }
 
 function catBadge(cat){
-  var c=(cat||'').toUpperCase();
-  if(c.includes('DOM')) return '<span class="b-dom">DOM</span>';
-  if(c.includes('COM')) return '<span class="b-com">COM</span>';
-  if(c.includes('IND')) return '<span class="b-ind">IND</span>';
-  if(c.includes('GOV')||c.includes('DEPT')) return '<span class="b-gov">GOVT</span>';
-  return '<span class="b-oth">'+(c.slice(0,3)||'OTH')+'</span>';
+  var c=(cat||'').toUpperCase().trim();
+  var cls='b-oth';
+  if(c.includes('DOM')) cls='b-dom';
+  else if(c.includes('COM')) cls='b-com';
+  else if(c.includes('IND')) cls='b-ind';
+  else if(c.includes('GOV')||c.includes('DEPT')) cls='b-gov';
+  return '<span class="'+cls+'">'+(c||'OTH')+'</span>';
 }
 function atrBadge(s){
   var u=(s||'DISCONNECTED').toUpperCase();
@@ -827,45 +840,98 @@ function buildSettingsPanel(){
       '<td style="text-align:center"><input type="radio" name="div_'+s.replace(/[^a-zA-Z0-9]/g,'_')+'" value="eudd2" '+(div==='eudd2'?'checked':'')+' data-sub="'+s+'" class="sub-div-radio" onchange="saveSubDivMap()"></td></tr>';
   }).join('');
 
-  gel('panel-settings').innerHTML =
-    '<div style="font-family:var(--fh);font-size:20px;font-weight:700;color:#4F46E5;margin-bottom:14px;">⚙️ SETTINGS</div>'+
+  gel('panel-settings').innerHTML = 
+    '<div style="max-width:800px;margin:0 auto;">'+
+      '<div style="font-family:var(--fh);font-size:24px;font-weight:700;color:#4F46E5;margin-bottom:20px;text-align:center;">⚙️ SYSTEM SETTINGS</div>'+
 
-    '<div style="background:#F8FAFF;border:1.5px solid #C7D2FE;border-radius:12px;padding:16px;margin-bottom:16px;">'+
-      '<div style="font-family:var(--fh);font-size:14px;font-weight:700;margin-bottom:10px;">📤 UPLOAD MASTER FILE → GITHUB</div>'+
-      '<div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Upload a master Excel/CSV (columns: '+CSV_COLS.join(', ')+'). It will be split by division below, chunked (~5MB) and pushed to GitHub.</div>'+
-      '<input type="file" id="settings-file" accept=".xlsx,.xls,.csv" style="margin-bottom:12px;"/>'+
-      '<div style="font-family:var(--fh);font-size:12px;font-weight:700;color:var(--muted);margin:10px 0 6px;">SUBSTATION → DIVISION ASSIGNMENT</div>'+
-      '<div style="max-height:220px;overflow-y:auto;border:1px solid #E5E7EB;border-radius:8px;">'+
-        '<table style="width:100%;border-collapse:collapse;">'+
-        '<thead><tr style="background:#EEF2FF;position:sticky;top:0;"><th style="text-align:left;padding:6px 10px;font-size:11px;">SUBSTATION</th><th style="font-size:11px;">EUDD1</th><th style="font-size:11px;">EUDD2</th></tr></thead>'+
-        '<tbody id="sub-div-rows">'+rowsHtml+'</tbody></table>'+
+      /* UPLOAD MASTER CARD */
+      '<div style="background:#fff;border:1.5px solid #C7D2FE;border-radius:16px;padding:20px;margin-bottom:20px;box-shadow:0 4px 12px rgba(79,70,229,0.05);">'+
+        '<div style="font-family:var(--fh);font-size:16px;font-weight:700;margin-bottom:12px;color:#1E1B4B;display:flex;align-items:center;gap:8px;">📤 UPLOAD MASTER DATA</div>'+
+        '<div style="font-size:12px;color:var(--muted);margin-bottom:15px;line-height:1.5;">Select an Excel/CSV to split by division and push to GitHub. Columns: ACCT_ID, NAME, PAY_AMT, PAY_DATE, etc.</div>'+
+        '<input type="file" id="settings-file" accept=".xlsx,.xls,.csv" style="width:100%;margin-bottom:15px;padding:8px;border:1px solid #E5E7EB;border-radius:8px;font-size:12px;"/>'+
+        '<div style="font-family:var(--fh);font-size:12px;font-weight:700;color:#4F46E5;margin-bottom:8px;">DIVISION ASSIGNMENT</div>'+
+        '<div style="max-height:180px;overflow-y:auto;border:1px solid #EEF2FF;border-radius:10px;margin-bottom:15px;">'+
+          '<table style="width:100%;border-collapse:collapse;font-size:11px;">'+
+          '<thead style="background:#F8FAFF;position:sticky;top:0;"><tr><th style="text-align:left;padding:8px;">SUBSTATION</th><th>EUDD1</th><th>EUDD2</th></tr></thead>'+
+          '<tbody id="sub-div-rows">'+rowsHtml+'</tbody></table>'+
+        '</div>'+
+        '<div style="display:flex;gap:10px;">'+
+          '<input type="password" id="gh-pat" placeholder="GitHub Personal Access Token" value="'+getGhPat()+'" style="flex:1;border:1.5px solid #C7D2FE;border-radius:10px;padding:10px 14px;font-size:13px;" oninput="localStorage.setItem(&#39;gh_pat&#39;,this.value)"/>'+
+          '<button class="btn btn-acc" onclick="processAndUpload()">🚀 PROCESS &amp; UPLOAD</button>'+
+        '</div>'+
+        '<div id="settings-log" style="margin-top:15px;max-height:150px;overflow-y:auto;background:#0F172A;color:#A7F3D0;font-family:monospace;font-size:11px;padding:12px;border-radius:10px;display:none;"></div>'+
       '</div>'+
-      '<div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;">'+
-        '<input type="password" id="gh-pat" placeholder="GitHub Personal Access Token" value="'+getGhPat()+'" style="flex:1;min-width:200px;border:1.5px solid #C7D2FE;border-radius:8px;padding:9px 12px;font-size:12px;" oninput="localStorage.setItem(&#39;gh_pat&#39;,this.value)"/>'+
-        '<button class="btn btn-acc" onclick="processAndUpload()">🚀 PROCESS &amp; UPLOAD</button>'+
-      '</div>'+
-      '<div id="settings-log" style="margin-top:12px;max-height:180px;overflow-y:auto;background:#0F172A;color:#A7F3D0;font-family:monospace;font-size:11px;padding:10px;border-radius:8px;display:none;"></div>'+
-    '</div>'+
 
-    '<div style="background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:12px;padding:16px;">'+
-      '<div style="font-family:var(--fh);font-size:14px;font-weight:700;margin-bottom:10px;">📡 FTP DATA SYNC</div>'+
-      '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;background:#F1F5F9;margin-bottom:10px;">'+
-        '<span id="ftp-dot" style="width:10px;height:10px;border-radius:50%;background:#9CA3AF;flex-shrink:0;display:inline-block;"></span>'+
-        '<span id="ftp-status-text" style="font-family:var(--fh);font-size:12px;font-weight:600;flex:1;">Checking…</span>'+
-        '<button onclick="checkSyncServer()" style="background:transparent;border:1px solid #C7D2FE;border-radius:6px;padding:3px 10px;font-family:var(--fh);font-size:10px;font-weight:700;color:#4F46E5;cursor:pointer;">REFRESH</button>'+
+      /* NEW: LAT LONG UPLOAD CARD */
+      '<div style="background:#F0F9FF;border:1.5px solid #BAE6FD;border-radius:16px;padding:20px;margin-bottom:20px;box-shadow:0 4px 12px rgba(14,165,233,0.05);">'+
+        '<div style="font-family:var(--fh);font-size:16px;font-weight:700;margin-bottom:12px;color:#0369A1;display:flex;align-items:center;gap:8px;">📍 UPLOAD LAT/LONG MAPPING</div>'+
+        '<div style="font-size:12px;color:var(--muted);margin-bottom:15px;line-height:1.5;">Bulk update consumer locations. Provide a file with columns: <b>ACCT_ID, LAT, LON</b>. These will override existing coordinates during search.</div>'+
+        '<input type="file" id="latlong-file" accept=".xlsx,.xls,.csv" style="width:100%;margin-bottom:15px;padding:8px;border:1px solid #BAE6FD;border-radius:8px;font-size:12px;background:#fff;"/>'+
+        '<button class="btn" style="background:#0EA5E9;color:#fff;width:100%;" onclick="processLatLongUpload()">🛰️ UPDATE COORDINATES</button>'+
+        '<div id="latlong-log" style="margin-top:12px;font-size:11px;font-family:monospace;display:none;"></div>'+
       '</div>'+
-      '<div id="ftp-synced-info" style="display:none;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:11px;"></div>'+
-      '<div style="font-family:var(--fh);font-size:11px;font-weight:700;color:#374151;letter-spacing:1px;margin-bottom:8px;">SELECT DATA TO DOWNLOAD:</div>'+
-      '<div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:12px;">'+
-        '<label style="display:flex;align-items:center;gap:6px;font-family:var(--fh);font-size:13px;font-weight:600;cursor:pointer;"><input type="checkbox" id="sync-master" checked style="accent-color:#4F46E5;width:15px;height:15px;"> MASTER</label>'+
-        '<label style="display:flex;align-items:center;gap:6px;font-family:var(--fh);font-size:13px;font-weight:600;cursor:pointer;"><input type="checkbox" id="sync-billed" checked style="accent-color:#4F46E5;width:15px;height:15px;"> BILLED</label>'+
-        '<label style="display:flex;align-items:center;gap:6px;font-family:var(--fh);font-size:13px;font-weight:600;cursor:pointer;"><input type="checkbox" id="sync-unbilled" checked style="accent-color:#4F46E5;width:15px;height:15px;"> UNBILLED</label>'+
-        '<label style="display:flex;align-items:center;gap:6px;font-family:var(--fh);font-size:13px;font-weight:700;color:#F43F5E;cursor:pointer;"><input type="checkbox" id="sync-force" style="accent-color:#F43F5E;width:15px;height:15px;"> ⚠️ FORCE OVERWRITE</label>'+
+
+      /* FTP SYNC CARD - COMPACT */
+      '<div style="background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:16px;padding:20px;box-shadow:0 4px 12px rgba(234,88,12,0.05);">'+
+        '<div style="font-family:var(--fh);font-size:16px;font-weight:700;margin-bottom:12px;color:#9A3412;display:flex;align-items:center;gap:8px;">📡 FTP DATA SYNC</div>'+
+        '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;background:#fff;border:1px solid #FED7AA;margin-bottom:15px;">'+
+          '<span id="ftp-dot" style="width:10px;height:10px;border-radius:50%;background:#9CA3AF;flex-shrink:0;"></span>'+
+          '<span id="ftp-status-text" style="font-family:var(--fh);font-size:13px;font-weight:600;flex:1;color:#4B5563;">Checking server…</span>'+
+          '<button onclick="checkSyncServer()" style="background:transparent;border:1px solid #FED7AA;border-radius:6px;padding:4px 10px;font-family:var(--fh);font-size:11px;font-weight:700;color:#EA580C;cursor:pointer;">REFRESH</button>'+
+        '</div>'+
+        '<div id="ftp-synced-info" style="display:none;background:#fff;border:1px solid #FED7AA;border-radius:10px;padding:12px;margin-bottom:15px;font-size:11px;line-height:1.6;"></div>'+
+        '<div style="font-family:var(--fh);font-size:11px;font-weight:700;color:#9A3412;letter-spacing:1px;margin-bottom:10px;">SELECT DATA:</div>'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:15px;">'+
+          '<label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;cursor:pointer;"><input type="checkbox" id="sync-master" checked style="accent-color:#EA580C;width:16px;height:16px;"> MASTER</label>'+
+          '<label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;cursor:pointer;"><input type="checkbox" id="sync-billed" checked style="accent-color:#EA580C;width:16px;height:16px;"> BILLED</label>'+
+          '<label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;cursor:pointer;"><input type="checkbox" id="sync-unbilled" checked style="accent-color:#EA580C;width:16px;height:16px;"> UNBILLED</label>'+
+          '<label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#F43F5E;cursor:pointer;"><input type="checkbox" id="sync-force" style="accent-color:#F43F5E;width:16px;height:16px;"> FORCE ⚠</label>'+
+        '</div>'+
+        '<button class="btn" style="background:#EA580C;color:#fff;width:100%;padding:14px;" id="ftp-sync-btn" onclick="triggerFtpSync()">🔄 START SYNC PROCESS</button>'+
+        '<pre id="ftp-sync-log" style="display:none;background:#0F172A;color:#A7F3D0;font-size:10px;font-family:monospace;padding:12px;border-radius:10px;max-height:180px;overflow-y:auto;margin-top:12px;"></pre>'+
       '</div>'+
-      '<button class="btn btn-acc" style="width:100%;padding:12px;margin-bottom:8px;" id="ftp-sync-btn" onclick="triggerFtpSync()">🔄 SYNC FROM FTP</button>'+
-      '<pre id="ftp-sync-log" style="display:none;background:#0F172A;color:#A7F3D0;font-size:10px;font-family:monospace;padding:10px;border-radius:8px;max-height:220px;overflow-y:auto;white-space:pre-wrap;"></pre>'+
     '</div>';
   checkSyncServer();
+}
+
+function processLatLongUpload(){
+  var fEl = gel('latlong-file');
+  if(!fEl || !fEl.files[0]) return alert('Please choose a file first.');
+  if(!getGhPat()) return alert('Enter GitHub PAT in the card above.');
+  
+  var logEl = gel('latlong-log'); logEl.style.display='block'; logEl.innerHTML='⏳ Reading…';
+  
+  var reader = new FileReader();
+  reader.onload = function(e){
+    try {
+      var wb = XLSX.read(e.target.result, {type:'array'});
+      var ws = wb.Sheets[wb.SheetNames[0]];
+      var rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+      if(!rows.length) throw new Error('File is empty.');
+      
+      var keys = Object.keys(rows[0]), hdrs = keys.map(k => String(k).trim().toUpperCase());
+      var iAcct = findCol(hdrs, ['ACCT_ID', 'ACCOUNT_ID']);
+      var iLat = findCol(hdrs, ['LAT', 'LATITUDE']);
+      var iLon = findCol(hdrs, ['LON', 'LONGITUDE', 'LONG']);
+      
+      if(iAcct < 0 || iLat < 0 || iLon < 0) throw new Error('Missing columns (Need: ACCT_ID, LAT, LON)');
+      
+      var mapping = {};
+      rows.forEach(r => {
+        var v = keys.map(k => r[k]);
+        var acct = ac(v[iAcct]);
+        if(acct) mapping[acct] = [v[iLat], v[iLon]];
+      });
+      
+      logEl.innerHTML = '✅ Parsed ' + rows.length + ' points. Uploading to GitHub…';
+      var content = JSON.stringify(mapping);
+      ghPutFile('geo_mapping.json', content, 'Update coordinates mapping')
+        .then(() => { logEl.innerHTML = '🎉 DONE! Coordinates updated. Reload to apply.'; })
+        .catch(err => { logEl.innerHTML = '❌ Error: ' + err.message; });
+        
+    } catch(err){ logEl.innerHTML = '❌ Error: ' + err.message; }
+  };
+  reader.readAsArrayBuffer(fEl.files[0]);
 }
 
 
@@ -1418,18 +1484,34 @@ function parseFileInto(text, type){
 // ─── INIT APP ─────────────────────────────────────────────────────────────────
 function ia(){
   var subSet=new Set(),feedSet=new Set(),catSet=new Set();
-  D.forEach(function(r){
-    if(r.SUBSTATION)subSet.add(r.SUBSTATION);
-    if(r.FEEDER)feedSet.add(r.FEEDER);
-    if(r.CATEGORY)catSet.add(r.CATEGORY);
-  });
-  setText('s-tot',D.length.toLocaleString());
-  setText('s-sub',subSet.size.toString());
-  setText('s-feed',feedSet.size.toString());
-  gel('upload-screen').style.display='none';
-  FD=D.slice();
-  // Auto-sync ATR from Google Sheet on load
-  setTimeout(autoSyncAtr, 1500);
+  
+  // Load Geo Mapping Overrides
+  var geoMap = {};
+  fetch(RAW_BASE + 'geo_mapping.json').then(r => r.ok ? r.json() : {}).then(map => {
+    geoMap = map;
+    applyGeoAndStats();
+  }).catch(() => { applyGeoAndStats(); });
+
+  function applyGeoAndStats(){
+    D.forEach(function(r){
+      var key = ac(r.ACCT_ID);
+      // Apply mapping overrides if they exist and record lacks lat/lon
+      if(geoMap[key] && (!r.LAT || r.LAT === '-' || r.LAT === '0')){
+        r.LAT = geoMap[key][0];
+        r.LON = geoMap[key][1];
+      }
+      if(r.SUBSTATION)subSet.add(r.SUBSTATION);
+      if(r.FEEDER)feedSet.add(r.FEEDER);
+      if(r.CATEGORY)catSet.add(r.CATEGORY);
+    });
+    setText('s-tot',D.length.toLocaleString());
+    setText('s-sub',subSet.size.toString());
+    setText('s-feed',feedSet.size.toString());
+    gel('upload-screen').style.display='none';
+    FD=D.slice();
+    // Auto-sync ATR from Google Sheet on load
+    setTimeout(autoSyncAtr, 1500);
+  }
 }
 
 // ─── SEARCH ───────────────────────────────────────────────────────────────────
