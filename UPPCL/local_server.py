@@ -19,10 +19,12 @@ from datetime import datetime
 
 try:
     from flask import Flask, jsonify, request
+    import requests
 except ImportError:
-    print("Installing flask...")
-    subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'flask'])
+    print("Installing dependencies (flask, requests)...")
+    subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'flask', 'requests'])
     from flask import Flask, jsonify, request
+    import requests
 
 app = Flask(__name__)
 

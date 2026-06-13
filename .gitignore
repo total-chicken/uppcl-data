@@ -1,0 +1,9 @@
+
+UPPCL/config.json
+*.xlsx
+*.csv
+debug_financials.js
+test_calc.js
+node_modules/
+__pycache__/
+.env
