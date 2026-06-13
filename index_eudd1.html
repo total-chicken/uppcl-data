@@ -1213,6 +1213,7 @@ function syncAtrFromSheet(){
 
 // ─── LOGIN ────────────────────────────────────────────────────────────────────
 const ADMIN_PIN='0107', USER_PIN='1234';
+const SESSION_TIMEOUT = 24 * 60 * 60 * 1000; // 24 hours
 let currentPin='', loginRole='admin', CURRENT_ROLE=null;
 
 function setLoginRole(r){ loginRole=r; gel('tab-admin').classList.toggle('active',r==='admin'); gel('tab-user').classList.toggle('active',r==='user'); pinReset(); }
@@ -1228,6 +1229,7 @@ function checkPin(){
 }
 function loginSuccess(role){
   CURRENT_ROLE=role;
+  localStorage.setItem('uppcl_session', JSON.stringify({role:role, ts:Date.now()}));
   var ls=gel('login-screen'); ls.style.display='none'; ls.style.pointerEvents='none';
   gel('app').style.display='block';
   gel('sbar').style.display='flex';
@@ -1246,13 +1248,20 @@ function applyRoleRestrictions(role){
 }
 function logout(){
   CURRENT_ROLE=null; currentPin=''; loginRole='admin';
+  localStorage.removeItem('uppcl_session');
   gel('tab-admin').classList.add('active'); gel('tab-user').classList.remove('active');
   pinReset();
   var ls=gel('login-screen'); ls.style.display='flex'; ls.style.pointerEvents='all';
   gel('app').style.display='none';
 }
 window.addEventListener('DOMContentLoaded',function(){
-  gel('login-screen').style.display='flex';
+  var session = null;
+  try { session = JSON.parse(localStorage.getItem('uppcl_session')); } catch(e){}
+  if(session && session.role && session.ts && (Date.now() - session.ts < SESSION_TIMEOUT)){
+    loginSuccess(session.role);
+  } else {
+    gel('login-screen').style.display='flex';
+  }
 });
 function showHelp(){ var m=gel('help-modal'); if(m){m.classList.add('open');document.body.style.overflow='hidden';} }
 function closeHelp(){ var m=gel('help-modal'); if(m){m.classList.remove('open');document.body.style.overflow='';} }
