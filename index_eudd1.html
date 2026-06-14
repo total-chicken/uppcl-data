@@ -330,6 +330,7 @@ select option{background:#fff;color:#1E1B4B;}
   <div class="tabs">
     <div class="tab active" onclick="st('lookup')" ontouchstart="st('lookup')">🔍 SEARCH</div>
     <div class="tab" onclick="st('dc')" ontouchstart="st('dc')">🔴 SM UNRECHARGE</div>
+    <div class="tab" onclick="st('dfp')" ontouchstart="st('dfp')">🔌 POLE DC</div>
     <div class="tab" onclick="st('defaulter')" ontouchstart="st('defaulter')">⚠️ DEFAULTERS</div>
     <div class="tab" id="tab-settings" onclick="st('settings')" ontouchstart="st('settings')" style="display:none">⚙️ SETTINGS</div>
   </div>
@@ -542,6 +543,7 @@ let SUB_DIVISION_MAP={};
 const DC_FILE = 'https://raw.githubusercontent.com/anshu10kumar04-pixel/uppcl-data/main/DISCONNECTED.xlsx';
 const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzd-Lq9Tx1dP8gn_dBb9ELyAm9B9PpKf0hPkcRL6EpQPIfc1ctPj3EhOmBzWIFqYjJzkg/exec';
 const DEFAULTER_FILE = 'https://raw.githubusercontent.com/anshu10kumar04-pixel/uppcl-data/main/defaulter.csv';
+const DFP_FILE = 'https://raw.githubusercontent.com/anshu10kumar04-pixel/uppcl-data/main/dfp.csv';
 const METERNO_FILE  = 'https://raw.githubusercontent.com/anshu10kumar04-pixel/uppcl-data/main/METERNO.csv';
 const WORKER_URL = 'https://anshu10kumar04-pixel.github.io/uppcl-data/worker.js';
 const LOCAL_SYNC_URL = 'http://localhost:7321';
@@ -2837,6 +2839,183 @@ function expDefaultersX(){
   var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Defaulters');
   XLSX.writeFile(wb,'Defaulters_'+Date.now()+'.xlsx');
 }
+
+// ─── POLE DC (DFP) ────────────────────────────────────────────────────────────
+let DFP_ALL=[], DFP_FD=[], _dfpLoaded=false, dfpPage=1, _dfpSortCol=null, _dfpSortAsc=true;
+
+function loadDfp(){
+  if(_dfpLoaded)return;
+  var panel=gel('panel-dfp');
+  panel.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-family:var(--fh);">Loading Pole DC data…</div>';
+  fetch(DFP_FILE)
+    .then(r => r.ok ? r.text() : Promise.reject('DFP file not found'))
+    .then(text => {
+      _dfpLoaded=true;
+      DFP_ALL=[];
+      var nl=text.indexOf('\n'); if(nl<0)return;
+      var hdrs=text.substring(0,nl).replace(/\r/,'').split(',').map(h=>h.replace(/"/g,'').trim().toUpperCase());
+      var iAcct=findCol(hdrs,['ACCT_ID','ACCOUNT_ID']), iName=findCol(hdrs,['NAME']), iMob=findCol(hdrs,['MOBILE','MOBILE_NO']),
+          iOut=findCol(hdrs,['TOTAL OUTSTANDING','OUTSTANDING']), iSub=findCol(hdrs,['SUBSTATION']), iFeed=findCol(hdrs,['FEEDER']),
+          iLat=findCol(hdrs,['LAT']), iLon=findCol(hdrs,['LON']);
+      
+      var pos=nl+1, len=text.length;
+      while(pos<len){
+        var end=text.indexOf('\n',pos); if(end<0)end=len;
+        var line=text.substring(pos,end).trim(); pos=end+1;
+        if(!line)continue;
+        var v=line.split(',').map(x=>x.replace(/^"|"$/g,'').trim());
+        var acct=v[iAcct]; if(!acct)continue;
+        var lat=v[iLat]||'', lon=v[iLon]||'';
+        if(parseFloat(lat)>50){var t=lat;lat=lon;lon=t;}
+        DFP_ALL.push({
+          ACCT_ID:acct, NAME:v[iName]||'', MOBILE_NO:v[iMob]||'',
+          OUTSTANDING:parseFloat(v[iOut])||0, SUBSTATION:v[iSub]||'', FEEDER:v[iFeed]||'',
+          LAT:lat, LON:lon
+        });
+      }
+      DFP_FD=DFP_ALL.slice();
+      buildDfpPanel();
+    })
+    .catch(e => { panel.innerHTML='<div style="padding:20px;text-align:center;color:#F43F5E;">⚠ Error: '+e+'</div>'; });
+}
+
+function buildDfpPanel(){
+  var subs=[...new Set(DFP_ALL.map(r=>r.SUBSTATION).filter(Boolean))].sort();
+  var sel=gel('dfp-sub'); if(sel){
+    while(sel.options.length>1)sel.remove(1);
+    subs.forEach(s=>{var o=document.createElement('option');o.value=o.textContent=s;sel.appendChild(o);});
+  }
+  runDfpFilter();
+}
+
+function runDfpFilter(){
+  var q=(gel('dfp-search')?gel('dfp-search').value:'').toLowerCase();
+  var sub=gel('dfp-sub')?gel('dfp-sub').value:'';
+  DFP_FD=DFP_ALL.filter(r=>{
+    if(sub&&r.SUBSTATION!==sub)return false;
+    if(q&&!String(r.ACCT_ID).includes(q)&&!(r.NAME&&r.NAME.toLowerCase().includes(q))&&!(r.MOBILE_NO&&r.MOBILE_NO.includes(q)))return false;
+    return true;
+  });
+  var ci=gel('dfp-count-info'); if(ci)ci.textContent='Showing '+DFP_FD.length+' of '+DFP_ALL.length+' records';
+  renderDfpTable(1);
+}
+
+function renderDfpTable(page){
+  dfpPage=page; var tbody=gel('dfp-tbody'); if(!tbody)return;
+  var slice=DFP_FD.slice((page-1)*PS, page*PS);
+  tbody.innerHTML=slice.map((r,i)=>{
+    var rank=(page-1)*PS+i+1;
+    var out=Math.round(r.OUTSTANDING);
+    return '<tr>'+
+      '<td style="color:var(--muted);font-size:11px;">'+rank+'</td>'+
+      '<td style="font-family:var(--fh);color:#4F46E5;font-weight:700;cursor:pointer;" onclick="openFromDfpRow(\''+r.ACCT_ID+'\')">'+r.ACCT_ID+'</td>'+
+      '<td style="font-weight:600;">'+r.NAME+'</td>'+
+      '<td>'+r.MOBILE_NO+'</td>'+
+      '<td style="font-family:var(--fh);font-weight:700;color:#F43F5E;">₹'+out.toLocaleString()+'</td>'+
+      '<td>'+r.SUBSTATION+'</td>'+
+      '<td>'+r.FEEDER+'</td>'+
+      '<td>'+(r.LAT?'<a class="ml" href="https://www.google.com/maps?q='+r.LAT+','+r.LON+'" target="_blank">📍</a>':'')+'</td>'+
+    '</tr>';
+  }).join('');
+  rp('dfp-pg',page,Math.ceil(DFP_FD.length/PS),renderDfpTable);
+}
+
+function sortDfpCol(col){
+  if(_dfpSortCol===col)_dfpSortAsc=!_dfpSortAsc; else{_dfpSortCol=col;_dfpSortAsc=true;}
+  DFP_FD.sort((a,b)=>{
+    var av=col==='OUTSTANDING'?a[col]:String(a[col]||'').toLowerCase();
+    var bv=col==='OUTSTANDING'?b[col]:String(b[col]||'').toLowerCase();
+    if(av<bv)return _dfpSortAsc?-1:1; if(av>bv)return _dfpSortAsc?1:-1; return 0;
+  });
+  renderDfpTable(1);
+}
+
+function openFromDfpRow(acctId){
+  var r=DFP_ALL.find(x=>String(x.ACCT_ID)===String(acctId)); if(!r)return;
+  var lat=parseFloat(r.LAT), lon=parseFloat(r.LON);
+  gel('modal-title').textContent='POLE DISCONNECTED — '+r.NAME;
+  gel('modal-grid').innerHTML=
+    '<div class="modal-field"><div class="lbl">ACCT ID</div><div class="val">'+r.ACCT_ID+'</div></div>'+
+    '<div class="modal-field"><div class="lbl">MOBILE</div><div class="val">'+(r.MOBILE_NO||'-')+'</div></div>'+
+    '<div class="modal-field"><div class="lbl">SUBSTATION</div><div class="val">'+r.SUBSTATION+'</div></div>'+
+    '<div class="modal-field"><div class="lbl">FEEDER</div><div class="val">'+r.FEEDER+'</div></div>'+
+    '<div class="modal-field"><div class="lbl">OUTSTANDING</div><div class="val" style="font-size:16px;font-weight:700;color:#F43F5E;">₹'+Math.round(r.OUTSTANDING).toLocaleString()+'</div></div>';
+  
+  gel('modal-pay-section').style.display='none';
+  gel('modal-atr-section').style.display='none';
+  
+  if(lat&&lon){
+    gel('modal-nearby-section').style.display='block';
+    gel('modal-nearby-section').querySelector('div:first-child').textContent='📍 NEARBY CONSUMERS (Pole DC & Defaulters)';
+    modalNearbyLat=lat; modalNearbyLon=lon;
+    
+    // Combine DFP and Defaulters for nearby
+    var pool = DFP_ALL.map(x=>Object.assign({},x,{_type:'POLE DC'}))
+      .concat(DEF_ALL.map(x=>Object.assign({},x,{_type:'DEFAULTER'})));
+      
+    var nearby=pool.filter(x=>String(x.ACCT_ID)!==String(acctId)&&x.LAT&&x.LON)
+      .map(x=>{var xl=parseFloat(x.LAT),xo=parseFloat(x.LON); return Object.assign({},x,{_dist:haversine(lat,lon,xl,xo)});})
+      .filter(x=>x._dist<=0.5).sort((a,b)=>a._dist-b._dist).slice(0,10);
+      
+    var lst=gel('modal-nb-list'); if(lst) lst.innerHTML=nearby.map(x=>{
+      var dist=x._dist<1?(x._dist*1000).toFixed(0)+'m':x._dist.toFixed(2)+'km';
+      var cls=x._type==='DEFAULTER'?'#F43F5E':'#4F46E5';
+      return '<div class="nb-card">'+
+        '<div style="display:flex;justify-content:space-between;">'+
+        '<div><div style="font-size:12px;font-weight:700;">'+x.NAME+'</div><div style="font-size:10px;color:var(--muted);">'+x.ACCT_ID+' | <b style="color:'+cls+'">'+x._type+'</b></div></div>'+
+        '<div style="text-align:right"><div style="font-size:11px;font-weight:700;color:#4F46E5;">'+dist+'</div><div style="font-size:12px;font-weight:700;">₹'+Math.round(x.OUTSTANDING).toLocaleString()+'</div></div>'+
+        '</div></div>';
+    }).join('');
+    gel('modal-nb-count').textContent=nearby.length+' FOUND';
+    gel('modal-map-btn').style.display='inline-flex';
+    gel('modal-map-btn').href='#';
+    gel('modal-map-btn').onclick=function(e){e.preventDefault(); closeModal(); openDfpMap(acctId);};
+    gel('modal-map-btn').textContent='📍 VIEW ON MAP WITH NEARBY';
+  } else {
+    gel('modal-nearby-section').style.display='none';
+    gel('modal-map-btn').style.display='none';
+  }
+  
+  gel('detail-modal').classList.add('open'); document.body.style.overflow='hidden';
+}
+
+function openDfpMap(acctId){
+  var r=DFP_ALL.find(x=>String(x.ACCT_ID)===String(acctId)); if(!r)return;
+  var lat=parseFloat(r.LAT), lon=parseFloat(r.LON);
+  if(lat>50){var t=lat;lat=lon;lon=t;}
+
+  var pool = DFP_ALL.map(x=>Object.assign({},x,{_type:'POLE DC'}))
+    .concat(DEF_ALL.map(x=>Object.assign({},x,{_type:'DEFAULTER'})));
+
+  var nearby=pool.filter(x=>{
+    var lt=parseFloat(x.LAT),lg=parseFloat(x.LON);
+    return String(x.ACCT_ID)!==String(acctId)&&lt&&lg&&!isNaN(lt)&&!isNaN(lg);
+  }).map(x=>{
+    var xLat=parseFloat(x.LAT),xLon=parseFloat(x.LON);
+    if(xLat>50){var t=xLat;xLat=xLon;xLon=t;}
+    return Object.assign({},x,{_dist:haversine(lat,lon,xLat,xLon),_lat:xLat,_lon:xLon});
+  }).filter(x=>x._dist<=2).sort((a,b)=>a._dist-b._dist).slice(0,15);
+
+  var data=[{
+    lat:lat,lon:lon,name:r.NAME||'Unknown',acct:String(r.ACCT_ID),
+    mobile:r.MOBILE_NO||'-',out:Math.round(r.OUTSTANDING||0),
+    sub:r.SUBSTATION||'-',feed:r.FEEDER||'-',
+    addr:'-', lmv:'-', atr:r._type||'POLE DC', main:true, dist:0
+  }].concat(nearby.map(x=>{
+    return {
+      lat:x._lat,lon:x._lon,name:x.NAME||'Unknown',acct:String(x.ACCT_ID),
+      mobile:x.MOBILE_NO||'-',out:Math.round(x.OUTSTANDING||0),
+      sub:x.SUBSTATION||'-',feed:x.FEEDER||'-',
+      addr:'-', lmv:'-', atr:x._type, main:false, dist:x._dist
+    };
+  }));
+
+  try{localStorage.setItem('uppcl_map_data',JSON.stringify({data:data,lat:lat,lon:lon}));}catch(e){}
+  window.open('https://anshu10kumar04-pixel.github.io/uppcl-data/map.html','_blank');
+}
+
+function resetDfp(){ gel('dfp-search').value=''; gel('dfp-sub').value=''; runDfpFilter(); }
+function expDfpX(){ if(!DFP_FD.length)return alert('No data.'); XLSX.writeFile(XLSX.utils.book_new().appendChild(XLSX.utils.json_to_sheet(DFP_FD),'Pole DC'),'Pole_DC_'+Date.now()+'.xlsx'); }
 
 window.loadDefaulters=loadDefaulters;
 window.renderDefaulters=renderDefaulters;
