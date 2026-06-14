@@ -26,7 +26,7 @@
     "unbilled/unbilled_eudd2a.csv"
   ],
   "daily_date": "11062026",
-  "updated": "2026-06-13T18:16:00.454628Z",
+  "updated": "2026-06-14T12:36:06.919891Z",
   "source": "local-ftp-sync",
   "eudd1": [
     "master/eudd1a.csv",
@@ -43,13 +43,13 @@
   "sync_status": {
     "233511": {
       "master_period": "MAY_2026",
-      "billed_date": "12062026",
-      "unbilled_date": "12062026"
+      "billed_date": "14062026",
+      "unbilled_date": "14062026"
     },
     "233512": {
       "master_period": "MAY_2026",
-      "billed_date": "12062026",
-      "unbilled_date": "12062026"
+      "billed_date": "14062026",
+      "unbilled_date": "14062026"
     }
   }
 }
