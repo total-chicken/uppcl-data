@@ -65,12 +65,12 @@ button,select,input{-webkit-tap-highlight-color:transparent;touch-action:manipul
 .logo-text{font-family:var(--fh);font-size:20px;font-weight:700;letter-spacing:1px;color:#fff;}
 .logo-text span{color:#FCD34D;}
 .logo-sub{font-size:10px;color:rgba(255,255,255,0.75);letter-spacing:1px;margin-top:1px;}
-.hdr-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-.stat-chip{font-family:var(--fh);font-size:12px;font-weight:600;color:rgba(255,255,255,0.8);display:flex;align-items:center;gap:5px;white-space:nowrap;}
-.stat-chip .val{color:#fff;font-size:15px;font-weight:700;}
-.hdr-btn{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;font-family:var(--fh);font-size:11px;font-weight:600;padding:6px 12px;border-radius:6px;cursor:pointer;letter-spacing:1px;white-space:nowrap;}
+.hdr-right{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.stat-chip{font-family:var(--fh);font-size:12px;font-weight:600;color:rgba(255,255,255,0.8);display:flex;align-items:center;gap:5px;white-space:nowrap;line-height:1;}
+.stat-chip .val{color:#fff;font-size:15px;font-weight:700;line-height:1;}
+.hdr-btn{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;font-family:var(--fh);font-size:11px;font-weight:600;padding:8px 14px;border-radius:8px;cursor:pointer;letter-spacing:1px;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;height:34px;transition:all 0.2s;}
 .hdr-btn:hover{background:rgba(255,255,255,0.25);}
-#sbar{display:none;flex-wrap:wrap;justify-content:center;width:100%;padding-top:8px;border-top:1px solid rgba(255,255,255,0.1);}
+#sbar{display:none;flex-wrap:wrap;justify-content:center;width:100%;padding-top:8px;border-top:1px solid rgba(255,255,255,0.1);align-items:center;}
 
 /* ── TABS ── */
 .tabs{display:flex;background:#fff;border-bottom:2px solid #C7D2FE;padding:0 24px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
@@ -2845,8 +2845,8 @@ let DFP_ALL=[], DFP_FD=[], _dfpLoaded=false, dfpPage=1, _dfpSortCol=null, _dfpSo
 
 function loadDfp(){
   if(_dfpLoaded)return;
-  var panel=gel('panel-dfp');
-  panel.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-family:var(--fh);">Loading Pole DC data…</div>';
+  var tbody=gel('dfp-tbody');
+  if(tbody) tbody.innerHTML='<tr><td colspan="8" style="padding:40px;text-align:center;color:var(--muted);font-family:var(--fh);">⌛ Loading Pole DC data…</td></tr>';
   fetch(DFP_FILE)
     .then(r => r.ok ? r.text() : Promise.reject('DFP file not found'))
     .then(text => {
@@ -2863,7 +2863,18 @@ function loadDfp(){
         var end=text.indexOf('\n',pos); if(end<0)end=len;
         var line=text.substring(pos,end).trim(); pos=end+1;
         if(!line)continue;
-        var v=line.split(',').map(x=>x.replace(/^"|"$/g,'').trim());
+        
+        // Better CSV split handling for quoted commas
+        var v=[], inQuotes=false, current='';
+        for(var i=0; i<line.length; i++){
+          var c=line[i];
+          if(c==='"'&&(i===0||line[i-1]!=='\\')){inQuotes=!inQuotes;}
+          else if(c===','&&!inQuotes){v.push(current.trim());current='';}
+          else{current+=c;}
+        }
+        v.push(current.trim());
+        v=v.map(val=>val.replace(/^"|"$/g,'').trim());
+
         var acct=v[iAcct]; if(!acct)continue;
         var lat=v[iLat]||'', lon=v[iLon]||'';
         if(parseFloat(lat)>50){var t=lat;lat=lon;lon=t;}
@@ -2876,7 +2887,7 @@ function loadDfp(){
       DFP_FD=DFP_ALL.slice();
       buildDfpPanel();
     })
-    .catch(e => { panel.innerHTML='<div style="padding:20px;text-align:center;color:#F43F5E;">⚠ Error: '+e+'</div>'; });
+    .catch(e => { if(tbody) tbody.innerHTML='<tr><td colspan="8" style="padding:40px;text-align:center;color:#F43F5E;">⚠ Error: '+e+'</td></tr>'; });
 }
 
 function buildDfpPanel(){
@@ -3020,5 +3031,7 @@ function expDfpX(){ if(!DFP_FD.length)return alert('No data.'); XLSX.writeFile(X
 window.loadDefaulters=loadDefaulters;
 window.renderDefaulters=renderDefaulters;
 </script>
+</body>
+</html>
 </body>
 </html>
