@@ -1261,7 +1261,96 @@ const SESSION_TIMEOUT = 24 * 60 * 60 * 1000; // 24 hours
 let USERS_DB = { users: [], shared_gh_pat: "" };
 let CURRENT_USER = null, CURRENT_ROLE = null;
 
+function buildUserManagementHTML() {
+  if (CURRENT_ROLE !== 'superadmin' && CURRENT_ROLE !== 'admin') return '';
+  
+  let html = '<div class="settings-card" style="margin-top:20px; border-color:#E9D5FF; background:#FAF5FF;">' +
+    '<div style="font-family:var(--fh);font-size:16px;font-weight:700;margin-bottom:12px;color:#701A75;display:flex;align-items:center;gap:8px;">👥 USER MANAGEMENT</div>' +
+    '<div style="font-size:12px;color:var(--muted);margin-bottom:15px;line-height:1.5;">Manage access for your team. Admins can create and manage standard User accounts.</div>';
+
+  // 1. Create User Form (for Super Admin & Admin)
+  html += '<div style="background:#fff; padding:15px; border-radius:12px; border:1px solid #F5D0FE; margin-bottom:15px;">' +
+    '<div style="font-family:var(--fh);font-size:12px;font-weight:700;color:#A21CAF;margin-bottom:10px;">ADD NEW ACCOUNT</div>' +
+    '<div class="settings-grid-row" style="gap:10px;">' +
+      '<input type="text" id="new-user-name" placeholder="Username" style="border:1.5px solid #F5D0FE; border-radius:10px; padding:8px 12px; font-size:13px; flex:1;"/>' +
+      '<input type="password" id="new-user-pass" placeholder="Password" style="border:1.5px solid #F5D0FE; border-radius:10px; padding:8px 12px; font-size:13px; flex:1;"/>' +
+      '<select id="new-user-role" style="border:1.5px solid #F5D0FE; border-radius:10px; padding:8px; font-size:13px; font-family:var(--fb); background:#fff;">' +
+        '<option value="user">USER</option>' +
+        (CURRENT_ROLE === 'superadmin' ? '<option value="admin">ADMIN</option>' : '') +
+      '</select>' +
+      '<button class="btn" style="background:#A21CAF; color:#fff;" onclick="createNewUser()">➕ ADD</button>' +
+    '</div>' +
+  '</div>';
+
+  // 2. User List
+  html += '<div style="background:#fff; border-radius:12px; border:1px solid #F5D0FE; overflow:hidden;">' +
+    '<table style="width:100%; border-collapse:collapse; font-size:12px;">' +
+      '<thead style="background:#FDF4FF; border-bottom:1px solid #F5D0FE;">' +
+        '<tr><th style="padding:10px; text-align:left;">USERNAME</th><th style="padding:10px;">ROLE</th><th style="padding:10px;">BY</th><th style="padding:10px; text-align:right;">ACTIONS</th></tr>' +
+      '</thead>' +
+      '<tbody>';
+
+  USERS_DB.users.forEach(u => {
+    let canManage = (CURRENT_ROLE === 'superadmin' && u.username !== 'superadmin') || (u.createdBy === CURRENT_USER.username);
+    
+    html += '<tr style="border-bottom:1px solid #FDF4FF;">' +
+      '<td style="padding:10px; font-weight:600;">' + u.username + '</td>' +
+      '<td style="padding:10px; text-align:center;"><span class="role-badge ' + (u.role === 'admin' ? 'badge-admin' : (u.role === 'superadmin' ? 'badge-superadmin' : 'badge-user')) + '" style="font-size:9px;">' + u.role.toUpperCase() + '</span></td>' +
+      '<td style="padding:10px; text-align:center; color:var(--muted); font-size:10px;">' + u.createdBy + '</td>' +
+      '<td style="padding:10px; text-align:right;">' +
+        (canManage ? 
+          '<button onclick="resetUserPassword(\'' + u.username + '\')" style="background:none; border:none; color:#4F46E5; cursor:pointer; font-size:14px; margin-right:8px;" title="Reset Password">🔑</button>' +
+          '<button onclick="deleteUser(\'' + u.username + '\')" style="background:none; border:none; color:#F43F5E; cursor:pointer; font-size:14px;" title="Delete User">🗑️</button>' 
+          : '<span style="color:#CBD5E1; font-size:10px;">LOCKED</span>') +
+      '</td>' +
+    '</tr>';
+  });
+
+  html += '</tbody></table></div></div>';
+  return html;
+}
+
+async function createNewUser() {
+  const name = gel('new-user-name').value.trim().toLowerCase();
+  const pass = gel('new-user-pass').value;
+  const role = gel('new-user-role').value;
+
+  if (!name || !pass) return alert("Enter name and password.");
+  if (USERS_DB.users.find(u => u.username === name)) return alert("User already exists.");
+
+  const hashed = await encryptPassword(pass);
+  USERS_DB.users.push({
+    username: name,
+    password: hashed,
+    role: role,
+    createdBy: CURRENT_USER.username
+  });
+
+  await saveUserDatabase();
+  buildSettingsPanel();
+  alert("User " + name + " created.");
+}
+
+async function deleteUser(name) {
+  if (!confirm("Are you sure you want to delete " + name + "?")) return;
+  USERS_DB.users = USERS_DB.users.filter(u => u.username !== name);
+  await saveUserDatabase();
+  buildSettingsPanel();
+}
+
+async function resetUserPassword(name) {
+  const newPass = prompt("Enter new password for " + name + ":");
+  if (!newPass) return;
+  const user = USERS_DB.users.find(u => u.username === name);
+  if (user) {
+    user.password = await encryptPassword(newPass);
+    await saveUserDatabase();
+    alert("Password reset successfully.");
+  }
+}
+
 async function initUserDatabase() {
+  // 1. Try Fetch from GitHub
   try {
     const res = await fetch(RAW_BASE + 'users.json?t=' + Date.now());
     if (res.ok) {
@@ -1273,12 +1362,33 @@ async function initUserDatabase() {
           const decryptedPat = deobfuscatePat(USERS_DB.shared_gh_pat);
           localStorage.setItem('gh_pat', decryptedPat);
         }
+        return;
       }
     }
   } catch (e) {
-    console.warn("Failed to fetch users.json from GitHub, using local cache.", e);
+    console.warn("Failed to fetch users.json from GitHub", e);
   }
 
+  // 2. Try Fetch from Local Path (fallback for local development)
+  try {
+    const res = await fetch('users.json?t=' + Date.now());
+    if (res.ok) {
+      const data = await res.json();
+      if (data && Array.isArray(data.users)) {
+        USERS_DB = data;
+        localStorage.setItem('uppcl_users_db', JSON.stringify(USERS_DB));
+        if (USERS_DB.shared_gh_pat) {
+          const decryptedPat = deobfuscatePat(USERS_DB.shared_gh_pat);
+          localStorage.setItem('gh_pat', decryptedPat);
+        }
+        return;
+      }
+    }
+  } catch (e) {
+    console.warn("Failed to fetch local users.json", e);
+  }
+
+  // 3. Try LocalStorage Cache
   if (!USERS_DB.users || USERS_DB.users.length === 0) {
     try {
       const localData = JSON.parse(localStorage.getItem('uppcl_users_db'));
@@ -1288,12 +1398,14 @@ async function initUserDatabase() {
           const decryptedPat = deobfuscatePat(USERS_DB.shared_gh_pat);
           localStorage.setItem('gh_pat', decryptedPat);
         }
+        return;
       }
     } catch (e) {
       console.error("Local users.json parse failed", e);
     }
   }
 
+  // 4. Emergency Defaults (if everything else fails)
   if (!USERS_DB.users || USERS_DB.users.length === 0) {
     const superadminPass = await encryptPassword("superadminpassword");
     const adminPass = await encryptPassword("adminpassword");
@@ -1348,19 +1460,29 @@ async function handleLogin() {
   var password = passEl.value;
   
   if (!username || !password) {
-    errEl.textContent = "✗ ENTER USERNAME & PASSWORD";
+    errEl.textContent = "Enter Username & Password";
     return;
   }
   
-  errEl.textContent = "VERIFYING…";
+  if (!USERS_DB || !USERS_DB.users || USERS_DB.users.length === 0) {
+    errEl.textContent = "System Error: User database not loaded";
+    return;
+  }
+  
+  errEl.textContent = "Verifying…";
   
   var user = USERS_DB.users.find(u => u.username.toLowerCase() === username);
   if (!user) {
-    errEl.textContent = "✗ INVALID USERNAME OR PASSWORD";
+    errEl.textContent = "Invalid Username or Password";
     return;
   }
   
   var decrypted = await decryptPassword(user.password);
+  if (decrypted === null) {
+    errEl.textContent = "Security Error: Check browser console";
+    return;
+  }
+
   if (decrypted === password) {
     errEl.textContent = "";
     CURRENT_USER = user;
@@ -1368,7 +1490,7 @@ async function handleLogin() {
     userEl.value = "";
     passEl.value = "";
   } else {
-    errEl.textContent = "✗ INVALID USERNAME OR PASSWORD";
+    errEl.textContent = "Invalid Username or Password";
   }
 }
 
@@ -1413,11 +1535,15 @@ function logout(){
   var ls=gel('login-screen'); ls.style.display='flex'; ls.style.pointerEvents='all';
   gel('app').style.display='none';
 }
-window.addEventListener('DOMContentLoaded',function(){
+window.addEventListener('DOMContentLoaded', async function(){
+  await initUserDatabase();
   var session = null;
   try { session = JSON.parse(localStorage.getItem('uppcl_session')); } catch(e){}
   if(session && session.role && session.ts && (Date.now() - session.ts < SESSION_TIMEOUT)){
-    loginSuccess(session.role);
+    // To ensure CURRENT_USER is set even on session restore
+    CURRENT_USER = USERS_DB.users.find(u => u.username === session.username);
+    if(CURRENT_USER) loginSuccess(session.role);
+    else gel('login-screen').style.display='flex';
   } else {
     gel('login-screen').style.display='flex';
   }
@@ -3188,7 +3314,5 @@ function expDfpX(){ if(!DFP_FD.length)return alert('No data.'); XLSX.writeFile(X
 window.loadDefaulters=loadDefaulters;
 window.renderDefaulters=renderDefaulters;
 </script>
-</body>
-</html>
 </body>
 </html>
