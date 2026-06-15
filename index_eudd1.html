@@ -146,14 +146,20 @@ mark{background:#EDE9FE;color:#4F46E5;border-radius:2px;}
 select option{background:#fff;color:#1E1B4B;}
 
 /* ── SETTINGS FIXES ── */
-.settings-card{background:#fff;border:1.5px solid #C7D2FE;border-radius:16px;padding:20px;margin-bottom:20px;box-shadow:0 4px 12px rgba(79,70,229,0.05);}
+.settings-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.settings-card{background:#fff;border:1.5px solid #C7D2FE;border-radius:16px;padding:20px;box-shadow:0 4px 12px rgba(79,70,229,0.05);height: fit-content;}
 .settings-grid-row{display:flex;gap:10px;flex-wrap:wrap;}
-.settings-grid-row input{flex:1;min-width:200px;}
-@media(max-width:480px){
+.settings-grid-row input{flex:1;min-width:150px;}
+@media(max-width:768px){
+  .settings-container { grid-template-columns: 1fr; }
   .settings-grid-row{flex-direction:column;}
   .settings-grid-row input, .settings-grid-row button{width:100%;min-width:0;}
-  .settings-btn-group{flex-direction:column;gap:8px;}
-  .settings-btn-group button{width:100%;}
 }
 
 /* ── SM UNRECHARGE ── */
@@ -1528,12 +1534,17 @@ function applyRoleRestrictions(role){
   }
 }
 function logout(){
-  CURRENT_ROLE=null; currentPin=''; loginRole='admin';
+  CURRENT_ROLE=null; CURRENT_USER=null;
   localStorage.removeItem('uppcl_session');
-  gel('tab-admin').classList.add('active'); gel('tab-user').classList.remove('active');
-  pinReset();
   var ls=gel('login-screen'); ls.style.display='flex'; ls.style.pointerEvents='all';
   gel('app').style.display='none';
+  gel('login-username').value=''; gel('login-password').value=''; gel('login-error').textContent='';
+  // Reset navigation state
+  _lastTab='';
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  gel('panel-lookup').classList.add('active');
+  var lt = document.querySelector('.tab[onclick*="lookup"]'); if(lt) lt.classList.add('active');
 }
 window.addEventListener('DOMContentLoaded', async function(){
   await initUserDatabase();
