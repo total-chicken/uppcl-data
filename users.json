@@ -1,0 +1,23 @@
+{
+  "users": [
+    {
+      "username": "superadmin",
+      "role": "superadmin",
+      "password": "53b9c3daca779e24932d046124c84487bd43631dd8dfde76ee01ca8b7a57a37eb2cbbad3e4907c6af319b70e7c1d",
+      "createdBy": "system"
+    },
+    {
+      "username": "admin",
+      "role": "admin",
+      "password": "e35f53a7f9d9279aae3c59dbce749656f7b9213ef9411efa5c6fc913ee24c3101cd3aaeaa97d82902c",
+      "createdBy": "superadmin"
+    },
+    {
+      "username": "user",
+      "role": "user",
+      "password": "61004b583e1bdab8b693b16afa139798c5ac1821b2e21b5ecad66108c5a9af7c4e1f17baeb3ba6f2",
+      "createdBy": "admin"
+    }
+  ],
+  "shared_gh_pat": ""
+}

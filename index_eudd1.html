@@ -200,10 +200,13 @@ select option{background:#fff;color:#1E1B4B;}
 .toast{position:fixed;bottom:24px;right:24px;background:#10B981;color:#fff;padding:10px 20px;border-radius:10px;font-family:var(--fh);font-size:13px;font-weight:700;letter-spacing:1px;z-index:9999;transform:translateY(60px);opacity:0;transition:all .3s;}
 .toast.show{transform:translateY(0);opacity:1;}
 
-/* ── HELP MODAL ── */
-#help-modal{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:99998;display:none;align-items:center;justify-content:center;padding:16px;}
-#help-modal.open{display:flex;}
-#help-modal > div{background:#fff;border-radius:16px;width:100%;max-width:660px;max-height:90vh;overflow-y:auto;}
+/* ── AUTH & HIERARCHY STYLES ── */
+#login-screen input:focus {
+  border-color: #4F46E5 !important;
+  background: #fff !important;
+  box-shadow: 0 0 0 3px rgba(79,70,229,0.1);
+}
+.badge-superadmin{background:#FAE8FF;color:#A21CAF;}
 
 /* ── MULTI-SELECT ── */
 .ms-wrap{position:relative;}
@@ -260,36 +263,26 @@ select option{background:#fff;color:#1E1B4B;}
 
 <!-- LOGIN SCREEN -->
 <div id="login-screen">
-  <div class="login-box">
+  <div class="login-box" style="max-width: 420px; padding: 32px 24px;">
     <div class="login-logo">⚡</div>
     <div class="login-title">UPP<span>CL</span> TOOL</div>
     <div class="login-sub">CONSUMER DATA INTELLIGENCE · JHANSI</div>
-    <div class="role-tabs">
-      <button class="role-tab active" id="tab-admin" onclick="setLoginRole('admin')">👑 ADMIN</button>
-      <button class="role-tab" id="tab-user" onclick="setLoginRole('user')">👤 USER</button>
+    
+    <div style="margin-top: 15px; text-align: left;">
+      <label style="font-family:var(--fh);font-size:13px;font-weight:700;color:var(--text);display:block;margin-bottom:6px;">USERNAME</label>
+      <input type="text" id="login-username" placeholder="Enter username" style="width:100%;border:1.5px solid #C7D2FE;border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:14px;font-family:var(--fb);outline:none;background:#F8FAFF;color:var(--text);transition:all 0.2s;" onkeydown="if(event.key==='Enter')gel('login-password').focus()"/>
+      
+      <label style="font-family:var(--fh);font-size:13px;font-weight:700;color:var(--text);display:block;margin-bottom:6px;">PASSWORD</label>
+      <div style="position:relative;margin-bottom:18px;">
+        <input type="password" id="login-password" placeholder="Enter password" style="width:100%;border:1.5px solid #C7D2FE;border-radius:10px;padding:12px 40px 12px 14px;font-size:14px;font-family:var(--fb);outline:none;background:#F8FAFF;color:var(--text);transition:all 0.2s;" onkeydown="if(event.key==='Enter')handleLogin()"/>
+        <button onclick="togglePasswordVisibility('login-password', this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:var(--muted);outline:none;padding:4px;">👁️</button>
+      </div>
     </div>
-    <div class="pin-display" id="pin-display">
-      <div class="pin-dot" id="pd0"></div>
-      <div class="pin-dot" id="pd1"></div>
-      <div class="pin-dot" id="pd2"></div>
-      <div class="pin-dot" id="pd3"></div>
-    </div>
-    <div class="login-error" id="login-error"></div>
-    <div class="pin-pad">
-      <button class="pin-btn" onclick="pinPress('1')">1</button>
-      <button class="pin-btn" onclick="pinPress('2')">2</button>
-      <button class="pin-btn" onclick="pinPress('3')">3</button>
-      <button class="pin-btn" onclick="pinPress('4')">4</button>
-      <button class="pin-btn" onclick="pinPress('5')">5</button>
-      <button class="pin-btn" onclick="pinPress('6')">6</button>
-      <button class="pin-btn" onclick="pinPress('7')">7</button>
-      <button class="pin-btn" onclick="pinPress('8')">8</button>
-      <button class="pin-btn" onclick="pinPress('9')">9</button>
-      <button class="pin-clear" onclick="pinClear()">CLR</button>
-      <button class="pin-btn" onclick="pinPress('0')">0</button>
-      <button class="pin-btn" onclick="pinBackspace()">⌫</button>
-    </div>
-    <div style="font-size:11px;color:var(--muted)">👑 Admin · 👤 User</div>
+    
+    <div class="login-error" id="login-error" style="margin-bottom: 15px;"></div>
+    
+    <button class="btn btn-acc" onclick="handleLogin()" style="width:100%;padding:14px;font-size:15px;font-family:var(--fh);font-weight:700;letter-spacing:1px;border-radius:12px;">🔓 SIGN IN</button>
+    <div style="font-size:11px;color:var(--muted);margin-top:15px;line-height:1.4;">Enter Username &amp; Password<br/>Super Admin · Admin · User</div>
   </div>
 </div>
 
@@ -321,7 +314,6 @@ select option{background:#fff;color:#1E1B4B;}
         <div class="stat-chip">SUBSTATIONS <span class="val" id="s-sub">0</span></div>
         <div class="stat-chip">FEEDERS <span class="val" id="s-feed">0</span></div>
       </div>
-      <button class="hdr-btn" onclick="showHelp()">❓ HELP</button>
       <button class="hdr-btn" onclick="logout()" style="background:rgba(239,68,68,0.3);">⎋ LOGOUT</button>
     </div>
   </div>
@@ -498,37 +490,7 @@ select option{background:#fff;color:#1E1B4B;}
   </div>
 </div>
 
-<!-- HELP MODAL -->
-<div id="help-modal" onclick="if(event.target===this)closeHelp()">
-  <div>
-    <div style="background:linear-gradient(135deg,#4F46E5,#4338CA);padding:16px 20px;display:flex;justify-content:space-between;align-items:center;border-radius:16px 16px 0 0;">
-      <div style="font-family:var(--fh);font-size:18px;font-weight:700;color:#fff;letter-spacing:1px;">❓ HOW TO USE</div>
-      <button onclick="closeHelp()" style="background:transparent;border:1px solid rgba(255,255,255,0.3);color:#fff;width:32px;height:32px;border-radius:8px;cursor:pointer;">✕</button>
-    </div>
-    <div style="padding:20px;">
-      <div style="background:#EEF2FF;border-radius:10px;padding:14px;margin-bottom:12px;border-left:3px solid #4F46E5;">
-        <div style="font-family:var(--fh);font-size:13px;font-weight:700;color:#4F46E5;margin-bottom:8px;">🔐 LOGIN</div>
-        <div style="font-size:12px;line-height:1.8;">
-          👑 <b>Admin PIN: 0107</b> — Full access<br/>
-          👤 <b>User PIN: 1234</b> — View only
-        </div>
-      </div>
-      <div style="background:#E0F2FE;border-radius:10px;padding:14px;margin-bottom:12px;border-left:3px solid #0EA5E9;">
-        <div style="font-family:var(--fh);font-size:13px;font-weight:700;color:#0EA5E9;margin-bottom:8px;">🔍 SEARCH</div>
-        <div style="font-size:12px;line-height:1.8;">Enter Account ID or Mobile Number → consumer details with payment info and nearby consumers</div>
-      </div>
-      <div style="background:#FFEBEE;border-radius:10px;padding:14px;margin-bottom:12px;border-left:3px solid #F43F5E;">
-        <div style="font-family:var(--fh);font-size:13px;font-weight:700;color:#F43F5E;margin-bottom:8px;">🔴 SM UNRECHARGE</div>
-        <div style="font-size:12px;line-height:1.8;">Smart Meter consumers who haven't recharged after disconnection. Click Account ID → set ATR status (PAID/LOCK/THEFT) → Save</div>
-      </div>
-      <div style="background:#FFF7ED;border-radius:10px;padding:14px;border-left:3px solid #F59E0B;">
-        <div style="font-family:var(--fh);font-size:13px;font-weight:700;color:#F59E0B;margin-bottom:8px;">⚠️ DEFAULTERS</div>
-        <div style="font-size:12px;line-height:1.8;">Consumers with outstanding > ₹5,000. Filter by substation/feeder/supply type. Sort by any column. Export XLSX.</div>
-      </div>
-      <button onclick="closeHelp()" style="width:100%;margin-top:16px;background:#4F46E5;color:#fff;border:none;border-radius:10px;padding:12px;font-family:var(--fh);font-size:14px;font-weight:700;cursor:pointer;">GOT IT ✓</button>
-    </div>
-  </div>
-</div>
+
 
 <script>
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
@@ -879,7 +841,7 @@ function buildSettingsPanel(){
           '<tbody id="sub-div-rows">'+rowsHtml+'</tbody></table>'+
         '</div>'+
         '<div class="settings-grid-row">'+
-          '<input type="password" id="gh-pat" placeholder="GitHub Personal Access Token" value="'+getGhPat()+'" style="border:1.5px solid #C7D2FE;border-radius:10px;padding:10px 14px;font-size:13px;" oninput="localStorage.setItem(&#39;gh_pat&#39;,this.value)"/>'+
+          '<input type="password" id="gh-pat" placeholder="GitHub Personal Access Token" value="'+getGhPat()+'" style="border:1.5px solid #C7D2FE;border-radius:10px;padding:10px 14px;font-size:13px;" onchange="savePat(this.value)"/>'+
           '<button class="btn btn-acc" onclick="processAndUpload()">🚀 PROCESS &amp; UPLOAD</button>'+
         '</div>'+
         '<div id="settings-log" style="margin-top:15px;max-height:150px;overflow-y:auto;background:#0F172A;color:#A7F3D0;font-family:monospace;font-size:11px;padding:12px;border-radius:10px;display:none;"></div>'+
@@ -913,6 +875,7 @@ function buildSettingsPanel(){
         '<button class="btn" style="background:#EA580C;color:#fff;width:100%;padding:14px;" id="ftp-sync-btn" onclick="triggerFtpSync()">🔄 START SYNC PROCESS</button>'+
         '<pre id="ftp-sync-log" style="display:none;background:#0F172A;color:#A7F3D0;font-size:10px;font-family:monospace;padding:12px;border-radius:10px;max-height:180px;overflow-y:auto;margin-top:12px;"></pre>'+
       '</div>'+
+      buildUserManagementHTML() +
     '</div>';
   checkSyncServer();
 }
@@ -1213,35 +1176,229 @@ function syncAtrFromSheet(){
     });
 }
 
-// ─── LOGIN ────────────────────────────────────────────────────────────────────
-const ADMIN_PIN='0107', USER_PIN='1234';
-const SESSION_TIMEOUT = 24 * 60 * 60 * 1000; // 24 hours
-let currentPin='', loginRole='admin', CURRENT_ROLE=null;
+// ─── CRYPTO & PAT OBFUSCATION ────────────────────────────────────────────────
+const CRYPTO_SALT = "uppcl_salt_2026";
+const CRYPTO_ITERATIONS = 1000;
+const CRYPTO_KEY_PHRASE = "UPPCL_SUPER_SECRET_KEY_2026";
 
-function setLoginRole(r){ loginRole=r; gel('tab-admin').classList.toggle('active',r==='admin'); gel('tab-user').classList.toggle('active',r==='user'); pinReset(); }
-function pinPress(d){ if(currentPin.length>=4)return; currentPin+=d; updatePinDots(); if(currentPin.length===4)setTimeout(checkPin,150); }
-function pinBackspace(){ currentPin=currentPin.slice(0,-1); updatePinDots(); setText('login-error',''); }
-function pinClear(){ pinReset(); }
-function pinReset(){ currentPin=''; updatePinDots(false); setText('login-error',''); }
-function updatePinDots(err){ for(var i=0;i<4;i++){var d=gel('pd'+i); if(!d)continue; d.classList.toggle('filled',i<currentPin.length); d.classList.toggle('error',err===true);} }
-function checkPin(){
-  var ok=loginRole==='admin'?ADMIN_PIN:USER_PIN;
-  if(currentPin===ok){ loginSuccess(loginRole); }
-  else{ updatePinDots(true); setText('login-error','✗ INCORRECT PIN'); setTimeout(pinReset,800); }
+async function deriveCryptoKey() {
+  const encoder = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(CRYPTO_KEY_PHRASE),
+    { name: "PBKDF2" },
+    false,
+    ["deriveKey"]
+  );
+  return crypto.subtle.deriveKey(
+    {
+      name: "PBKDF2",
+      salt: encoder.encode(CRYPTO_SALT),
+      iterations: CRYPTO_ITERATIONS,
+      hash: "SHA-256"
+    },
+    keyMaterial,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"]
+  );
 }
+
+async function encryptPassword(password) {
+  try {
+    const key = await deriveCryptoKey();
+    const encoder = new TextEncoder();
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const encrypted = await crypto.subtle.encrypt(
+      { name: "AES-GCM", iv: iv },
+      key,
+      encoder.encode(password)
+    );
+    const combined = new Uint8Array(iv.length + encrypted.byteLength);
+    combined.set(iv, 0);
+    combined.set(new Uint8Array(encrypted), iv.length);
+    return Array.from(combined).map(b => b.toString(16).padStart(2, '0')).join('');
+  } catch (e) {
+    console.error("Encryption failed:", e);
+    return "";
+  }
+}
+
+async function decryptPassword(encryptedHex) {
+  if (!encryptedHex) return "";
+  try {
+    const key = await deriveCryptoKey();
+    const combined = new Uint8Array(encryptedHex.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+    const iv = combined.slice(0, 12);
+    const encrypted = combined.slice(12);
+    const decrypted = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: iv },
+      key,
+      encrypted
+    );
+    return new TextDecoder().decode(decrypted);
+  } catch (e) {
+    console.error("Decryption failed:", e);
+    return null;
+  }
+}
+
+function obfuscatePat(pat) {
+  if (!pat) return "";
+  const part1 = pat.slice(0, 4);
+  const part2 = pat.slice(4, 20);
+  const part3 = pat.slice(20);
+  return "[#]" + part1 + "[#]" + part2 + "[#]" + part3 + "[#]";
+}
+
+function deobfuscatePat(obfuscated) {
+  if (!obfuscated) return "";
+  return obfuscated.split("[#]").join("");
+}
+
+// ─── LOGIN & USER SESSION ────────────────────────────────────────────────────
+const SESSION_TIMEOUT = 24 * 60 * 60 * 1000; // 24 hours
+let USERS_DB = { users: [], shared_gh_pat: "" };
+let CURRENT_USER = null, CURRENT_ROLE = null;
+
+async function initUserDatabase() {
+  try {
+    const res = await fetch(RAW_BASE + 'users.json?t=' + Date.now());
+    if (res.ok) {
+      const data = await res.json();
+      if (data && Array.isArray(data.users)) {
+        USERS_DB = data;
+        localStorage.setItem('uppcl_users_db', JSON.stringify(USERS_DB));
+        if (USERS_DB.shared_gh_pat) {
+          const decryptedPat = deobfuscatePat(USERS_DB.shared_gh_pat);
+          localStorage.setItem('gh_pat', decryptedPat);
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("Failed to fetch users.json from GitHub, using local cache.", e);
+  }
+
+  if (!USERS_DB.users || USERS_DB.users.length === 0) {
+    try {
+      const localData = JSON.parse(localStorage.getItem('uppcl_users_db'));
+      if (localData && Array.isArray(localData.users)) {
+        USERS_DB = localData;
+        if (USERS_DB.shared_gh_pat) {
+          const decryptedPat = deobfuscatePat(USERS_DB.shared_gh_pat);
+          localStorage.setItem('gh_pat', decryptedPat);
+        }
+      }
+    } catch (e) {
+      console.error("Local users.json parse failed", e);
+    }
+  }
+
+  if (!USERS_DB.users || USERS_DB.users.length === 0) {
+    const superadminPass = await encryptPassword("superadminpassword");
+    const adminPass = await encryptPassword("adminpassword");
+    const userPass = await encryptPassword("userpassword");
+    USERS_DB = {
+      users: [
+        { username: "superadmin", role: "superadmin", password: superadminPass, createdBy: "system" },
+        { username: "admin", role: "admin", password: adminPass, createdBy: "superadmin" },
+        { username: "user", role: "user", password: userPass, createdBy: "admin" }
+      ],
+      shared_gh_pat: ""
+    };
+    localStorage.setItem('uppcl_users_db', JSON.stringify(USERS_DB));
+  }
+}
+
+async function saveUserDatabase() {
+  localStorage.setItem('uppcl_users_db', JSON.stringify(USERS_DB));
+  const pat = localStorage.getItem('gh_pat') || '';
+  if (pat) {
+    try {
+      USERS_DB.shared_gh_pat = obfuscatePat(pat);
+      await ghPutFile('users.json', JSON.stringify(USERS_DB, null, 2), 'Update users database');
+      console.log("Users database synced to GitHub successfully.");
+    } catch (e) {
+      console.error("Failed to sync users database to GitHub:", e);
+      alert("⚠️ Saved locally, but GitHub sync failed: " + e.message);
+    }
+  }
+}
+
+async function savePat(val) {
+  localStorage.setItem('gh_pat', val);
+  USERS_DB.shared_gh_pat = obfuscatePat(val);
+  await saveUserDatabase();
+}
+
+function togglePasswordVisibility(id, btn) {
+  var inp = gel(id);
+  if (inp.type === "password") {
+    inp.type = "text";
+    btn.textContent = "🙈";
+  } else {
+    inp.type = "password";
+    btn.textContent = "👁️";
+  }
+}
+
+async function handleLogin() {
+  var userEl = gel('login-username'), passEl = gel('login-password'), errEl = gel('login-error');
+  var username = userEl.value.trim().toLowerCase();
+  var password = passEl.value;
+  
+  if (!username || !password) {
+    errEl.textContent = "✗ ENTER USERNAME & PASSWORD";
+    return;
+  }
+  
+  errEl.textContent = "VERIFYING…";
+  
+  var user = USERS_DB.users.find(u => u.username.toLowerCase() === username);
+  if (!user) {
+    errEl.textContent = "✗ INVALID USERNAME OR PASSWORD";
+    return;
+  }
+  
+  var decrypted = await decryptPassword(user.password);
+  if (decrypted === password) {
+    errEl.textContent = "";
+    CURRENT_USER = user;
+    loginSuccess(user.role);
+    userEl.value = "";
+    passEl.value = "";
+  } else {
+    errEl.textContent = "✗ INVALID USERNAME OR PASSWORD";
+  }
+}
+
 function loginSuccess(role){
   CURRENT_ROLE=role;
-  localStorage.setItem('uppcl_session', JSON.stringify({role:role, ts:Date.now()}));
+  localStorage.setItem('uppcl_session', JSON.stringify({username: CURRENT_USER.username, role: role, ts: Date.now()}));
   var ls=gel('login-screen'); ls.style.display='none'; ls.style.pointerEvents='none';
   gel('app').style.display='block';
   gel('sbar').style.display='flex';
-  var b=gel('role-indicator'); if(b){b.textContent=role==='admin'?'👑 ADMIN':'👤 USER'; b.className='role-badge '+(role==='admin'?'badge-admin':'badge-user');}
+  var b=gel('role-indicator'); 
+  if(b){
+    if(role==='superadmin'){
+      b.textContent='👑 SUPER ADMIN';
+      b.className='role-badge badge-superadmin';
+    } else if(role==='admin'){
+      b.textContent='🛡️ ADMIN';
+      b.className='role-badge badge-admin';
+    } else {
+      b.textContent='👤 USER';
+      b.className='role-badge badge-user';
+    }
+  }
   applyRoleRestrictions(role);
   if(D.length===0) autoFetch();
 }
+
 function applyRoleRestrictions(role){
-  if(role==='admin'){ var st=gel('tab-settings'); if(st) st.style.display=''; }
-  // ATR Report available to all roles
+  var st=gel('tab-settings');
+  if(role==='superadmin' || role==='admin'){ if(st) st.style.display=''; }
+  else { if(st) st.style.display='none'; }
   if(role==='user'){
     document.querySelectorAll('button').forEach(function(btn){
       if(btn.textContent.includes('SHEET SYNC')||btn.textContent.includes('EXPORT KML')) btn.style.display='none';
@@ -1280,7 +1437,7 @@ function st(name){
   requestAnimationFrame(function(){
     if(name==='dc'&&!_dcLoaded) loadDC();
     if(name==='defaulter') loadDefaulters();
-    if(name==='settings'&&!_settingsBuilt) buildSettingsPanel();
+    if(name==='settings') buildSettingsPanel();
   });
 }
 
