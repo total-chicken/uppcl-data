@@ -404,11 +404,12 @@ select option{background:#fff;color:#1E1B4B;}
         <div class="lbl">OUTSTANDING AMOUNT (₹)</div>
         <div class="cond-row">
           <select id="def-out-op" class="cond-sel" onchange="updateDefFilterUI('out')">
+            <option value="any" selected>Any Amount</option>
             <option value="gt">Greater Than (>)</option>
             <option value="lt">Less Than (<)</option>
             <option value="between">Between</option>
           </select>
-          <input type="number" id="def-out-v1" class="cond-inp" value="5000" oninput="runDefaulterFilter()"/>
+          <input type="number" id="def-out-v1" class="cond-inp" style="display:none;" value="5000" oninput="runDefaulterFilter()"/>
           <span id="def-out-and" style="display:none; font-size:11px; font-weight:700; color:var(--muted);">TO</span>
           <input type="number" id="def-out-v2" class="cond-inp" style="display:none;" placeholder="Max" oninput="runDefaulterFilter()"/>
         </div>
@@ -419,10 +420,10 @@ select option{background:#fff;color:#1E1B4B;}
         <div class="lbl">SANCTIONED LOAD (kW)</div>
         <div class="cond-row">
           <select id="def-load-op" class="cond-sel" onchange="updateDefFilterUI('load')">
+            <option value="any" selected>Any Load</option>
             <option value="gt">Greater Than (>)</option>
             <option value="lt">Less Than (<)</option>
             <option value="between">Between</option>
-            <option value="any" selected>Any Load</option>
           </select>
           <input type="number" id="def-load-v1" class="cond-inp" style="display:none;" placeholder="Min" oninput="runDefaulterFilter()"/>
           <span id="def-load-and" style="display:none; font-size:11px; font-weight:700; color:var(--muted);">TO</span>
@@ -1331,7 +1332,7 @@ function deobfuscatePat(obfuscated) {
 }
 
 // ─── LOGIN & USER SESSION ────────────────────────────────────────────────────
-const SESSION_TIMEOUT = 24 * 60 * 60 * 1000; // 24 hours
+const SESSION_TIMEOUT = 10 * 60 * 60 * 1000; // 10 hours
 let USERS_DB = { users: [], shared_gh_pat: "" };
 let CURRENT_USER = null, CURRENT_ROLE = null;
 
@@ -2717,6 +2718,12 @@ function setDefSource(src){
   // Re-build DEF_ALL from source
   if(src==='master') buildDefAllFromMasterData();
   else buildDefAllFromBilledData();
+  
+  // Dynamically refresh filter options from Master Data
+  _defSelSubs = []; _defSelSupplies = [];
+  buildMsOptions('sub', getAllSubValues());
+  buildMsOptions('supply', getAllSupplyValues());
+  updateMsBtn('sub'); updateMsBtn('supply');
   
   runDefaulterFilter();
 }

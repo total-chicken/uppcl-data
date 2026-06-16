@@ -452,10 +452,10 @@ select option{background:#fff;color:#1E1B4B;}
         <div class="lbl">SANCTIONED LOAD (kW)</div>
         <div class="cond-row">
           <select id="def-load-op" class="cond-sel" onchange="updateDefFilterUI('load')">
+            <option value="any" selected>Any Load</option>
             <option value="gt">Greater Than (>)</option>
             <option value="lt">Less Than (<)</option>
             <option value="between">Between</option>
-            <option value="any" selected>Any Load</option>
           </select>
           <input type="number" id="def-load-v1" class="cond-inp" style="display:none;" placeholder="Min" oninput="runDefaulterFilter()"/>
           <span id="def-load-and" style="display:none; font-size:11px; font-weight:700; color:var(--muted);">TO</span>
@@ -1364,7 +1364,7 @@ function deobfuscatePat(obfuscated) {
 }
 
 // ─── LOGIN & USER SESSION ────────────────────────────────────────────────────
-const SESSION_TIMEOUT = 24 * 60 * 60 * 1000; // 24 hours
+const SESSION_TIMEOUT = 10 * 60 * 60 * 1000; // 10 hours
 let USERS_DB = { users: [], shared_gh_pat: "" };
 let CURRENT_USER = null, CURRENT_ROLE = null;
 
@@ -2752,6 +2752,12 @@ function setDefSource(src){
   if(src==='master') buildDefAllFromMasterData();
   else buildDefAllFromBilledData();
   
+  // Dynamically refresh filter options from Master Data
+  _defSelSubs = []; _defSelSupplies = [];
+  buildMsOptions('sub', getAllSubValues());
+  buildMsOptions('supply', getAllSupplyValues());
+  updateMsBtn('sub'); updateMsBtn('supply');
+  
   runDefaulterFilter();
 }
 
@@ -2759,9 +2765,21 @@ function updateDefFilterUI(type){
   var op = gel('def-'+type+'-op').value;
   var v1 = gel('def-'+type+'-v1'), and = gel('def-'+type+'-and'), v2 = gel('def-'+type+'-v2');
   
-  if(op==='any'){ v1.style.display='none'; and.style.display='none'; v2.style.display='none'; }
-  else if(op==='between'){ v1.style.display='block'; and.style.display='inline'; v2.style.display='block'; }
-  else { v1.style.display='block'; and.style.display='none'; v2.style.display='none'; }
+  if(op==='any'){ 
+    if(v1) v1.style.display='none'; 
+    if(and) and.style.display='none'; 
+    if(v2) v2.style.display='none'; 
+  }
+  else if(op==='between'){ 
+    if(v1) v1.style.display='block'; 
+    if(and) and.style.display='inline'; 
+    if(v2) v2.style.display='block'; 
+  }
+  else { 
+    if(v1) v1.style.display='block'; 
+    if(and) and.style.display='none'; 
+    if(v2) v2.style.display='none'; 
+  }
   
   runDefaulterFilter();
 }
