@@ -20,13 +20,14 @@
     "billed/billed_eudd2e.csv",
     "billed/billed_eudd2f.csv",
     "billed/billed_eudd2g.csv",
-    "billed/billed_eudd2h.csv"
+    "billed/billed_eudd2h.csv",
+    "billed/billed_eudd2i.csv"
   ],
   "unbilled_eudd2": [
     "unbilled/unbilled_eudd2a.csv"
   ],
   "daily_date": "11062026",
-  "updated": "2026-06-15T05:53:58.979957Z",
+  "updated": "2026-06-16T05:28:02.578597Z",
   "source": "local-ftp-sync",
   "eudd1": [
     "master/eudd1a.csv",
@@ -43,13 +44,13 @@
   "sync_status": {
     "233511": {
       "master_period": "MAY_2026",
-      "billed_date": "15062026",
-      "unbilled_date": "15062026"
+      "billed_date": "16062026",
+      "unbilled_date": "16062026"
     },
     "233512": {
       "master_period": "MAY_2026",
-      "billed_date": "15062026",
-      "unbilled_date": "15062026"
+      "billed_date": "16062026",
+      "unbilled_date": "16062026"
     }
   }
 }
