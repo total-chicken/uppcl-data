@@ -1699,12 +1699,6 @@ function autoFetch(){
 function startDownloads(){
   var allTexts=new Array(FILES.length), fetched=0, total=FILES.length;
 
-  // Fetch defaulter.csv in parallel
-  fetch(DEFAULTER_FILE)
-    .then(function(r){ return r.ok?r.text():''; })
-    .then(function(t){ if(t) parseDefaulterText(t); })
-    .catch(function(){});
-
   // Fetch METERNO.csv in parallel
   fetch(METERNO_FILE)
     .then(function(r){ return r.ok?r.text():''; })
@@ -2555,33 +2549,25 @@ function refreshFeedOptions(){
 // ─── DEFAULTERS ───────────────────────────────────────────────────────────────
 function loadDefaulters(){
   // Panel HTML is static - always in DOM
-  if(DEF_ALL.length > 0){
-    buildDefaulterPanel();
+  if(D.length === 0){
+    var msg = gel('def-loading-msg');
+    if(msg) msg.style.display='block';
+    var poll=setInterval(function(){
+      if(D.length > 0){
+        clearInterval(poll);
+        if(msg) msg.style.display='none';
+        setDefSource(_defSource);
+      }
+    },500);
     return;
   }
-  // Show loading message
-  var msg = gel('def-loading-msg');
-  if(msg) msg.style.display='block';
-  // Poll until background fetch completes
-  var attempts=0;
-  var poll=setInterval(function(){
-    attempts++;
-    if(DEF_ALL.length>0){
-      clearInterval(poll);
-      if(msg) msg.style.display='none';
-      buildDefaulterPanel();
-    } else if(attempts>20){
-      clearInterval(poll);
-      buildDefAll(); // fallback: fetch now
-    }
-  },500);
+  setDefSource(_defSource);
 }
 
 function buildDefaulterPanel(){
-  // Populate multi-select substations
+  // Initial build of MS options
   buildMsOptions('sub', getAllSubValues());
   buildMsOptions('feed', getAllFeedValues());
-  // Populate supply type single select
   buildMsOptions('supply', getAllSupplyValues());
   runDefaulterFilter();
 }
@@ -2655,58 +2641,7 @@ function parseDefaulterText(text){
   console.log('Defaulter pre-loaded:', DEF_ALL.length);
 }
 
-function buildDefAll() {
-  if (_defFileLoaded) return;
-  _defFileLoaded = true;
-  fetch(DEFAULTER_FILE)
-    .then(function(r){ return r.ok ? r.text() : Promise.reject('defaulter.csv not found'); })
-    .then(function(text){
-      DEF_ALL = [];
-      var nl = text.indexOf('\n'); if(nl<0) return;
-      var hdrs = text.substring(0,nl).replace(/\r/,'').split(',').map(function(h){return h.replace(/"/g,'').trim();});
-      var iAcct=hdrs.indexOf('ACCT_ID'), iMob=hdrs.indexOf('MOBILE_NO'),
-          iName=hdrs.indexOf('NAME'), iAddr=hdrs.indexOf('ADDRESS'),
-          iCat=hdrs.indexOf('CATEGORY'), iLoad=hdrs.indexOf('LOAD'),
-          iLat=hdrs.indexOf('LAT'), iLon=hdrs.indexOf('LON'),
-          iSub=hdrs.indexOf('SUBSTATION'), iFeed=hdrs.indexOf('FEEDER'),
-          iDate=hdrs.indexOf('LP DATE'), iAmt=hdrs.indexOf('LP AMT'),
-          iOut=hdrs.indexOf('TOTAL OUTSTANDING');
-      var pos=nl+1, len=text.length;
-      while(pos<len){
-        var end=text.indexOf('\n',pos); if(end<0)end=len;
-        var line=text.substring(pos,end); pos=end+1;
-        if(!line||line==='\r') continue;
-        var v=line.split(',');
-        var acct=(v[iAcct]||'').replace(/"/g,'').trim(); if(!acct) continue;
-        var lat=(v[iLat]||'').replace(/"/g,'');
-        var lon=(v[iLon]||'').replace(/"/g,'');
-        var out=parseFloat((v[iOut]||'').replace(/"/g,''))||0;
-        if(out<1) continue;
-        DEF_ALL.push({
-          ACCT_ID: acct,
-          NAME: (v[iName]||'').replace(/"/g,''),
-          MOBILE: (v[iMob]||'').replace(/"/g,''),
-          ADDRESS: (v[iAddr]||'').replace(/"/g,''),
-          SUPPLY_TYPE: (v[iCat]||'').replace(/"/g,''),
-          OUTSTANDING: out,
-          PAY_AMT: parseFloat((v[iAmt]||'').replace(/"/g,''))||0,
-          PAY_DATE: (v[iDate]||'').replace(/"/g,''),
-          STATUS: 'INSERVICE',
-          SUBSTATION: (v[iSub]||'').replace(/"/g,''),
-          FEEDER: (v[iFeed]||'').replace(/"/g,''),
-          LAT: lat, LON: lon
-        });
-      }
-      console.log('Defaulter file loaded:', DEF_ALL.length, 'records');
-      // Render
-      if(gel('def-tbody')) runDefaulterFilter();
-    })
-    .catch(function(e){
-      console.warn('Defaulter file failed, using PAY_DATA:', e);
-      _defFileLoaded = false; // allow retry via PAY_DATA fallback
-      buildDefAllFromPayData();
-    });
-}
+var DEF_ALL = [];
 
 var _defSource = 'master'; // 'master' or 'billed'
 
