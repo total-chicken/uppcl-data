@@ -171,6 +171,18 @@ select option{background:#fff;color:#1E1B4B;}
   .settings-grid-row input, .settings-grid-row button{width:100%;min-width:0;}
 }
 
+/* ── DEFAULTER UPGRADES ── */
+.source-switch{display:flex;background:#F1F5F9;border-radius:12px;padding:4px;margin-bottom:20px;width:fit-content;border:1.5px solid #CBD5E1;}
+.source-opt{padding:8px 20px;font-family:var(--fh);font-size:12px;font-weight:800;letter-spacing:1px;border-radius:9px;cursor:pointer;color:#64748B;transition:all .2s;user-select:none;text-transform:uppercase;}
+.source-opt.active{background:#F43F5E;color:#fff;box-shadow:0 4px 12px rgba(244,63,94,0.3);}
+.source-opt.active.billed{background:#4F46E5;box-shadow:0 4px 12px rgba(79,70,229,0.3);}
+
+.cond-filter-group{display:flex;flex-direction:column;gap:4px;min-width:140px;}
+.cond-row{display:flex;gap:6px;align-items:center;}
+.cond-sel{border:1.5px solid #C7D2FE;border-radius:8px;padding:8px;font-family:var(--fb);font-size:12px;outline:none;background:#fff;cursor:pointer;flex:1;}
+.cond-inp{border:1.5px solid #C7D2FE;border-radius:8px;padding:8px;font-family:var(--fb);font-size:12px;outline:none;width:80px;background:#fff;}
+.cond-inp:focus{border-color:#4F46E5;}
+
 /* ── SM UNRECHARGE ── */
 .atr-dc{background:#FFEBEE;color:#C62828;border:1.5px solid #FFCDD2;border-radius:8px;padding:10px 12px;width:100%;font-family:var(--fb);font-size:13px;font-weight:700;appearance:none;cursor:pointer;outline:none;}
 .atr-paid{background:#E8F5E9;color:#2E7D32;border:1.5px solid #A5D6A7;border-radius:8px;padding:10px 12px;width:100%;font-family:var(--fb);font-size:13px;font-weight:700;appearance:none;cursor:pointer;outline:none;}
@@ -368,18 +380,51 @@ select option{background:#fff;color:#1E1B4B;}
 
   <!-- DEFAULTERS PANEL -->
   <div class="panel" id="panel-defaulter">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:15px;margin-bottom:20px;">
       <div>
-        <div style="font-family:var(--fh);font-size:20px;font-weight:700;color:#F43F5E;">⚠️ TOP DEFAULTERS</div>
-        <div style="font-size:12px;color:var(--muted);">Consumers with Outstanding &gt; ₹5,000</div>
+        <div style="font-family:var(--fh);font-size:22px;font-weight:800;color:#F43F5E;letter-spacing:0.5px;display:flex;align-items:center;gap:10px;">⚠️ DEFAULTER INTELLIGENCE</div>
+        <div style="font-size:12px;color:var(--muted);font-weight:600;">Advanced analytics and recovery tracking</div>
+      </div>
+      
+      <!-- Source Switch -->
+      <div class="source-switch">
+        <div class="source-opt active" id="source-master" onclick="setDefSource('master')">Monthly Master</div>
+        <div class="source-opt billed" id="source-billed" onclick="setDefSource('billed')">Live Billed</div>
       </div>
     </div>
-    <div class="fg" style="margin-bottom:12px;">
-      <div><div class="lbl">MIN OUTSTANDING</div><div class="sw"><select id="def-min" onchange="runDefaulterFilter()">
-        <option value="5000">₹5,000+</option><option value="10000">₹10,000+</option>
-        <option value="25000">₹25,000+</option><option value="50000">₹50,000+</option>
-        <option value="100000">₹1,00,000+</option>
-      </select></div></div>
+
+    <div class="fg" style="margin-bottom:20px; background:#fff; padding:20px; border-radius:16px; border:1px solid #C7D2FE; box-shadow:0 4px 15px rgba(79,70,229,0.03);">
+      <!-- Outstanding Filter -->
+      <div class="cond-filter-group">
+        <div class="lbl">OUTSTANDING AMOUNT (₹)</div>
+        <div class="cond-row">
+          <select id="def-out-op" class="cond-sel" onchange="updateDefFilterUI('out')">
+            <option value="gt">Greater Than (>)</option>
+            <option value="lt">Less Than (<)</option>
+            <option value="between">Between</option>
+          </select>
+          <input type="number" id="def-out-v1" class="cond-inp" value="5000" oninput="runDefaulterFilter()"/>
+          <span id="def-out-and" style="display:none; font-size:11px; font-weight:700; color:var(--muted);">TO</span>
+          <input type="number" id="def-out-v2" class="cond-inp" style="display:none;" placeholder="Max" oninput="runDefaulterFilter()"/>
+        </div>
+      </div>
+
+      <!-- Load Filter -->
+      <div class="cond-filter-group">
+        <div class="lbl">SANCTIONED LOAD (kW)</div>
+        <div class="cond-row">
+          <select id="def-load-op" class="cond-sel" onchange="updateDefFilterUI('load')">
+            <option value="gt">Greater Than (>)</option>
+            <option value="lt">Less Than (<)</option>
+            <option value="between">Between</option>
+            <option value="any" selected>Any Load</option>
+          </select>
+          <input type="number" id="def-load-v1" class="cond-inp" style="display:none;" placeholder="Min" oninput="runDefaulterFilter()"/>
+          <span id="def-load-and" style="display:none; font-size:11px; font-weight:700; color:var(--muted);">TO</span>
+          <input type="number" id="def-load-v2" class="cond-inp" style="display:none;" placeholder="Max" oninput="runDefaulterFilter()"/>
+        </div>
+      </div>
+
       <div><div class="lbl">SUBSTATION</div>
         <div class="ms-wrap" id="def-sub-wrap">
           <button class="ms-btn" id="def-sub-btn" onclick="toggleMs('def-sub-dd')">ALL SUBSTATIONS</button>
@@ -390,16 +435,7 @@ select option{background:#fff;color:#1E1B4B;}
           </div>
         </div>
       </div>
-      <div><div class="lbl">FEEDER</div>
-        <div class="ms-wrap" id="def-feed-wrap">
-          <button class="ms-btn" id="def-feed-btn" onclick="toggleMs('def-feed-dd')">ALL FEEDERS</button>
-          <div class="ms-dropdown" id="def-feed-dd">
-            <div class="ms-search"><input type="text" placeholder="Search…" oninput="filterMsOptions('def-feed-dd',this.value)"/></div>
-            <div id="def-feed-opts"></div>
-            <div class="ms-clear" onclick="clearMs('feed')">Clear All</div>
-          </div>
-        </div>
-      </div>
+
       <div><div class="lbl">SUPPLY TYPE</div>
         <div class="ms-wrap" id="def-supply-wrap">
           <button class="ms-btn" id="def-supply-btn" onclick="toggleMs('def-supply-dd')">ALL SUPPLY TYPES</button>
@@ -410,20 +446,36 @@ select option{background:#fff;color:#1E1B4B;}
           </div>
         </div>
       </div>
-      <div><div class="lbl">SORT</div><div class="sw"><select id="def-sort" onchange="runDefaulterFilter()">
-        <option value="desc">Highest First</option><option value="asc">Lowest First</option>
+
+      <div><div class="lbl">SORT BY</div><div class="sw"><select id="def-sort" onchange="runDefaulterFilter()">
+        <option value="desc">Highest Outstanding</option>
+        <option value="asc">Lowest Outstanding</option>
+        <option value="load-desc">Highest Load</option>
+        <option value="load-asc">Lowest Load</option>
       </select></div></div>
     </div>
-    <div class="btn-group" style="margin-bottom:12px;">
-      <div id="def-summary" style="font-family:var(--fh);font-size:13px;font-weight:600;color:var(--muted);flex:1;"></div>
-      <button class="btn btn-acc" onclick="expDefaultersX()">⬇ EXPORT XLSX</button>
-      <button class="btn btn-out" onclick="expDefaulterAtr()">📋 ATR REPORT</button>
-      <button class="btn" style="background:#059669;color:#fff;border:none;" onclick="downloadAtrFromSheet()">⬇ DOWNLOAD ATR XLSX</button>
+
+    <div style="display:flex;gap:15px;margin-bottom:20px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:180px;background:#FFF1F2;border:1.5px solid #FECACA;border-left:5px solid #F43F5E;border-radius:14px;padding:16px;box-shadow:0 4px 12px rgba(244,63,94,0.05);">
+        <div style="font-family:var(--fh);font-size:28px;font-weight:800;color:#F43F5E;" id="def-count">0</div>
+        <div style="font-size:11px;color:#991B1B;font-weight:800;letter-spacing:0.5px;text-transform:uppercase;">Identified Defaulters</div>
+      </div>
+      <div style="flex:1;min-width:220px;background:#F0F9FF;border:1.5px solid #BAE6FD;border-left:5px solid #0EA5E9;border-radius:14px;padding:16px;box-shadow:0 4px 12px rgba(14,165,233,0.05);">
+        <div style="font-family:var(--fh);font-size:28px;font-weight:800;color:#0EA5E9;" id="def-total-out">₹0</div>
+        <div style="font-size:11px;color:#0369A1;font-weight:800;letter-spacing:0.5px;text-transform:uppercase;">Total Recoverable</div>
+      </div>
+      <div style="flex:1;min-width:180px;background:#F5F3FF;border:1.5px solid #DDD6FE;border-left:5px solid #7C3AED;border-radius:14px;padding:16px;box-shadow:0 4px 12px rgba(124,58,237,0.05);">
+        <div style="font-family:var(--fh);font-size:28px;font-weight:800;color:#7C3AED;" id="def-avg-out">₹0</div>
+        <div style="font-size:11px;color:#5B21B6;font-weight:800;letter-spacing:0.5px;text-transform:uppercase;">Average Per Case</div>
+      </div>
     </div>
-    <div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap;">
-      <div style="background:#FFF1F2;border:1px solid #FECACA;border-left:4px solid #F43F5E;border-radius:10px;padding:12px 16px;min-width:120px;"><div style="font-family:var(--fh);font-size:22px;font-weight:700;color:#F43F5E;" id="def-count">0</div><div style="font-size:10px;color:#991B1B;font-weight:600;">DEFAULTERS</div></div>
-      <div style="background:#FFF7ED;border:1px solid #FED7AA;border-left:4px solid #EA580C;border-radius:10px;padding:12px 16px;min-width:120px;"><div style="font-family:var(--fh);font-size:22px;font-weight:700;color:#EA580C;" id="def-total-out">₹0</div><div style="font-size:10px;color:#9A3412;font-weight:600;">TOTAL OUTSTANDING</div></div>
-      <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-left:4px solid #2563EB;border-radius:10px;padding:12px 16px;min-width:120px;"><div style="font-family:var(--fh);font-size:22px;font-weight:700;color:#2563EB;" id="def-avg-out">₹0</div><div style="font-size:10px;color:#1E40AF;font-weight:600;">AVERAGE</div></div>
+
+    <div class="btn-group" style="margin-bottom:20px; background:#F8FAFF; padding:12px; border-radius:12px; border:1px solid #E2E8F0;">
+      <button class="btn btn-acc" onclick="expDefaultersX()" style="background:#1E293B;">⬇ EXPORT XLSX</button>
+      <button class="btn btn-out" onclick="expDefaulterAtr()" style="border-color:#4F46E5; color:#4F46E5;">📋 ATR REPORT</button>
+      <button class="btn" style="background:#059669;color:#fff;border:none;" onclick="downloadAtrFromSheet()">☁️ SYNC FROM SHEET</button>
+      <div style="flex:1;"></div>
+      <div id="def-summary" style="font-family:var(--fh);font-size:14px;font-weight:700;color:#64748B;"></div>
     </div>
     <div id="def-loading-msg" style="display:none;padding:24px;text-align:center;font-family:var(--fh);color:var(--muted);">⏳ Loading defaulter data…</div>
     <!-- Search bar just above table -->
@@ -2650,63 +2702,133 @@ function buildDefAll() {
     });
 }
 
-function buildDefAllFromPayData() {
+var _defSource = 'master'; // 'master' or 'billed'
+
+function setDefSource(src){
+  _defSource = src;
+  gel('source-master').classList.toggle('active', src==='master');
+  gel('source-billed').classList.toggle('active', src==='billed');
+  
+  // Re-build DEF_ALL from source
+  if(src==='master') buildDefAllFromMasterData();
+  else buildDefAllFromBilledData();
+  
+  runDefaulterFilter();
+}
+
+function updateDefFilterUI(type){
+  var op = gel('def-'+type+'-op').value;
+  var v1 = gel('def-'+type+'-v1'), and = gel('def-'+type+'-and'), v2 = gel('def-'+type+'-v2');
+  
+  if(op==='any'){ v1.style.display='none'; and.style.display='none'; v2.style.display='none'; }
+  else if(op==='between'){ v1.style.display='block'; and.style.display='inline'; v2.style.display='block'; }
+  else { v1.style.display='block'; and.style.display='none'; v2.style.display='none'; }
+  
+  runDefaulterFilter();
+}
+
+function buildDefAllFromMasterData(){
   DEF_ALL = [];
-  var dIdx = {};
-  D.forEach(function(r){ dIdx[String(r.ACCT_ID)] = r; });
-  Object.keys(PAY_DATA).forEach(function(acct){
-    var p = PAY_DATA[acct];
-    var out = parseFloat(p.TOTAL_OUTSTANDING) || 0;
-    if (out < 1) return;
-    var c = dIdx[acct];
+  var dIdx = {}; D.forEach(function(r){ dIdx[ac(r.ACCT_ID)] = r; });
+  
+  Object.keys(MASTER_MAP).forEach(function(key){
+    var m = MASTER_MAP[key];
+    var out = pf(m.TOTAL_OUTSTANDING);
+    if(out < 1) return;
+    var r = dIdx[key];
     DEF_ALL.push({
-      ACCT_ID: acct, NAME: p.NAME||(c?c.NAME:'-'),
-      MOBILE: c?(c.MOBILE_NO||'-'):'-', ADDRESS: c?(c.ADDRESS||'-'):'-',
-      SUPPLY_TYPE: p.SUPPLY_TYPE||'-', OUTSTANDING: out,
-      PAY_AMT: parseFloat(p.PAY_AMT)||0, PAY_DATE: p.PAY_DATE||'-',
-      STATUS: p.STATUS||'INSERVICE',
-      SUBSTATION: c?(c.SUBSTATION||'-'):'-', FEEDER: c?(c.FEEDER||'-'):'-',
-      LAT: c?c.LAT:'', LON: c?c.LON:''
+      ACCT_ID: key, NAME: r?r.NAME:'-', MOBILE: r?r.MOBILE_NO:'-',
+      ADDRESS: r?r.ADDRESS:'-', SUPPLY_TYPE: r?r.CATEGORY:'-',
+      LOAD: r?pf(r.LOAD):0, OUTSTANDING: out,
+      PAY_AMT: pf(m.LP_AMT), PAY_DATE: m.LP_DATE,
+      SUBSTATION: r?r.SUBSTATION:'-', FEEDER: r?r.FEEDER:'-',
+      LAT: r?r.LAT:'', LON: r?r.LON:''
+    });
+  });
+}
+
+function buildDefAllFromBilledData(){
+  DEF_ALL = [];
+  var dIdx = {}; D.forEach(function(r){ dIdx[ac(r.ACCT_ID)] = r; });
+  
+  Object.keys(PAY_DATA).forEach(function(key){
+    var p = PAY_DATA[key];
+    var out = pf(p.TOTAL_OUTSTANDING);
+    if(out < 1) return;
+    var r = dIdx[key];
+    DEF_ALL.push({
+      ACCT_ID: key, NAME: p.NAME||(r?r.NAME:'-'),
+      MOBILE: r?r.MOBILE_NO:'-', ADDRESS: r?r.ADDRESS:'-',
+      SUPPLY_TYPE: p.SUPPLY_TYPE||(r?r.CATEGORY:'-'),
+      LOAD: r?pf(r.LOAD):0, OUTSTANDING: out,
+      PAY_AMT: pf(p.PAY_AMT), PAY_DATE: p.PAY_DATE,
+      SUBSTATION: r?r.SUBSTATION:'-', FEEDER: r?r.FEEDER:'-',
+      LAT: r?r.LAT:'', LON: r?r.LON:''
     });
   });
 }
 
 function runDefaulterFilter(){
   if(!gel('def-tbody')){buildDefaulterPanel();return;}
-  if(!DEF_ALL.length) buildDefAll();
+  if(!DEF_ALL.length) {
+    if(_defSource==='master') buildDefAllFromMasterData();
+    else buildDefAllFromBilledData();
+  }
 
-  var minOut = parseFloat(gel('def-min') ? gel('def-min').value : 5000) || 5000;
-  var sub    = _defSelSubs;
-  var feed   = _defSelFeeds;
-  var supply = _defSelSupplies;
-  var sortDir= gel('def-sort') ? gel('def-sort').value : 'desc';
-  var q      = gel('def-search') ? gel('def-search').value.trim().toLowerCase() : '';
+  var outOp = gel('def-out-op').value, outV1 = pf(gel('def-out-v1').value), outV2 = pf(gel('def-out-v2').value);
+  var loadOp = gel('def-load-op').value, loadV1 = pf(gel('def-load-v1').value), loadV2 = pf(gel('def-load-v2').value);
+  
+  var sub = _defSelSubs, supply = _defSelSupplies;
+  var sortDir = gel('def-sort').value;
+  var q = gel('def-search') ? gel('def-search').value.trim().toLowerCase() : '';
 
-  // Fast filter on pre-built array
   var all = DEF_ALL.filter(function(r){
-    if(r.OUTSTANDING < minOut) return false;
-    if(sub.length    && sub.indexOf(r.SUBSTATION)<0)    return false;
-    if(feed.length   && feed.indexOf(r.FEEDER)<0)        return false;
+    // Outstanding Condition
+    if(outOp==='gt' && r.OUTSTANDING <= outV1) return false;
+    if(outOp==='lt' && r.OUTSTANDING >= outV1) return false;
+    if(outOp==='between' && (r.OUTSTANDING < outV1 || r.OUTSTANDING > outV2)) return false;
+
+    // Load Condition
+    if(loadOp!=='any'){
+      var rLoad = pf(r.LOAD);
+      if(loadOp==='gt' && rLoad <= loadV1) return false;
+      if(loadOp==='lt' && rLoad >= loadV1) return false;
+      if(loadOp==='between' && (rLoad < loadV1 || rLoad > loadV2)) return false;
+    }
+
+    if(sub.length && sub.indexOf(r.SUBSTATION)<0) return false;
     if(supply.length && supply.indexOf(r.SUPPLY_TYPE)<0) return false;
+    
     if(q){
-      var meter = METER_DATA[String(r.ACCT_ID)] || r.METER_NO || '';
+      var meter = METER_DATA[ac(r.ACCT_ID)] || r.METER_NO || '';
       if(!String(r.ACCT_ID).includes(q) &&
-         !(r.NAME    && r.NAME.toLowerCase().includes(q))    &&
-         !(r.MOBILE  && r.MOBILE.toLowerCase().includes(q))  &&
-         !(meter     && meter.toLowerCase().includes(q))     &&
+         !(r.NAME && r.NAME.toLowerCase().includes(q)) &&
+         !(r.MOBILE && r.MOBILE.toLowerCase().includes(q)) &&
+         !(meter && meter.toLowerCase().includes(q)) &&
          !(r.ADDRESS && r.ADDRESS.toLowerCase().includes(q)))
         return false;
     }
     return true;
   });
 
-  all.sort(function(a,b){return sortDir==='desc'?b.OUTSTANDING-a.OUTSTANDING:a.OUTSTANDING-b.OUTSTANDING;});
-  DEF_DATA = all;
+  // Sorting
+  all.sort(function(a,b){
+    if(sortDir==='desc') return b.OUTSTANDING - a.OUTSTANDING;
+    if(sortDir==='asc') return a.OUTSTANDING - b.OUTSTANDING;
+    if(sortDir==='load-desc') return pf(b.LOAD) - pf(a.LOAD);
+    if(sortDir==='load-asc') return pf(a.LOAD) - pf(b.LOAD);
+    return 0;
+  });
 
+  DEF_DATA = all;
   var totalOut = all.reduce(function(s,r){return s+r.OUTSTANDING;},0);
-  setText('def-count',   all.length.toLocaleString());
-  setText('def-total-out','₹'+Math.round(totalOut).toLocaleString());
-  setText('def-avg-out',  all.length?'₹'+Math.round(totalOut/all.length).toLocaleString():'₹0');
+  setText('def-count', all.length.toLocaleString());
+  setText('def-total-out', '₹'+Math.round(totalOut).toLocaleString());
+  setText('def-avg-out', all.length ? '₹'+Math.round(totalOut/all.length).toLocaleString() : '₹0');
+  
+  var summary = gel('def-summary');
+  if(summary) summary.textContent = 'Showing '+all.length.toLocaleString()+' records from '+_defSource.toUpperCase()+' source';
+  
   renderDefaulters(1);
 }
 
