@@ -1838,23 +1838,22 @@ function parseFileInto(text, type){
     var rawAmt = '', rawDate = '', outValue = '';
 
     if(type==='master'){
-      // Master files often have unquoted commas in middle fields, 
-      // but financial info is always in the last columns.
-      outValue = v[v.length - 1] || '0';
-      rawAmt   = v[v.length - 2] || '0';
-      rawDate  = v[v.length - 3] || '-';
+      // Use header-based logic if possible, fallback to last-column logic for malformed Master CSVs
+      outValue = iTotOut>=0 ? v[iTotOut] : (v[v.length - 1] || '0');
+      rawAmt   = iPayAmt>=0 ? v[iPayAmt] : (v[v.length - 2] || '0');
+      rawDate  = iPayDate>=0 ? v[iPayDate] : (v[v.length - 3] || '-');
       
       MASTER_MAP[key] = {
         TOTAL_OUTSTANDING: outValue,
         LP_DATE: rawDate,
         LP_AMT: rawAmt
       };
-      continue;
+      // Do NOT continue here; we need to capture the details into D as well
     }
 
-    rawAmt   = iPayAmt>=0  ? (v[iPayAmt]  || '0') : '0';
-    rawDate  = iPayDate>=0 ? (v[iPayDate] || '-') : '-';
-    outValue = iTotOut>=0  ? (v[iTotOut]  || '0') : '0';
+    rawAmt   = iPayAmt>=0  ? (v[iPayAmt]  || '0') : (rawAmt || '0');
+    rawDate  = iPayDate>=0 ? (v[iPayDate] || '-') : (rawDate || '-');
+    outValue = iTotOut>=0  ? (v[iTotOut]  || '0') : (outValue || '0');
     
     // Auto-swap amount/date if swapped in CSV
     if(rawAmt && rawDate && /\d{2}-\d{2}-\d{4}/.test(rawAmt)){var tmp=rawAmt;rawAmt=rawDate;rawDate=tmp;}
