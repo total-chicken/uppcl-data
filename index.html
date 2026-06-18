@@ -301,9 +301,23 @@ select option{background:#fff;color:#1E1B4B;}
     <div class="login-sub">CONSUMER DATA INTELLIGENCE · JHANSI</div>
     
     <div style="margin-top: 15px; text-align: left;">
+      <label style="font-family:var(--fh);font-size:13px;font-weight:700;color:var(--text);display:block;margin-bottom:6px;">DISCOM</label>
+      <div class="sw" style="margin-bottom:14px;">
+        <select id="login-discom" onchange="populateLoginDivisions()" style="width:100%;border:1.5px solid #C7D2FE;border-radius:10px;padding:12px 14px;font-size:14px;font-family:var(--fb);outline:none;background:#F8FAFF;color:var(--text);">
+          <option value="">Select Discom</option>
+        </select>
+      </div>
+
+      <label style="font-family:var(--fh);font-size:13px;font-weight:700;color:var(--text);display:block;margin-bottom:6px;">DIVISION</label>
+      <div class="sw" style="margin-bottom:14px;">
+        <select id="login-division" style="width:100%;border:1.5px solid #C7D2FE;border-radius:10px;padding:12px 14px;font-size:14px;font-family:var(--fb);outline:none;background:#F8FAFF;color:var(--text);">
+          <option value="">Select Division</option>
+        </select>
+      </div>
+
       <label style="font-family:var(--fh);font-size:13px;font-weight:700;color:var(--text);display:block;margin-bottom:6px;">USERNAME</label>
       <input type="text" id="login-username" placeholder="Enter username" style="width:100%;border:1.5px solid #C7D2FE;border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:14px;font-family:var(--fb);outline:none;background:#F8FAFF;color:var(--text);transition:all 0.2s;" onkeydown="if(event.key==='Enter')gel('login-password').focus()"/>
-      
+
       <label style="font-family:var(--fh);font-size:13px;font-weight:700;color:var(--text);display:block;margin-bottom:6px;">PASSWORD</label>
       <div style="position:relative;margin-bottom:18px;">
         <input type="password" id="login-password" placeholder="Enter password" style="width:100%;border:1.5px solid #C7D2FE;border-radius:10px;padding:12px 40px 12px 14px;font-size:14px;font-family:var(--fb);outline:none;background:#F8FAFF;color:var(--text);transition:all 0.2s;" onkeydown="if(event.key==='Enter')handleLogin()"/>
@@ -603,9 +617,13 @@ select option{background:#fff;color:#1E1B4B;}
 const GH_OWNER='anshu10kumar04-pixel', GH_REPO='uppcl-data', GH_BRANCH='main';
 const RAW_BASE='https://raw.githubusercontent.com/'+GH_OWNER+'/'+GH_REPO+'/main/';
 const MANIFEST_URL=RAW_BASE+'manifest.json';
-const DIVISION='ALL'; // ALL / EUDD1 / EUDD2 (set by build script)
-let FILES_EUDD1=['eudd1a.csv','eudd1b.csv'].map(f=>RAW_BASE+f);
-let FILES_EUDD2=['eudd2a.csv','eudd2b.csv'].map(f=>RAW_BASE+f);
+const DISCOMS_URL=RAW_BASE+'discoms.json';
+
+let CURRENT_DISCOM = ''; 
+let CURRENT_DIVISION = ''; 
+let DISCOMS = [];
+let MANIFEST = { divisions: {} };
+
 let FILES=[];
 let SUB_DIVISION_MAP={};
 const DC_FILE = 'https://raw.githubusercontent.com/anshu10kumar04-pixel/uppcl-data/main/DISCONNECTED.xlsx';
@@ -634,288 +652,19 @@ function checkSyncServer(){
     });
 }
 
-function loadSyncedInfo(){
-  fetch(LOCAL_SYNC_URL+'/sync-status',{mode:'cors'})
-    .then(function(r){return r.json();})
-    .then(function(d){
-      var el=gel('ftp-synced-info'); if(!el)return;
-      if(!d.ok){el.style.display='none';return;}
-      var ss=d.sync_status||{};
-      var lines=['<b style="color:#1D4ED8;">📋 LAST SYNCED</b>'];
-      Object.keys(ss).forEach(function(div){
-        var s=ss[div];
-        lines.push('DIV'+div+': Master=<b>'+(s.master_period||'—')+'</b> | Billed=<b>'+(s.billed_date||'—')+'</b> | Unbilled=<b>'+(s.unbilled_date||'—')+'</b>');
-      });
-      if(d.updated) lines.push('<span style="color:#64748B;">Updated: '+new Date(d.updated).toLocaleString('en-IN')+'</span>');
-      el.style.display='block';
-      el.innerHTML=lines.join('<br>');
-    })
-    .catch(function(){});
-}
+async function triggerDiscovery(){
+  if(!confirm('This will scan all FTP servers for new divisions and update manifest.json. Continue?')) return;
+  var logEl = gel('ftp-sync-log');
+  logEl.style.display = 'block'; logEl.innerHTML = 'Starting Discovery...';
 
-function triggerFtpSync(){
-  var btn=gel('ftp-sync-btn'), logEl=gel('ftp-sync-log');
-  var types=[];
-  if(gel('sync-master')&&gel('sync-master').checked) types.push('master');
-  if(gel('sync-billed')&&gel('sync-billed').checked) types.push('billed');
-  if(gel('sync-unbilled')&&gel('sync-unbilled').checked) types.push('unbilled');
-  if(!types.length){alert('Select at least one data type.');return;}
-
-  fetch(LOCAL_SYNC_URL+'/sync-status',{mode:'cors'})
-    .then(function(r){return r.json();})
-    .then(function(d){
-      if(!d.ok){
-        doSync(types, false, btn, logEl);
-        return;
-      }
-      var ss=d.sync_status||{};
-      var alreadySynced=[];
-      var today=new Date();
-      var ddmmyyyy=('0'+today.getDate()).slice(-2)+('0'+(today.getMonth()+1)).slice(-2)+today.getFullYear();
-      Object.keys(ss).forEach(function(div){
-        var s=ss[div];
-        if(types.includes('billed')&&s.billed_date===ddmmyyyy) alreadySynced.push('DIV'+div+' Billed ('+ddmmyyyy+')');
-        if(types.includes('unbilled')&&s.unbilled_date===ddmmyyyy) alreadySynced.push('DIV'+div+' Unbilled ('+ddmmyyyy+')');
-        if(types.includes('master')&&s.master_period) alreadySynced.push('DIV'+div+' Master ('+s.master_period+')');
-      });
-      if(alreadySynced.length){
-        var msg='⚠ Already synced:\n'+alreadySynced.join('\n')+'\n\nRefetch anyway?';
-        if(!confirm(msg)) return;
-        doSync(types, true, btn, logEl);
-      } else {
-        doSync(types, false, btn, logEl);
-      }
-    })
-    .catch(function(){ doSync(types, false, btn, logEl); });
-}
-
-function doSync(types, force, btn, logEl){
-  if(logEl){logEl.style.display='block';logEl.innerHTML='Starting…\n';}
-  if(btn){btn.textContent='⏳ SYNCING…';btn.disabled=true;}
-  fetch(LOCAL_SYNC_URL+'/sync',{
-    method:'POST',mode:'cors',
+  fetch(LOCAL_SYNC_URL+'/discover', {
+    method:'POST', mode:'cors',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({types:types,force:force})
-  })
-  .then(function(r){return r.json();})
-  .then(function(d){
-    if(!d.ok){
-      if(logEl)logEl.innerHTML+='❌ '+d.message;
-      if(btn){btn.disabled=false;btn.textContent='🔄 SYNC FROM FTP';}
-      return;
-    }
-    clearInterval(_syncPollTimer);
-    _syncPollTimer=setInterval(function(){
-      fetch(LOCAL_SYNC_URL+'/status',{mode:'cors'})
-        .then(function(r){return r.json();})
-        .then(function(s){
-          if(logEl){logEl.innerHTML=s.log.join('\n');logEl.scrollTop=logEl.scrollHeight;}
-          if(!s.running){
-            clearInterval(_syncPollTimer);
-            if(btn){btn.disabled=false;btn.textContent='🔄 SYNC FROM FTP';}
-            var last=s.log[s.log.length-1]||'';
-            if(last.includes('DONE')){loadSyncedInfo();alert('✅ Sync complete!');}
-          }
-        }).catch(function(){clearInterval(_syncPollTimer);});
-    },1500);
-  })
-  .catch(function(){
-    if(logEl)logEl.innerHTML+='❌ Server not reachable.';
-    if(btn){btn.disabled=false;btn.textContent='🔄 SYNC FROM FTP';}
-  });
-}
-
-// ─── GLOBALS ─────────────────────────────────────────────────────────────────
-let D = [], PAY_DATA = {}, FD = [], METER_DATA = {}; // acct_id -> meter_no
-let MASTER_MAP = {}; // acct_id -> {outstanding, lp_date, lp_amt}
-let MASTER_CUTOFF = null; // Date object for last day of master month
-let DC = [], DC_FD = [], ATR_DATA = {}, ATR_SCRIPT_URL = '';
-let DEF_DATA = [];
-const PS = 30;
-let dcPage = 1, defPage = 1;
-let _lastTab = '';
-let modalCurrentAcct = null, modalIsdc = false;
-let modalNearbyLat = null, modalNearbyLon = null;
-let _settingsBuilt = false;
-let _dcLoaded = false, _defBuilt = false;
-let _searchTimer = null;
-let _defSortCol = 'OUTSTANDING', _defSortAsc = false;
-
-// ─── HELPERS ─────────────────────────────────────────────────────────────────
-function gel(id){ return document.getElementById(id); }
-function setText(id,v){ var e=gel(id); if(e) e.textContent=v; }
-function sl(m,p){ var ld=gel('loading'); if(ld)ld.style.display='flex'; setText('lt',m); var pf=gel('pf'); if(pf)pf.style.width=p+'%'; }
-function hl2(){ var ld=gel('loading'); if(ld){ld.style.display='none';ld.style.pointerEvents='none';} }
-function toast(){ var t=gel('toast'); t.classList.add('show'); setTimeout(function(){t.classList.remove('show');},2000); }
-function haversine(lat1,lon1,lat2,lon2){ var R=6371,dLat=(lat2-lat1)*Math.PI/180,dLon=(lon2-lon1)*Math.PI/180,a=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)*Math.sin(dLon/2); return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a)); }
-
-function parseDate(s){
-  if(!s || s==='-') return null;
-  s = String(s).trim().toUpperCase();
-  // Handle DD-MMM-YY (e.g. 18-MAY-26) or DD/MM/YYYY
-  var parts = s.split(/[-\/]/);
-  if(parts.length===3){
-    var d = parseInt(parts[0]), m, y = parseInt(parts[2]);
-    if(isNaN(d)) return null;
-    if(parts[1].length===3){
-        var months = {JAN:0,FEB:1,MAR:2,APR:3,MAY:4,JUN:5,JUL:6,AUG:7,SEP:8,OCT:9,NOV:10,DEC:11};
-        m = months[parts[1]];
-    } else {
-        m = parseInt(parts[1]) - 1;
-    }
-    if(y < 100) y += 2000;
-    return new Date(y, m, d);
-  }
-  return null;
-}
-
-function pf(v){
-  if(v===undefined || v===null || v==='' || v==='-') return 0;
-  return parseFloat(String(v).replace(/,/g,'')) || 0;
-}
-
-function ac(id){
-  return String(id||'').replace(/^0+/,'').trim();
-}
-
-function catBadge(cat){
-  var c=(cat||'').toUpperCase().trim();
-  var cls='b-oth';
-  if(c.includes('DOM')) cls='b-dom';
-  else if(c.includes('COM')) cls='b-com';
-  else if(c.includes('IND')) cls='b-ind';
-  else if(c.includes('GOV')||c.includes('DEPT')) cls='b-gov';
-  return '<span class="'+cls+'">'+(c||'OTH')+'</span>';
-}
-function atrBadge(s){
-  var u=(s||'DISCONNECTED').toUpperCase();
-  if(u==='PAID') return '<span class="atr-badge-paid">PAID</span>';
-  if(u==='LOCK') return '<span class="atr-badge-lock">LOCK</span>';
-  if(u==='THEFT') return '<span class="atr-badge-theft">THEFT</span>';
-  if(u==='OTHER') return '<span class="atr-badge-other">OTHER</span>';
-  return '<span class="atr-badge-dc">SM</span>';
-}
-function fmtOut(v){ var n=parseFloat(v)||0; return n>0?'<span style="color:#F43F5E;font-weight:700">₹'+Math.round(n).toLocaleString()+'</span>':'<span style="color:#10B981;font-weight:700">₹0</span>'; }
-
-var _pgFns = {};
-function excelDateToStr(val){
-  if(val===undefined || val===null || val==='' || val==='-') return '-';
-  var n = parseFloat(val);
-  if(!isNaN(n)){
-    if(n <= 0) return '-';
-    if(n > 30000 && n < 60000){
-      // Excel date serial to JS date (Excel epoch is Dec 30 1899)
-      var d = new Date((n - 25569) * 86400 * 1000);
-      var dd = d.getUTCDate().toString().padStart(2,'0');
-      var mm = (d.getUTCMonth()+1).toString().padStart(2,'0');
-      var yy = d.getUTCFullYear();
-      return dd+'-'+mm+'-'+yy;
-    }
-    return String(val);
-  }
-  var s = String(val).trim();
-  if(s.indexOf('-')>0 || s.indexOf('/')>0) return s;
-  return s;
-}
-
-function _pg(cid,p){ if(_pgFns[cid]) _pgFns[cid](p); }
-
-function rp(cid, cur, tot, fn){
-  var c = gel(cid); if(!c) return;
-  if(tot <= 1){ c.innerHTML=''; return; }
-  _pgFns[cid] = fn;
-  var b = [], s = Math.max(1,cur-2), e = Math.min(tot,cur+2);
-  if(cur>1) b.push('<button class="pgb" onclick="_pg(\'' + cid + '\',1)">«</button>');
-  if(cur>1) b.push('<button class="pgb" onclick="_pg(\'' + cid + '\',' + (cur-1) + ')">‹</button>');
-  for(var i=s;i<=e;i++)
-    b.push('<button class="pgb' + (i===cur?' active':'') + '" onclick="_pg(\'' + cid + '\',' + i + ')">' + i + '</button>');
-  if(cur<tot) b.push('<button class="pgb" onclick="_pg(\'' + cid + '\',' + (cur+1) + ')">›</button>');
-  if(cur<tot) b.push('<button class="pgb" onclick="_pg(\'' + cid + '\',' + tot + ')">»</button>');
-  b.push('<span class="pgi">Page ' + cur + ' / ' + tot + '</span>');
-  b.push('<input type="number" min="1" max="' + tot + '" value="' + cur + '" data-cid="' + cid + '" data-tot="' + tot + '" style="width:50px;border:1.5px solid #C7D2FE;border-radius:6px;padding:4px 6px;font-size:12px;text-align:center;outline:none;" onchange="_pgJump(this)" onkeydown="if(event.keyCode===13)_pgJump(this)" />');
-  gel(cid).innerHTML = '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">' + b.join('') + '</div>';
-}
-
-function _pgJump(el){
-  var p = parseInt(el.value), tot = parseInt(el.dataset.tot), cid = el.dataset.cid;
-  if(p >= 1 && p <= tot) _pg(cid, p);
-}
-
-// ─── GOOGLE SHEET SYNC ────────────────────────────────────────────────────────
-function autoSyncAtr(){
-  var url = getScriptUrl();
-  if(!url) return;
-  fetch(url, {mode:'cors'})
-    .then(function(r){ return r.json(); })
-    .then(function(data){
-      var smAtr  = data['SM_ATR']       || {};
-      var defAtr = data['Defaulter_ATR'] || {};
-
-      // Merge into localStorage
-      var ls_sm = {};
-      try{ ls_sm = JSON.parse(localStorage.getItem('atr_data')||'{}'); }catch(e){}
-      Object.keys(smAtr).forEach(function(k){ ls_sm[k] = smAtr[k]; });
-      localStorage.setItem('atr_data', JSON.stringify(ls_sm));
-
-      var ls_def = {};
-      try{ ls_def = JSON.parse(localStorage.getItem('def_atr_data')||'{}'); }catch(e){}
-      Object.keys(defAtr).forEach(function(k){ ls_def[k] = defAtr[k]; });
-      localStorage.setItem('def_atr_data', JSON.stringify(ls_def));
-
-      // Apply to DC if already loaded
-      DC.forEach(function(r){
-        var e = ls_sm[String(r.ACCT_ID)];
-        if(e){ r.ATR_STATUS = typeof e==='object'?(e.atr||r.ATR_STATUS):e; r.ATR_COMMENT = typeof e==='object'?(e.comment||''):''; }
-      });
-
-      // Apply to DEF_ALL if already loaded
-      DEF_ALL.forEach(function(r){
-        var e = ls_def[String(r.ACCT_ID)];
-        if(e){ r.ATR_STATUS = typeof e==='object'?(e.atr||r.ATR_STATUS):e; r.ATR_COMMENT = typeof e==='object'?(e.comment||''):''; }
-      });
-
-      var total = Object.keys(smAtr).length + Object.keys(defAtr).length;
-      if(total > 0){
-        console.log('Auto-synced ATR:', total, 'records from Google Sheet');
-        if(_lastTab==='dc' && DC.length) dcFilter();
-        if(_lastTab==='defaulter' && DEF_ALL.length) runDefaulterFilter();
-      }
-    })
-    .catch(function(e){ console.log('ATR auto-sync skipped:', e.message); });
-}
-
-// ─── SETTINGS / GITHUB UPLOAD ─────────────────────────────────────────────────
-var CSV_COLS=['ACCT_ID','MOBILE_NO','NAME','ADDRESS','CATEGORY','LOAD','LAT','LON','SUBSTATION','FEEDER','LP DATE','LP AMT','TOTAL OUTSTANDING'];
-function getGhPat(){ return localStorage.getItem('gh_pat')||''; }
-
-function ghApi(path,opts){
-  return fetch('https://api.github.com/repos/'+GH_OWNER+'/'+GH_REPO+'/contents/'+path,Object.assign({
-    headers:{'Authorization':'token '+getGhPat(),'Accept':'application/vnd.github+json'}
-  },opts||{}));
-}
-function ghPutFile(path,content,msg){
-  return ghApi(path).then(function(r){return r.ok?r.json():null;}).then(function(existing){
-    var b64=btoa(unescape(encodeURIComponent(content)));
-    var body={message:msg,content:b64,branch:GH_BRANCH};
-    if(existing&&existing.sha) body.sha=existing.sha;
-    return ghApi(path,{method:'PUT',body:JSON.stringify(body)});
-  }).then(function(r){
-    if(!r.ok) return r.json().then(function(e){throw new Error(path+': '+(e.message||r.status));});
-    return r.json();
-  });
-}
-function csvEscape(v){
-  v=(v===undefined||v===null)?'':String(v);
-  return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;
-}
-function rowsToCsv(rows){
-  var lines=[CSV_COLS.join(',')];
-  rows.forEach(function(r){ lines.push(CSV_COLS.map(function(c){return csvEscape(r[c]);}).join(',')); });
-  return lines.join('\n');
-}
-function settingsLog(msg){
-  var l=gel('settings-log'); if(!l)return;
-  l.innerHTML+='<div>'+msg+'</div>'; l.scrollTop=l.scrollHeight;
+    body:JSON.stringify({pat: getGhPat()})
+  }).then(r => r.json()).then(d => {
+    if(d.ok) alert('Discovery process started. Check log below.');
+    else alert('Error: ' + d.message);
+  }).catch(() => alert('Local server not reachable.'));
 }
 
 function buildSettingsPanel(){
@@ -931,59 +680,47 @@ function buildSettingsPanel(){
       '<td style="text-align:center"><input type="radio" name="div_'+s.replace(/[^a-zA-Z0-9]/g,'_')+'" value="eudd2" '+(div==='eudd2'?'checked':'')+' data-sub="'+s+'" class="sub-div-radio" onchange="saveSubDivMap()"></td></tr>';
   }).join('');
 
-  gel('panel-settings').innerHTML = 
+  var superAdminTools = (CURRENT_ROLE === 'superadmin') ? 
+    '<div class="settings-card" style="background:#FDF2F8; border-color:#FBCFE8;">' +
+      '<div style="font-family:var(--fh);font-size:16px;font-weight:700;margin-bottom:12px;color:#9D174D;display:flex;align-items:center;gap:8px;">🕵️ DIVISION DISCOVERY</div>' +
+      '<div style="font-size:12px;color:var(--muted);margin-bottom:15px;line-height:1.5;">Scan all 4 FTP servers to find new divisions and update the global manifest.</div>' +
+      '<button class="btn" style="background:#DB2777; color:#fff; width:100%;" onclick="triggerDiscovery()">🚀 SCAN & UPDATE MANIFEST</button>' +
+    '</div>' : '';
+
+  gel('panel-settings').innerHTML =
     '<div style="max-width:1200px;margin:0 auto;">'+
       '<div style="font-family:var(--fh);font-size:24px;font-weight:700;color:#4F46E5;margin-bottom:20px;text-align:center;">⚙️ SYSTEM SETTINGS</div>'+
       '<div class="settings-container">' +
 
-      /* UPLOAD MASTER CARD */
-      '<div class="settings-card">'+
-        '<div style="font-family:var(--fh);font-size:16px;font-weight:700;margin-bottom:12px;color:#1E1B4B;display:flex;align-items:center;gap:8px;">📤 UPLOAD MASTER DATA</div>'+
-        '<div style="font-size:12px;color:var(--muted);margin-bottom:15px;line-height:1.5;">Select an Excel/CSV to split by division and push to GitHub. Columns: ACCT_ID, NAME, PAY_AMT, PAY_DATE, etc.</div>'+
-        '<input type="file" id="settings-file" accept=".xlsx,.xls,.csv" style="width:100%;margin-bottom:15px;padding:8px;border:1px solid #E5E7EB;border-radius:8px;font-size:12px;"/>'+
-        '<div style="font-family:var(--fh);font-size:12px;font-weight:700;color:#4F46E5;margin-bottom:8px;">DIVISION ASSIGNMENT</div>'+
-        '<div style="max-height:180px;overflow-y:auto;border:1px solid #EEF2FF;border-radius:10px;margin-bottom:15px;">'+
-          '<table style="width:100%;border-collapse:collapse;font-size:11px;">'+
-          '<thead style="background:#F8FAFF;position:sticky;top:0;"><tr><th style="text-align:left;padding:8px;">SUBSTATION</th><th>EUDD1</th><th>EUDD2</th></tr></thead>'+
-          '<tbody id="sub-div-rows">'+rowsHtml+'</tbody></table>'+
-        '</div>'+
-        '<div class="settings-grid-row">'+
-          '<input type="password" id="gh-pat" placeholder="GitHub Personal Access Token" value="'+getGhPat()+'" style="border:1.5px solid #C7D2FE;border-radius:10px;padding:10px 14px;font-size:13px;" onchange="savePat(this.value)"/>'+
-          '<button class="btn btn-acc" onclick="processAndUpload()">🚀 PROCESS &amp; UPLOAD</button>'+
-        '</div>'+
-        '<div id="settings-log" style="margin-top:15px;max-height:150px;overflow-y:auto;background:#0F172A;color:#A7F3D0;font-family:monospace;font-size:11px;padding:12px;border-radius:10px;display:none;"></div>'+
-      '</div>'+
+      superAdminTools +
 
-      /* NEW: LAT LONG UPLOAD CARD */
-      '<div class="settings-card" style="background:#F0F9FF;border-color:#BAE6FD;">'+
-        '<div style="font-family:var(--fh);font-size:16px;font-weight:700;margin-bottom:12px;color:#0369A1;display:flex;align-items:center;gap:8px;">📍 UPLOAD LAT/LONG MAPPING</div>'+
-        '<div style="font-size:12px;color:var(--muted);margin-bottom:15px;line-height:1.5;">Bulk update consumer locations. Provide a file with columns: <b>ACCT_ID, LAT, LON</b>. These will override existing coordinates during search.</div>'+
-        '<input type="file" id="latlong-file" accept=".xlsx,.xls,.csv" style="width:100%;margin-bottom:15px;padding:8px;border:1px solid #BAE6FD;border-radius:8px;font-size:12px;background:#fff;"/>'+
-        '<button class="btn" style="background:#0EA5E9;color:#fff;width:100%;" onclick="processLatLongUpload()">🛰️ UPDATE COORDINATES</button>'+
-        '<div id="latlong-log" style="margin-top:12px;font-size:11px;font-family:monospace;display:none;"></div>'+
-      '</div>'+
-
-      /* FTP SYNC CARD - COMPACT */
+      /* FTP SYNC CARD */
       '<div class="settings-card" style="background:#FFF7ED;border-color:#FED7AA;">'+
-        '<div style="font-family:var(--fh);font-size:16px;font-weight:700;margin-bottom:12px;color:#9A3412;display:flex;align-items:center;gap:8px;">📡 FTP DATA SYNC</div>'+
+        '<div style="font-family:var(--fh);font-size:16px;font-weight:700;margin-bottom:12px;color:#9A3412;display:flex;align-items:center;gap:8px;">📡 FTP DATA SYNC ('+CURRENT_DIVISION+')</div>'+
         '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;background:#fff;border:1px solid #FED7AA;margin-bottom:15px;">'+
           '<span id="ftp-dot" style="width:10px;height:10px;border-radius:50%;background:#9CA3AF;flex-shrink:0;"></span>'+
           '<span id="ftp-status-text" style="font-family:var(--fh);font-size:13px;font-weight:600;flex:1;color:#4B5563;">Checking server…</span>'+
           '<button onclick="checkSyncServer()" style="background:transparent;border:1px solid #FED7AA;border-radius:6px;padding:4px 10px;font-family:var(--fh);font-size:11px;font-weight:700;color:#EA580C;cursor:pointer;">REFRESH</button>'+
         '</div>'+
-        '<div id="ftp-synced-info" style="display:none;background:#fff;border:1px solid #FED7AA;border-radius:10px;padding:12px;margin-bottom:15px;font-size:11px;line-height:1.6;"></div>'+
-        '<div style="font-family:var(--fh);font-size:11px;font-weight:700;color:#9A3412;letter-spacing:1px;margin-bottom:10px;">SELECT DATA:</div>'+
-        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:15px;">'+
-          '<label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;cursor:pointer;"><input type="checkbox" id="sync-master" checked style="accent-color:#EA580C;width:16px;height:16px;"> MASTER</label>'+
-          '<label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;cursor:pointer;"><input type="checkbox" id="sync-billed" checked style="accent-color:#EA580C;width:16px;height:16px;"> BILLED</label>'+
-          '<label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;cursor:pointer;"><input type="checkbox" id="sync-unbilled" checked style="accent-color:#EA580C;width:16px;height:16px;"> UNBILLED</label>'+
-          '<label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#F43F5E;cursor:pointer;"><input type="checkbox" id="sync-force" style="accent-color:#F43F5E;width:16px;height:16px;"> FORCE ⚠</label>'+
-        '</div>'+
-        '<button class="btn" style="background:#EA580C;color:#fff;width:100%;padding:14px;" id="ftp-sync-btn" onclick="triggerFtpSync()">🔄 START SYNC PROCESS</button>'+
+        '<button class="btn" style="background:#EA580C;color:#fff;width:100%;padding:14px;" id="ftp-sync-btn" onclick="triggerFtpSync()">🔄 START DIVISION SYNC</button>'+
+        '<div style="margin-top:12px; text-align:center;"><a href="UPPCL_Server.zip" style="font-size:11px; color:#EA580C; font-weight:700; text-decoration:none;">📥 DOWNLOAD SERVER PACK</a></div>'+
         '<pre id="ftp-sync-log" style="display:none;background:#0F172A;color:#A7F3D0;font-size:10px;font-family:monospace;padding:12px;border-radius:10px;max-height:180px;overflow-y:auto;margin-top:12px;"></pre>'+
       '</div>'+
-      buildUserManagementHTML() +
+
+      /* UPLOAD MASTER CARD */
+      '<div class="settings-card">'+
+        '<div style="font-family:var(--fh);font-size:16px;font-weight:700;margin-bottom:12px;color:#1E1B4B;display:flex;align-items:center;gap:8px;">📤 MANUAL UPLOAD</div>'+
+        '<div style="font-size:12px;color:var(--muted);margin-bottom:15px;line-height:1.5;">Manually upload a file for the current session.</div>'+
+        '<input type="file" id="settings-file" accept=".xlsx,.xls,.csv" style="width:100%;margin-bottom:15px;padding:8px;border:1px solid #E5E7EB;border-radius:8px;font-size:12px;"/>'+
+        '<div class="settings-grid-row">'+
+          '<input type="password" id="gh-pat" placeholder="GitHub Personal Access Token" value="'+getGhPat()+'" style="border:1.5px solid #C7D2FE;border-radius:10px;padding:10px 14px;font-size:13px;" onchange="savePat(this.value)"/>'+
+          '<button class="btn btn-acc" onclick="processAndUpload()">🚀 PROCESS</button>'+
+        '</div>'+
+        '<div id="settings-log" style="margin-top:15px;max-height:150px;overflow-y:auto;background:#0F172A;color:#A7F3D0;font-family:monospace;font-size:11px;padding:12px;border-radius:10px;display:none;"></div>'+
       '</div>'+
+
+      buildUserManagementHTML() +
+      '</div>' +
     '</div>';
   checkSyncServer();
 }
@@ -1371,21 +1108,27 @@ let CURRENT_USER = null, CURRENT_ROLE = null;
 
 function buildUserManagementHTML() {
   if (CURRENT_ROLE !== 'superadmin' && CURRENT_ROLE !== 'admin') return '';
-  
+
   let html = '<div class="settings-card" style="margin-top:20px; border-color:#E9D5FF; background:#FAF5FF;">' +
     '<div style="font-family:var(--fh);font-size:16px;font-weight:700;margin-bottom:12px;color:#701A75;display:flex;align-items:center;gap:8px;">👥 USER MANAGEMENT</div>' +
-    '<div style="font-size:12px;color:var(--muted);margin-bottom:15px;line-height:1.5;">Manage access for your team. Admins can create and manage standard User accounts.</div>';
+    '<div style="font-size:12px;color:var(--muted);margin-bottom:15px;line-height:1.5;">Manage access for your team. Super Admins can manage all accounts, while Admins manage users in their assigned division.</div>';
 
-  // 1. Create User Form (for Super Admin & Admin)
+  // 1. Create User Form
   html += '<div style="background:#fff; padding:15px; border-radius:12px; border:1px solid #F5D0FE; margin-bottom:15px;">' +
     '<div style="font-family:var(--fh);font-size:12px;font-weight:700;color:#A21CAF;margin-bottom:10px;">ADD NEW ACCOUNT</div>' +
-    '<div class="settings-grid-row" style="gap:10px;">' +
+    '<div class="settings-grid-row" style="gap:10px; margin-bottom:10px;">' +
       '<input type="text" id="new-user-name" placeholder="Username" style="border:1.5px solid #F5D0FE; border-radius:10px; padding:8px 12px; font-size:13px; flex:1;"/>' +
       '<input type="password" id="new-user-pass" placeholder="Password" style="border:1.5px solid #F5D0FE; border-radius:10px; padding:8px 12px; font-size:13px; flex:1;"/>' +
-      '<select id="new-user-role" style="border:1.5px solid #F5D0FE; border-radius:10px; padding:8px; font-size:13px; font-family:var(--fb); background:#fff;">' +
-        '<option value="user">USER</option>' +
-        (CURRENT_ROLE === 'superadmin' ? '<option value="admin">ADMIN</option>' : '') +
+    '</div>' +
+    '<div class="settings-grid-row" style="gap:10px;">' +
+      '<select id="new-user-role" style="border:1.5px solid #F5D0FE; border-radius:10px; padding:8px; font-size:13px; font-family:var(--fb); background:#fff; flex:1;">' +
+        '<option value="user">USER (View Only)</option>' +
+        (CURRENT_ROLE === 'superadmin' ? '<option value="admin">ADMIN (Manage Division)</option>' : '') +
       '</select>' +
+      '<select id="new-user-discom" style="border:1.5px solid #F5D0FE; border-radius:10px; padding:8px; font-size:13px; font-family:var(--fb); background:#fff; flex:1;">' +
+        DISCOMS.map(d => '<option value="'+d.id+'">'+d.id+'</option>').join('') +
+      '</select>' +
+      '<input type="text" id="new-user-div" placeholder="Division (e.g. EUDD1)" style="border:1.5px solid #F5D0FE; border-radius:10px; padding:8px 12px; font-size:13px; flex:1;"/>' +
       '<button class="btn" style="background:#A21CAF; color:#fff;" onclick="createNewUser()">➕ ADD</button>' +
     '</div>' +
   '</div>';
@@ -1394,21 +1137,23 @@ function buildUserManagementHTML() {
   html += '<div style="background:#fff; border-radius:12px; border:1px solid #F5D0FE; overflow:hidden;">' +
     '<table style="width:100%; border-collapse:collapse; font-size:12px;">' +
       '<thead style="background:#FDF4FF; border-bottom:1px solid #F5D0FE;">' +
-        '<tr><th style="padding:10px; text-align:left;">USERNAME</th><th style="padding:10px;">ROLE</th><th style="padding:10px;">BY</th><th style="padding:10px; text-align:right;">ACTIONS</th></tr>' +
+        '<tr><th style="padding:10px; text-align:left;">USERNAME</th><th style="padding:10px;">ROLE</th><th style="padding:10px;">ACCESS</th><th style="padding:10px;">BY</th><th style="padding:10px; text-align:right;">ACTIONS</th></tr>' +
       '</thead>' +
       '<tbody>';
 
   USERS_DB.users.forEach(u => {
     let canManage = (CURRENT_ROLE === 'superadmin' && u.username !== 'superadmin') || (u.createdBy === CURRENT_USER.username);
-    
+    let accessLabel = (u.discoms||[]).join(', ') + ' / ' + (u.divisions||[]).join(', ');
+
     html += '<tr style="border-bottom:1px solid #FDF4FF;">' +
       '<td style="padding:10px; font-weight:600;">' + u.username + '</td>' +
       '<td style="padding:10px; text-align:center;"><span class="role-badge ' + (u.role === 'admin' ? 'badge-admin' : (u.role === 'superadmin' ? 'badge-superadmin' : 'badge-user')) + '" style="font-size:9px;">' + u.role.toUpperCase() + '</span></td>' +
+      '<td style="padding:10px; text-align:center; color:#4338CA; font-weight:700; font-size:10px;">' + accessLabel + '</td>' +
       '<td style="padding:10px; text-align:center; color:var(--muted); font-size:10px;">' + u.createdBy + '</td>' +
       '<td style="padding:10px; text-align:right;">' +
-        (canManage ? 
+        (canManage ?
           '<button onclick="resetUserPassword(\'' + u.username + '\')" style="background:none; border:none; color:#4F46E5; cursor:pointer; font-size:14px; margin-right:8px;" title="Reset Password">🔑</button>' +
-          '<button onclick="deleteUser(\'' + u.username + '\')" style="background:none; border:none; color:#F43F5E; cursor:pointer; font-size:14px;" title="Delete User">🗑️</button>' 
+          '<button onclick="deleteUser(\'' + u.username + '\')" style="background:none; border:none; color:#F43F5E; cursor:pointer; font-size:14px;" title="Delete User">🗑️</button>'
           : '<span style="color:#CBD5E1; font-size:10px;">LOCKED</span>') +
       '</td>' +
     '</tr>';
@@ -1422,6 +1167,8 @@ async function createNewUser() {
   const name = gel('new-user-name').value.trim().toLowerCase();
   const pass = gel('new-user-pass').value;
   const role = gel('new-user-role').value;
+  const discom = gel('new-user-discom').value;
+  const div = gel('new-user-div').value.trim().toUpperCase() || 'ALL';
 
   if (!name || !pass) return alert("Enter name and password.");
   if (USERS_DB.users.find(u => u.username === name)) return alert("User already exists.");
@@ -1431,12 +1178,14 @@ async function createNewUser() {
     username: name,
     password: hashed,
     role: role,
-    createdBy: CURRENT_USER.username
+    createdBy: CURRENT_USER.username,
+    discoms: [discom],
+    divisions: [div]
   });
 
   await saveUserDatabase();
   buildSettingsPanel();
-  alert("User " + name + " created.");
+  alert("User " + name + " created and assigned to " + discom + "/" + div);
 }
 
 async function deleteUser(name) {
@@ -1458,7 +1207,20 @@ async function resetUserPassword(name) {
 }
 
 async function initUserDatabase() {
-  // 1. Try Fetch from GitHub
+  // Load DISCOMs
+  try {
+    const res = await fetch(DISCOMS_URL + '?t=' + Date.now());
+    if (res.ok) DISCOMS = await res.json();
+    populateLoginDiscoms();
+  } catch (e) { console.warn("Failed to load discoms.json", e); }
+
+  // Load Manifest
+  try {
+    const res = await fetch(MANIFEST_URL + '?t=' + Date.now());
+    if (res.ok) MANIFEST = await res.json();
+  } catch (e) { console.warn("Failed to load manifest.json", e); }
+
+  // 1. Try Fetch users.json from GitHub
   try {
     const res = await fetch(RAW_BASE + 'users.json?t=' + Date.now());
     if (res.ok) {
@@ -1520,9 +1282,9 @@ async function initUserDatabase() {
     const userPass = await encryptPassword("userpassword");
     USERS_DB = {
       users: [
-        { username: "superadmin", role: "superadmin", password: superadminPass, createdBy: "system" },
-        { username: "admin", role: "admin", password: adminPass, createdBy: "superadmin" },
-        { username: "user", role: "user", password: userPass, createdBy: "admin" }
+        { username: "superadmin", role: "superadmin", password: superadminPass, createdBy: "system", discoms:["DV","MV","PV","PU"], divisions:["ALL"] },
+        { username: "admin", role: "admin", password: adminPass, createdBy: "superadmin", discoms:["DV"], divisions:["EUDD1"] },
+        { username: "user", role: "user", password: userPass, createdBy: "admin", discoms:["DV"], divisions:["EUDD1"] }
       ],
       shared_gh_pat: ""
     };
@@ -1530,45 +1292,50 @@ async function initUserDatabase() {
   }
 }
 
-async function saveUserDatabase() {
-  localStorage.setItem('uppcl_users_db', JSON.stringify(USERS_DB));
-  const pat = localStorage.getItem('gh_pat') || '';
-  if (pat) {
-    try {
-      USERS_DB.shared_gh_pat = obfuscatePat(pat);
-      await ghPutFile('users.json', JSON.stringify(USERS_DB, null, 2), 'Update users database');
-      console.log("Users database synced to GitHub successfully.");
-    } catch (e) {
-      console.error("Failed to sync users database to GitHub:", e);
-      alert("⚠️ Saved locally, but GitHub sync failed: " + e.message);
-    }
-  }
+function populateLoginDiscoms() {
+  const sel = gel('login-discom');
+  if(!sel) return;
+  sel.innerHTML = '<option value="">Select Discom</option>';
+  DISCOMS.forEach(d => {
+    const opt = document.createElement('option');
+    opt.value = d.id;
+    opt.textContent = d.name + ' (' + d.id + ')';
+    sel.appendChild(opt);
+  });
 }
 
-async function savePat(val) {
-  localStorage.setItem('gh_pat', val);
-  USERS_DB.shared_gh_pat = obfuscatePat(val);
-  await saveUserDatabase();
-}
+function populateLoginDivisions() {
+  const dId = gel('login-discom').value;
+  const sel = gel('login-division');
+  if(!sel) return;
+  sel.innerHTML = '<option value="">Select Division</option>';
+  
+  if(!dId) return;
+  
+  const discom = DISCOMS.find(d => d.id === dId);
+  if(!discom) return;
 
-function togglePasswordVisibility(id, btn) {
-  var inp = gel(id);
-  if (inp.type === "password") {
-    inp.type = "text";
-    btn.textContent = "🙈";
-  } else {
-    inp.type = "password";
-    btn.textContent = "👁️";
-  }
+  // From Manifest
+  const divs = MANIFEST.divisions[discom.name] || [];
+  divs.forEach(div => {
+    const opt = document.createElement('option');
+    opt.value = div;
+    opt.textContent = div;
+    sel.appendChild(opt);
+  });
 }
 
 async function handleLogin() {
+  var discomEl = gel('login-discom'), divisionEl = gel('login-division');
   var userEl = gel('login-username'), passEl = gel('login-password'), errEl = gel('login-error');
+  
+  var discom = discomEl.value;
+  var division = divisionEl.value;
   var username = userEl.value.trim().toLowerCase();
   var password = passEl.value;
   
-  if (!username || !password) {
-    errEl.textContent = "Enter Username & Password";
+  if (!discom || !division || !username || !password) {
+    errEl.textContent = "Please select Discom, Division and enter credentials";
     return;
   }
   
@@ -1585,6 +1352,18 @@ async function handleLogin() {
     return;
   }
   
+  // Check Discom Access
+  if(user.discoms.indexOf(discom) < 0) {
+    errEl.textContent = "You do not have access to this DISCOM";
+    return;
+  }
+
+  // Check Division Access
+  if(user.divisions.indexOf('ALL') < 0 && user.divisions.indexOf(division) < 0) {
+    errEl.textContent = "You do not have access to this DIVISION";
+    return;
+  }
+
   var decrypted = await decryptPassword(user.password);
   if (decrypted === null) {
     errEl.textContent = "Security Error: Check browser console";
@@ -1594,6 +1373,8 @@ async function handleLogin() {
   if (decrypted === password) {
     errEl.textContent = "";
     CURRENT_USER = user;
+    CURRENT_DISCOM = discom;
+    CURRENT_DIVISION = division;
     loginSuccess(user.role);
     userEl.value = "";
     passEl.value = "";
@@ -1604,23 +1385,27 @@ async function handleLogin() {
 
 function loginSuccess(role){
   CURRENT_ROLE=role;
-  localStorage.setItem('uppcl_session', JSON.stringify({username: CURRENT_USER.username, role: role, ts: Date.now()}));
+  localStorage.setItem('uppcl_session', JSON.stringify({
+    username: CURRENT_USER.username, 
+    role: role, 
+    discom: CURRENT_DISCOM,
+    division: CURRENT_DIVISION,
+    ts: Date.now()
+  }));
+  
   var ls=gel('login-screen'); ls.style.display='none'; ls.style.pointerEvents='none';
   gel('app').style.display='block';
   gel('sbar').style.display='flex';
+  
   var b=gel('role-indicator'); 
   if(b){
-    if(role==='superadmin'){
-      b.textContent='👑 SUPER ADMIN';
-      b.className='role-badge badge-superadmin';
-    } else if(role==='admin'){
-      b.textContent='🛡️ ADMIN';
-      b.className='role-badge badge-admin';
-    } else {
-      b.textContent='👤 USER';
-      b.className='role-badge badge-user';
-    }
+    var label = role.toUpperCase();
+    if(role==='superadmin') { b.textContent='👑 SUPER ADMIN'; b.className='role-badge badge-superadmin'; }
+    else if(role==='admin') { b.textContent='🛡️ ADMIN'; b.className='role-badge badge-admin'; }
+    else { b.textContent='👤 USER'; b.className='role-badge badge-user'; }
+    b.textContent += ' (' + CURRENT_DIVISION + ')';
   }
+  
   applyRoleRestrictions(role);
   if(D.length===0) autoFetch();
 }
@@ -1683,47 +1468,41 @@ function st(name){
 
 // ─── FETCH & PARSE ────────────────────────────────────────────────────────────
 function resolveFiles(){
-  return fetch(MANIFEST_URL).then(function(r){return r.ok?r.json():null;})
+  return fetch(MANIFEST_URL + '?t=' + Date.now()).then(function(r){return r.ok?r.json():null;})
     .then(function(m){
       if(m){
-        if(m.substation_division) SUB_DIVISION_MAP=m.substation_division;
+        MANIFEST = m;
+        // In this multi-tenant version, we use CURRENT_DISCOM and CURRENT_DIVISION
+        // DISCOM full name for manifest lookup
+        var discomProfile = DISCOMS.find(d => d.id === CURRENT_DISCOM);
+        var discomName = discomProfile ? discomProfile.name : '';
         
-        // Parse Master Cutoff Date
-        if(m.sync_status){
-          for(var k in m.sync_status){
-            var mp = m.sync_status[k].master_period;
-            if(mp){
-              var p = mp.split('_');
-              var months = {JAN:0,FEB:1,MAR:2,APR:3,MAY:4,JUN:5,JUL:6,AUG:7,SEP:8,OCT:9,NOV:10,DEC:11};
-              var lastDay = new Date(parseInt(p[1]), months[p[0].toUpperCase()] + 1, 0);
-              MASTER_CUTOFF = lastDay;
-              break;
-            }
-          }
-        }
-
-        var div = DIVISION.toLowerCase();
         var m_files = [], b_files = [], u_files = [];
         
-        if(div==='all'){
-          m_files = (m.eudd1||[]).concat(m.eudd2||[]);
-          b_files = (m.billed_eudd1||[]).concat(m.billed_eudd2||[]);
-          u_files = (m.unbilled_eudd1||[]).concat(m.unbilled_eudd2||[]);
-        } else {
-          m_files = m[div]||[];
-          b_files = m['billed_'+div]||[];
-          u_files = m['unbilled_'+div]||[];
-        }
+        // Path template: [DISCOM]/[DIVISION]/[TYPE]/...
+        var basePath = CURRENT_DISCOM + '/' + CURRENT_DIVISION + '/';
+
+        // Monthly Master files
+        var masterList = MANIFEST.divisions[discomName] && MANIFEST.divisions[discomName][CURRENT_DIVISION] ? 
+                         MANIFEST.divisions[discomName][CURRENT_DIVISION].master || [] : [];
+        
+        // Billed files
+        var billedList = MANIFEST.divisions[discomName] && MANIFEST.divisions[discomName][CURRENT_DIVISION] ? 
+                         MANIFEST.divisions[discomName][CURRENT_DIVISION].billed || [] : [];
+
+        // Unbilled files
+        var unbilledList = MANIFEST.divisions[discomName] && MANIFEST.divisions[discomName][CURRENT_DIVISION] ? 
+                           MANIFEST.divisions[discomName][CURRENT_DIVISION].unbilled || [] : [];
 
         FILES = [];
-        m_files.forEach(function(f){ 
-          var path = f.startsWith('master/') ? f : 'master/' + f;
-          FILES.push({url:RAW_BASE+path, type:'master'}); 
-        });
-        b_files.forEach(function(f){ FILES.push({url:RAW_BASE+f, type:'billed'}); });
-        u_files.forEach(function(f){ FILES.push({url:RAW_BASE+f, type:'unbilled'}); });
+        masterList.forEach(f => { FILES.push({url: RAW_BASE + basePath + 'master/' + f, type:'master'}); });
+        billedList.forEach(f => { FILES.push({url: RAW_BASE + basePath + 'billed/' + f, type:'billed'}); });
+        unbilledList.forEach(f => { FILES.push({url: RAW_BASE + basePath + 'unbilled/' + f, type:'unbilled'}); });
+        
+        // Global files that remain at root (for now)
+        // DC_FILE, DEFAULTER_FILE etc are already constants
       }
-    }).catch(function(){})
+    }).catch(function(e){ console.error("Manifest resolution failed", e); });
 }
 
 function autoFetch(){

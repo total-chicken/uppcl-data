@@ -4,19 +4,25 @@
       "username": "superadmin",
       "role": "superadmin",
       "password": "53b9c3daca779e24932d046124c84487bd43631dd8dfde76ee01ca8b7a57a37eb2cbbad3e4907c6af319b70e7c1d",
-      "createdBy": "system"
+      "createdBy": "system",
+      "discoms": ["DV", "MV", "PV", "PU"],
+      "divisions": ["ALL"]
     },
     {
       "username": "admin",
       "role": "admin",
       "password": "e35f53a7f9d9279aae3c59dbce749656f7b9213ef9411efa5c6fc913ee24c3101cd3aaeaa97d82902c",
-      "createdBy": "superadmin"
+      "createdBy": "superadmin",
+      "discoms": ["DV"],
+      "divisions": ["EUDD1"]
     },
     {
       "username": "user",
       "role": "user",
       "password": "202ca0a2131bab8a20f435f75c8babcd9e54ac418a6145e7762c728febbfcdec",
-      "createdBy": "admin"
+      "createdBy": "admin",
+      "discoms": ["DV"],
+      "divisions": ["EUDD1"]
     }
   ],
   "shared_gh_pat": "[#]ghp_[#]J811eOkl8fZ0ZryU[#]qKdToFfOxR8iDb3N9YfF[#]"

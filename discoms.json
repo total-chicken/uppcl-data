@@ -1,0 +1,34 @@
+[
+  {
+    "id": "DV",
+    "name": "DVVNL",
+    "fullName": "Dakshinanchal Vidyut Vitran Nigam Ltd.",
+    "ftpServer": "dvftpreport.uppcl.org",
+    "ftpUser": "dvftpreport",
+    "ftpPass": "Dvftp@321"
+  },
+  {
+    "id": "MV",
+    "name": "MVVNL",
+    "fullName": "Madhyanchal Vidyut Vitran Nigam Ltd.",
+    "ftpServer": "mvftpreport.uppcl.org",
+    "ftpUser": "mvftpreport",
+    "ftpPass": "Mvftp@321"
+  },
+  {
+    "id": "PV",
+    "name": "PVVNL",
+    "fullName": "Paschimanchal Vidyut Vitran Nigam Ltd.",
+    "ftpServer": "pvftpreport.uppcl.org",
+    "ftpUser": "pvftpreport",
+    "ftpPass": "Pvftp@321"
+  },
+  {
+    "id": "PU",
+    "name": "PUVVNL",
+    "fullName": "Purvanchal Vidyut Vitran Nigam Ltd.",
+    "ftpServer": "puftpreport.uppcl.org",
+    "ftpUser": "puftpreport",
+    "ftpPass": "Puftp@321"
+  }
+]
