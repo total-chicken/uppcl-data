@@ -2747,7 +2747,8 @@ function openDefaulterModal(acctId){
           '<div><div style="font-family:var(--fh);font-size:12px;font-weight:700;color:#F43F5E;">₹'+out.toLocaleString()+'</div>'+
           '<div style="font-size:10px;color:#4F46E5;">'+dist+'</div></div>'+
         '</div></div>';
-    }).join(''):'<div style="padding:10px;text-align:center;color:var(--muted);font-size:12px;">No nearby defaulters within 500m</div>';
+      }).join('');
+    }
   } else gel('modal-nearby-section').style.display='none';
 
   var mapBtn=gel('modal-map-btn');
