@@ -1326,6 +1326,17 @@ function populateLoginDivisions() {
   });
 }
 
+function togglePasswordVisibility(id, btn) {
+  var inp = gel(id);
+  if (inp.type === "password") {
+    inp.type = "text";
+    btn.textContent = "🙈";
+  } else {
+    inp.type = "password";
+    btn.textContent = "👁️";
+  }
+}
+
 async function handleLogin() {
   var discomEl = gel('login-discom'), divisionEl = gel('login-division');
   var userEl = gel('login-username'), passEl = gel('login-password'), errEl = gel('login-error');
