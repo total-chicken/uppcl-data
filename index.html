@@ -1733,6 +1733,8 @@ function autoFetch(){
 function startDownloads(){
   var allTexts=new Array(FILES.length), fetched=0, total=FILES.length;
 
+  if(total===0){ hl2(); return; }
+
   // Fetch METERNO.csv in parallel
   fetch(METERNO_FILE)
     .then(function(r){ return r.ok?r.text():''; })
