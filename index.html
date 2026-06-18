@@ -32,23 +32,11 @@ button,select,input{-webkit-tap-highlight-color:transparent;touch-action:manipul
 .login-logo{font-size:36px;margin-bottom:12px;}
 .login-title{font-family:var(--fh);font-size:26px;font-weight:700;letter-spacing:2px;color:#4F46E5;margin-bottom:4px;}
 .login-sub{font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:24px;}
-.role-tabs{display:flex;gap:0;background:#EEF2FF;border-radius:10px;padding:4px;margin-bottom:20px;}
-.role-tab{flex:1;font-family:var(--fh);font-size:13px;font-weight:600;letter-spacing:1px;padding:9px;border-radius:7px;cursor:pointer;color:var(--muted);border:none;background:transparent;transition:all .2s;}
-.role-tab.active{background:#4F46E5;color:#fff;box-shadow:0 2px 8px rgba(79,70,229,0.4);}
-.pin-display{display:flex;justify-content:center;gap:12px;margin-bottom:16px;}
-.pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid #C7D2FE;transition:all .2s;}
-.pin-dot.filled{background:#4F46E5;border-color:#4F46E5;}
-.pin-dot.error{background:#F43F5E;border-color:#F43F5E;}
-@keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-5px);}75%{transform:translateX(5px);}}
-.pin-dot.error{animation:shake .3s;}
 .login-error{color:#F43F5E;font-size:12px;font-family:var(--fh);letter-spacing:1px;min-height:18px;margin-bottom:10px;}
-.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;}
-.pin-btn{background:#F8FAFF;border:1.5px solid #C7D2FE;border-radius:12px;padding:16px;font-family:var(--fh);font-size:22px;font-weight:700;color:#1E1B4B;cursor:pointer;transition:all .15s;}
-.pin-btn:hover,.pin-btn:active{background:#EEF2FF;border-color:#4F46E5;}
-.pin-clear{background:transparent;border:1.5px solid #E0E0E0;border-radius:12px;padding:16px;font-family:var(--fh);font-size:12px;color:var(--muted);cursor:pointer;}
 .role-badge{display:inline-block;padding:3px 10px;border-radius:5px;font-size:10px;font-weight:700;font-family:var(--fh);letter-spacing:1px;}
 .badge-admin{background:#EEF2FF;color:#4F46E5;}
 .badge-user{background:#E0F2FE;color:#0EA5E9;}
+.badge-superadmin{background:#FAE8FF;color:#A21CAF;}
 
 /* ── LOADING ── */
 #loading{position:fixed;inset:0;background:rgba(79,70,229,0.93);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9998;display:none;}
@@ -108,7 +96,6 @@ tr:hover td{background:#EEF2FF;}
 .ls input:focus{border-color:#4F46E5;}
 .ls button{background:#4F46E5;color:#fff;border:none;border-radius:10px;padding:12px 24px;font-family:var(--fh);font-size:14px;font-weight:700;cursor:pointer;letter-spacing:1px;white-space:nowrap;}
 
-/* Grid container for search results - Exactly 2 columns on desktop */
 #lr{display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:10px 0;}
 
 .dc{background:#fff;border:1px solid #BAE6FD;border-radius:14px;overflow:hidden;box-shadow:0 2px 12px rgba(14,165,233,0.1);height:100%;display:flex;flex-direction:column;}
@@ -289,7 +276,6 @@ select option{background:#fff;color:#1E1B4B;}
   .hdr-btn{padding:6px 8px;font-size:10px;}
 }
 </style>
-</style>
 </head>
 <body>
 
@@ -298,9 +284,9 @@ select option{background:#fff;color:#1E1B4B;}
   <div class="login-box" style="max-width: 420px; padding: 32px 24px;">
     <div class="login-logo">⚡</div>
     <div class="login-title">UPP<span>CL</span> TOOL</div>
-    <div class="login-sub">CONSUMER DATA INTELLIGENCE · JHANSI</div>
+    <div class="login-sub">CONSUMER DATA INTELLIGENCE · ENTERPRISE</div>
     
-    <div style="margin-top: 15px; text-align: left;">
+    <div id="login-regional-fields" style="margin-top: 15px; text-align: left;">
       <label style="font-family:var(--fh);font-size:13px;font-weight:700;color:var(--text);display:block;margin-bottom:6px;">DISCOM</label>
       <div class="sw" style="margin-bottom:14px;">
         <select id="login-discom" onchange="populateLoginDivisions()" style="width:100%;border:1.5px solid #C7D2FE;border-radius:10px;padding:12px 14px;font-size:14px;font-family:var(--fb);outline:none;background:#F8FAFF;color:var(--text);">
@@ -314,7 +300,9 @@ select option{background:#fff;color:#1E1B4B;}
           <option value="">Select Division</option>
         </select>
       </div>
+    </div>
 
+    <div style="text-align: left;">
       <label style="font-family:var(--fh);font-size:13px;font-weight:700;color:var(--text);display:block;margin-bottom:6px;">USERNAME</label>
       <input type="text" id="login-username" placeholder="Enter username" style="width:100%;border:1.5px solid #C7D2FE;border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:14px;font-family:var(--fb);outline:none;background:#F8FAFF;color:var(--text);transition:all 0.2s;" onkeydown="if(event.key==='Enter')gel('login-password').focus()"/>
 
@@ -691,7 +679,7 @@ function buildSettingsPanel(){
     '<div style="max-width:1200px;margin:0 auto;">'+
       '<div style="font-family:var(--fh);font-size:24px;font-weight:700;color:#4F46E5;margin-bottom:20px;text-align:center;">⚙️ SYSTEM SETTINGS</div>'+
       '<div class="settings-container">' +
-
+      
       superAdminTools +
 
       /* FTP SYNC CARD */
@@ -1209,14 +1197,24 @@ async function resetUserPassword(name) {
 async function initUserDatabase() {
   // Load DISCOMs
   try {
-    const res = await fetch(DISCOMS_URL + '?t=' + Date.now());
+    let res = await fetch(DISCOMS_URL + '?t=' + Date.now());
+    if (!res.ok) res = await fetch('discoms.json?t=' + Date.now());
     if (res.ok) DISCOMS = await res.json();
     populateLoginDiscoms();
-  } catch (e) { console.warn("Failed to load discoms.json", e); }
+  } catch (e) { 
+    console.warn("Failed to load discoms.json", e);
+    // Hardcoded fallback for emergency
+    DISCOMS = [
+      {id:"DV",name:"DVVNL"}, {id:"MV",name:"MVVNL"},
+      {id:"PV",name:"PVVNL"}, {id:"PU",name:"PUVVNL"}
+    ];
+    populateLoginDiscoms();
+  }
 
   // Load Manifest
   try {
-    const res = await fetch(MANIFEST_URL + '?t=' + Date.now());
+    let res = await fetch(MANIFEST_URL + '?t=' + Date.now());
+    if (!res.ok) res = await fetch('manifest.json?t=' + Date.now());
     if (res.ok) MANIFEST = await res.json();
   } catch (e) { console.warn("Failed to load manifest.json", e); }
 
@@ -1315,8 +1313,11 @@ function populateLoginDivisions() {
   const discom = DISCOMS.find(d => d.id === dId);
   if(!discom) return;
 
-  // From Manifest
-  const divs = MANIFEST.divisions[discom.name] || [];
+  // Use the DISCOM ID or Name to look up divisions in manifest. 
+  // Based on manifest.json structure, we use the DISCOM Name (e.g., 'DVVNL')
+  const divsObj = MANIFEST.divisions[discom.name] || {};
+  const divs = Object.keys(divsObj);
+  
   divs.forEach(div => {
     const opt = document.createElement('option');
     opt.value = div;
@@ -1334,8 +1335,8 @@ async function handleLogin() {
   var username = userEl.value.trim().toLowerCase();
   var password = passEl.value;
   
-  if (!discom || !division || !username || !password) {
-    errEl.textContent = "Please select Discom, Division and enter credentials";
+  if (!username || !password) {
+    errEl.textContent = "Please enter your credentials";
     return;
   }
   
@@ -1352,6 +1353,26 @@ async function handleLogin() {
     return;
   }
   
+  // Super Admin Bypass
+  if(user.role === 'superadmin') {
+    var decrypted = await decryptPassword(user.password);
+    if (decrypted === password) {
+      errEl.textContent = "";
+      CURRENT_USER = user;
+      CURRENT_DISCOM = ''; 
+      CURRENT_DIVISION = 'ALL';
+      loginSuccess(user.role);
+      userEl.value = ""; passEl.value = "";
+      return;
+    }
+  }
+
+  // Regular Admin/User checks
+  if (!discom || !division) {
+    errEl.textContent = "Please select Discom and Division";
+    return;
+  }
+
   // Check Discom Access
   if(user.discoms.indexOf(discom) < 0) {
     errEl.textContent = "You do not have access to this DISCOM";
@@ -1399,15 +1420,15 @@ function loginSuccess(role){
   
   var b=gel('role-indicator'); 
   if(b){
-    var label = role.toUpperCase();
     if(role==='superadmin') { b.textContent='👑 SUPER ADMIN'; b.className='role-badge badge-superadmin'; }
     else if(role==='admin') { b.textContent='🛡️ ADMIN'; b.className='role-badge badge-admin'; }
     else { b.textContent='👤 USER'; b.className='role-badge badge-user'; }
-    b.textContent += ' (' + CURRENT_DIVISION + ')';
+    
+    if(CURRENT_DIVISION && CURRENT_DIVISION !== 'ALL') b.textContent += ' (' + CURRENT_DIVISION + ')';
   }
   
   applyRoleRestrictions(role);
-  if(D.length===0) autoFetch();
+  if(role !== 'superadmin' && D.length===0) autoFetch();
 }
 
 function applyRoleRestrictions(role){
@@ -1620,7 +1641,7 @@ function parseFileInto(text, type){
       // Use header-based logic if possible, fallback to last-column logic for malformed Master CSVs
       outValue = iTotOut>=0 ? v[iTotOut] : (v[v.length - 1] || '0');
       rawAmt   = iPayAmt>=0 ? v[iPayAmt] : (v[v.length - 2] || '0');
-      rawDate  = iPayDate>=0 ? v[iPayDate] : (v[v.length - 3] || '-');
+      rawDate  = iPayDate>=0 ? v[iPayDate] : (v[iPayDate] || '-');
       
       MASTER_MAP[key] = {
         TOTAL_OUTSTANDING: outValue,
@@ -2066,11 +2087,41 @@ function openDcDetail(acctId){
   // Nearby
   if(lat&&lon){
     gel('modal-nearby-section').style.display='block';
+    gel('modal-nearby-section').querySelector('div:first-child').textContent='📍 NEARBY CONSUMERS (Pole DC & Defaulters)';
     modalNearbyLat=lat; modalNearbyLon=lon;
-    loadModalNearby();
+    
+    // Combine DFP and Defaulters for nearby
+    var pool = DFP_ALL.map(x=>Object.assign({},x,{_type:'POLE DC'}))
+      .concat(DEF_ALL.map(x=>Object.assign({},x,{_type:'DEFAULTER'})));
+      
+    var nearby=pool.filter(x=>String(x.ACCT_ID)!==String(acctId)&&x.LAT&&x.LON)
+      .map(x=>{var xl=parseFloat(x.LAT),xo=parseFloat(x.LON); return Object.assign({},x,{_dist:haversine(lat,lon,xl,xo)});})
+      .filter(x=>x._dist<=0.5).sort((a,b)=>a._dist-b._dist).slice(0,10);
+    var cnt=gel('modal-nb-count'); if(cnt) cnt.textContent=nearby.length+' FOUND';
+    var lst=gel('modal-nb-list'); if(!lst) return;
+    if(!nearby.length){
+      lst.innerHTML='<div style="padding:12px;text-align:center;color:var(--muted);font-size:12px;">No nearby consumers within 500m</div>';
+    } else {
+      lst.innerHTML=nearby.map(function(r,i){
+        var dist=r._dist<1?(r._dist*1000).toFixed(0)+'m':r._dist.toFixed(2)+'km';
+        var out=Math.round(r.OUTSTANDING||0);
+        var outColor=out>100000?'#F43F5E':out>10000?'#F59E0B':'var(--text)';
+        return '<div class="nb-card" onclick="closeModal();setTimeout(function(){openDcDetail(&#39;'+r.ACCT_ID+'&#39;);},100);">'+
+          '<div style="display:flex;justify-content:space-between;margin-bottom:4px;">'+
+            '<div><div style="font-size:12px;font-weight:700;">'+r.NAME+'</div><div style="font-size:10px;color:var(--muted);">'+r.ACCT_ID+' | '+r.SUBSTATION+'</div></div>'+
+            '<div style="text-align:right"><div style="font-family:var(--fh);font-size:12px;font-weight:700;color:#4F46E5;">'+dist+'</div>'+
+              '<div style="font-family:var(--fh);font-size:12px;font-weight:700;color:'+outColor+';">₹'+out.toLocaleString()+'</div></div>'+
+          '</div>'+
+          '<div style="display:flex;justify-content:space-between;align-items:center;">'+
+            atrBadge(r.ATR_STATUS)+
+            (r._lat&&r._lon?'<a class="ml" href="https://www.google.com/maps?q='+r._lat+','+r._lon+'" target="_blank" onclick="event.stopPropagation()">📍 MAP</a>':'')+
+          '</div></div>';
+      }).join('');
+    }
   } else gel('modal-nearby-section').style.display='none';
 
   var mo=gel('detail-modal'); mo.classList.add('open'); document.body.style.overflow='hidden';
+  modalCurrentAcct=String(acctId); modalIsdc=true;
 }
 
 function filterDcByAtr(atr){
@@ -2187,7 +2238,7 @@ function loadModalNearby(lat,lon){
     .filter(function(r){return r._dist<=radius;})
     .sort(function(a,b){return a._dist-b._dist;})
     .slice(0,10);
-  var cnt=gel('modal-nb-count'); if(cnt)cnt.textContent=nearby.length+' FOUND';
+  var cnt=gel('modal-nb-count'); if(cnt) cnt.textContent=nearby.length+' FOUND';
   var lst=gel('modal-nb-list'); if(!lst)return;
   if(!nearby.length){lst.innerHTML='<div style="padding:12px;text-align:center;color:var(--muted);font-size:12px;">No nearby consumers within '+(radius<1?radius*1000+'m':radius+'km')+'</div>';return;}
   lst.innerHTML=nearby.map(function(r,i){
@@ -2339,25 +2390,6 @@ function clearMs(type){
   runDefaulterFilter();
 }
 
-function getAllSubValues(){
-  return [...new Set(DEF_ALL.map(function(r){return r.SUBSTATION;}).filter(Boolean))].sort();
-}
-function getAllFeedValues(){
-  var subs = _defSelSubs;
-  return [...new Set(DEF_ALL.filter(function(r){
-    return !subs.length || subs.indexOf(r.SUBSTATION)>=0;
-  }).map(function(r){return r.FEEDER;}).filter(Boolean))].sort();
-}
-function getAllSupplyValues(){
-  return [...new Set(DEF_ALL.map(function(r){return r.SUPPLY_TYPE;}).filter(Boolean))].sort();
-}
-
-function refreshFeedOptions(){
-  _defSelFeeds = [];
-  buildMsOptions('feed', getAllFeedValues());
-  updateMsBtn('feed');
-}
-
 // ─── DEFAULTERS ───────────────────────────────────────────────────────────────
 function loadDefaulters(){
   // Panel HTML is static - always in DOM
@@ -2377,7 +2409,7 @@ function loadDefaulters(){
 }
 
 function buildDefaulterPanel(){
-  // Initial build of MS options
+  // Initial build of MS options - called only if panel needs full re-render
   buildMsOptions('sub', getAllSubValues());
   buildMsOptions('feed', getAllFeedValues());
   buildMsOptions('supply', getAllSupplyValues());
@@ -2387,9 +2419,7 @@ function clearDefSearch(){ var s=gel("def-search"); if(s){s.value="";} runDefaul
 
 function onDefSubChange(){ refreshFeedOptions(); runDefaulterFilter(); }
 
-// Pre-built full defaulter list (loaded from defaulter.csv)
 var DEF_ALL = [];
-var _defFileLoaded = false;
 
 function parseMeterData(text){
   METER_DATA = {};
@@ -2406,54 +2436,7 @@ function parseMeterData(text){
     var meter=(v[iMeter]||'').replace(/"/g,'').trim();
     if(acct && meter) METER_DATA[acct]=meter;
   }
-  console.log('Meter data loaded:', Object.keys(METER_DATA).length);
 }
-
-function parseDefaulterText(text){
-  DEF_ALL = [];
-  var nl = text.indexOf('\n'); if(nl<0) return;
-  var hdrs = text.substring(0,nl).replace(/\r/,'').split(',')
-    .map(function(h){return h.replace(/"/g,'').trim();});
-  var iAcct=hdrs.indexOf('ACCT_ID'), iMob=hdrs.indexOf('MOBILE_NO'),
-      iName=hdrs.indexOf('NAME'), iAddr=hdrs.indexOf('ADDRESS'),
-      iCat=hdrs.indexOf('CATEGORY'), iLat=hdrs.indexOf('LAT'),
-      iLon=hdrs.indexOf('LON'), iSub=hdrs.indexOf('SUBSTATION'),
-      iFeed=hdrs.indexOf('FEEDER'), iDate=hdrs.indexOf('LP DATE'),
-      iAmt=hdrs.indexOf('LP AMT'), iOut=hdrs.indexOf('TOTAL OUTSTANDING');
-  var pos=nl+1, len=text.length;
-  while(pos<len){
-    var end=text.indexOf('\n',pos); if(end<0)end=len;
-    var v=text.substring(pos,end).split(','); pos=end+1;
-    var acct=(v[iAcct]||'').replace(/"/g,'').trim(); if(!acct)continue;
-    var lat=(v[iLat]||'').replace(/"/g,''), lon=(v[iLon]||'').replace(/"/g,'');
-    try{if(parseFloat(lat)>50){var t=lat;lat=lon;lon=t;}}catch(e){}
-    var out=parseFloat((v[iOut]||'').replace(/"/g,''))||0;
-    // Fix LP DATE/LP AMT swap - if LP DATE looks like a number it's actually the amount
-    var rawDate = iDate>=0 ? (v[iDate]||'').replace(/"/g,'').trim() : '';
-    var rawAmt  = iAmt>=0  ? (v[iAmt] ||'').replace(/"/g,'').trim() : '';
-    var lpDate, lpAmt;
-    if(rawDate && !isNaN(parseFloat(rawDate)) && !/\d{2}[-\/]\d{2}[-\/]\d{4}/.test(rawDate)){
-      // LP DATE is actually a number = amount, LP AMT is the date
-      lpAmt  = parseFloat(rawDate)||0;
-      lpDate = rawAmt;
-    } else {
-      lpDate = rawDate;
-      lpAmt  = parseFloat(rawAmt)||0;
-    }
-    DEF_ALL.push({
-      ACCT_ID:acct, NAME:(v[iName]||'').replace(/"/g,''),
-      MOBILE:(v[iMob]||'').replace(/"/g,''), ADDRESS:(v[iAddr]||'').replace(/"/g,''),
-      SUPPLY_TYPE:(v[iCat]||'').replace(/"/g,''), OUTSTANDING:out,
-      PAY_AMT:lpAmt,
-      PAY_DATE:lpDate, STATUS:'INSERVICE',
-      SUBSTATION:(v[iSub]||'').replace(/"/g,''), FEEDER:(v[iFeed]||'').replace(/"/g,''),
-      LAT:lat, LON:lon
-    });
-  }
-  console.log('Defaulter pre-loaded:', DEF_ALL.length);
-}
-
-var DEF_ALL = [];
 
 var _defSource = 'master'; // 'master' or 'billed'
 
@@ -2466,8 +2449,8 @@ function setDefSource(src){
   if(src==='master') buildDefAllFromMasterData();
   else buildDefAllFromBilledData();
   
-  // Dynamically refresh filter options from Master Data
-  _defSelSubs = []; _defSelSupplies = [];
+  // Dynamically refresh filter options from the newly built DEF_ALL
+  _defSelSubs = []; _defSelFeeds = []; _defSelSupplies = [];
   buildMsOptions('sub', getAllSubValues());
   buildMsOptions('supply', getAllSupplyValues());
   updateMsBtn('sub'); updateMsBtn('supply');
@@ -2540,7 +2523,7 @@ function buildDefAllFromBilledData(){
 }
 
 function runDefaulterFilter(){
-  if(!gel('def-tbody')){buildDefaulterPanel();return;}
+  if(!gel('def-tbody')) return;
   if(!DEF_ALL.length) {
     if(_defSource==='master') buildDefAllFromMasterData();
     else buildDefAllFromBilledData();
@@ -2706,6 +2689,7 @@ function openDefaulterModal(acctId){
   var isSubmitted = currentAtr !== 'PENDING';
   sel.disabled = isSubmitted;
   sel.style.opacity = isSubmitted ? '0.7' : '1';
+  // Load saved comment
   var defSaved = {};
   try{ defSaved = JSON.parse(localStorage.getItem('def_atr_data')||'{}'); }catch(e){}
   var defEntry = defSaved[String(acctId)] || {};
@@ -2738,15 +2722,19 @@ function openDefaulterModal(acctId){
     }).filter(function(x){return x._dist<=0.5;})
     .sort(function(a,b){return a._dist-b._dist;}).slice(0,8);
     var cnt=gel('modal-nb-count'); if(cnt) cnt.textContent=nearby.length+' FOUND';
-    var lst=gel('modal-nb-list'); if(lst) lst.innerHTML=nearby.length?nearby.map(function(x){
-      var dist=x._dist<1?(x._dist*1000).toFixed(0)+'m':x._dist.toFixed(2)+'km';
-      var out=Math.round(x.OUTSTANDING||0);
-      return '<div class="nb-card" onclick="closeModal();setTimeout(function(){openFromDefaulter(\''+x.ACCT_ID+'\');},100)">'+
-        '<div style="display:flex;justify-content:space-between;">'+
+    var lst=gel('modal-nb-list'); if(!lst) return;
+    if(!nearby.length){
+      lst.innerHTML='<div style="padding:10px;text-align:center;color:var(--muted);font-size:12px;">No nearby defaulters within 500m</div>';
+    } else {
+      lst.innerHTML=nearby.map(function(x){
+        var dist=x._dist<1?(x._dist*1000).toFixed(0)+'m':x._dist.toFixed(2)+'km';
+        var out=Math.round(x.OUTSTANDING||0);
+        return '<div class="nb-card" onclick="closeModal();setTimeout(function(){openFromDefaulter(\''+x.ACCT_ID+'\');},100)">'+
+          '<div style="display:flex;justify-content:space-between;">'+
           '<div><div style="font-size:12px;font-weight:700;">'+x.NAME+'</div>'+
           '<div style="font-size:10px;color:var(--muted);">'+x.ACCT_ID+'</div></div>'+
-          '<div><div style="font-size:11px;font-weight:700;color:#4F46E5;">'+dist+'</div>'+
-          '<div style="font-size:12px;font-weight:700;color:#F43F5E;">₹'+out.toLocaleString()+'</div></div>'+
+          '<div><div style="font-family:var(--fh);font-size:12px;font-weight:700;color:#F43F5E;">₹'+out.toLocaleString()+'</div>'+
+          '<div style="font-size:10px;color:#4F46E5;">'+dist+'</div></div>'+
         '</div></div>';
     }).join(''):'<div style="padding:10px;text-align:center;color:var(--muted);font-size:12px;">No nearby defaulters within 500m</div>';
   } else gel('modal-nearby-section').style.display='none';
@@ -2762,96 +2750,6 @@ function openDefaulterModal(acctId){
   gel('detail-modal').classList.add('open');
   document.body.style.overflow='hidden';
   modalCurrentAcct=String(acctId); modalIsdc=false;
-}
-
-function openFromDefRow(el){
-  try{
-    var data = JSON.parse(decodeURIComponent(el.dataset.row));
-    openDefaulterModalDirect(data);
-  } catch(e){
-    openFromDefaulter(el.dataset.id);
-  }
-}
-
-function openDefaulterModalDirect(d){
-  var lat=parseFloat(d.LAT||0), lon=parseFloat(d.LON||0);
-  if(lat>50){var t=lat;lat=lon;lon=t;}
-
-  gel('modal-title').textContent = d.NAME || 'Consumer Details';
-  gel('modal-grid').innerHTML =
-    '<div class="modal-field"><div class="lbl">MOBILE</div><div class="val">'+(d.MOBILE||'-')+'</div></div>'+
-    '<div class="modal-field"><div class="lbl">METER NO</div><div class="val" style="font-family:var(--fh);color:#1D4ED8;font-weight:700;">'+(d.METER_NO||'-')+'</div></div>'+
-    '<div class="modal-field"><div class="lbl">SUPPLY TYPE</div><div class="val">'+catBadge(d.SUPPLY_TYPE)+'</div></div>'+
-    '<div class="modal-field"><div class="lbl">SUBSTATION</div><div class="val">'+(d.SUBSTATION||'-')+'</div></div>'+
-    '<div class="modal-field"><div class="lbl">FEEDER</div><div class="val">'+(d.FEEDER||'-')+'</div></div>'+
-    '<div class="modal-field" style="grid-column:span 2"><div class="lbl">ADDRESS</div><div class="val">'+(d.ADDRESS||'-')+'</div></div>';
-
-  // Payment - directly from row data (same source as table)
-  gel('modal-pay-section').style.display='block';
-  gel('modal-pay-grid').innerHTML =
-    '<div><div style="font-size:9px;color:#6B7280;font-family:var(--fh);">LAST PAID AMT</div>'+
-    '<div style="font-size:14px;font-weight:700;color:#059669;">₹'+Math.round(d.PAY_AMT||0).toLocaleString()+'</div></div>'+
-    '<div><div style="font-size:9px;color:#6B7280;font-family:var(--fh);">PAID DATE</div>'+
-    '<div style="font-size:12px;font-weight:700;color:#1D4ED8;">'+(d.PAY_DATE||'-')+'</div></div>'+
-    '<div><div style="font-size:9px;color:#6B7280;font-family:var(--fh);">OUTSTANDING</div>'+
-    '<div style="font-size:14px;font-weight:700;color:'+(d.OUTSTANDING>0?'#F43F5E':'#059669')+';">₹'+Math.round(d.OUTSTANDING||0).toLocaleString()+'</div></div>';
-
-  // ATR section
-  var atrSec=gel('modal-atr-section');
-  atrSec.style.display='block';
-  atrSec.querySelector('div:first-child').textContent='📋 ATR STATUS — DEFAULTER ACTION REPORT';
-  var sel=gel('modal-atr-sel');
-  sel.innerHTML='<option value="PENDING">⏳ PENDING</option><option value="PAID">✅ PAID</option><option value="PARTIAL">💰 PARTIAL PAYMENT</option><option value="PROMISE">🤝 PROMISE TO PAY</option><option value="LOCK">🔒 LOCK / AWAY</option><option value="DISPUTE">⚖️ DISPUTE</option><option value="OTHER">📝 OTHER</option>';
-  var currentAtr=d.ATR_STATUS||'PENDING';
-  sel.value=currentAtr;
-  updateAtrSelectStyle();
-  var isSubmitted=currentAtr!=='PENDING';
-  sel.disabled=isSubmitted; sel.style.opacity=isSubmitted?'0.7':'1';
-  var defSaved={};
-  try{defSaved=JSON.parse(localStorage.getItem('def_atr_data')||'{}');}catch(e){}
-  var defEntry=defSaved[String(d.ACCT_ID)]||{};
-  var defComment=typeof defEntry==='object'?(defEntry.comment||''):'';
-  var cb=gel('modal-atr-comment'), cw=gel('modal-atr-comment-wrap');
-  if(cb){cb.value=defComment;cb.disabled=isSubmitted;}
-  if(cw){var sf=['OTHER','DISPUTE','PROMISE','PARTIAL'];cw.style.display=(sf.indexOf(currentAtr)>=0||defComment)?'block':'none';}
-  atrSec.querySelectorAll('.save-atr-btn').forEach(function(b){
-    b.disabled=isSubmitted;b.style.opacity=isSubmitted?'0.5':'1';
-    b.style.background=isSubmitted?'#9CA3AF':'#F59E0B';
-    b.textContent=isSubmitted?'✅ ATR ALREADY SUBMITTED':'💾 SAVE ATR STATUS';
-  });
-  atrSec.dataset.type='defaulter';
-
-  // Nearby
-  if(lat&&lon&&DEF_ALL.length){
-    gel('modal-nearby-section').style.display='block';
-    modalNearbyLat=lat; modalNearbyLon=lon;
-    var nearby=DEF_ALL.filter(function(x){return String(x.ACCT_ID)!==String(d.ACCT_ID)&&x.LAT&&x.LON;})
-      .map(function(x){var xl=parseFloat(x.LAT),xo=parseFloat(x.LON);return Object.assign({},x,{_dist:haversine(lat,lon,xl,xo)});})
-      .filter(function(x){return x._dist<=0.5;}).sort(function(a,b){return a._dist-b._dist;}).slice(0,8);
-    var cnt=gel('modal-nb-count');if(cnt)cnt.textContent=nearby.length+' FOUND';
-    var lst=gel('modal-nb-list');
-    if(lst)lst.innerHTML=nearby.length?nearby.map(function(x){
-      var dist=x._dist<1?(x._dist*1000).toFixed(0)+'m':x._dist.toFixed(2)+'km';
-      return '<div class="nb-card" onclick="closeModal();setTimeout(function(){openFromDefaulter(\''+x.ACCT_ID+'\');},100)">'+
-        '<div style="display:flex;justify-content:space-between;">'+
-        '<div><div style="font-size:12px;font-weight:700;">'+x.NAME+'</div>'+
-        '<div style="font-size:10px;color:var(--muted);">'+x.ACCT_ID+'</div></div>'+
-        '<div><div style="font-family:var(--fh);font-size:12px;font-weight:700;color:#F43F5E;">₹'+Math.round(x.OUTSTANDING||0).toLocaleString()+'</div>'+
-        '<div style="font-size:10px;color:#4F46E5;">'+dist+'</div></div></div></div>';
-    }).join(''):'<div style="padding:10px;text-align:center;color:var(--muted);font-size:12px;">None within 500m</div>';
-  } else gel('modal-nearby-section').style.display='none';
-
-  var mapBtn=gel('modal-map-btn');
-  if(lat&&lon){
-    mapBtn.href='#';
-    mapBtn.onclick=function(e){e.preventDefault();closeModal();openDefaulterMap(String(d.ACCT_ID));};
-    mapBtn.innerHTML='📍 VIEW ON MAP WITH NEARBY';
-    mapBtn.style.display='inline-flex';
-  } else mapBtn.style.display='none';
-
-  gel('detail-modal').classList.add('open');
-  document.body.style.overflow='hidden';
-  modalCurrentAcct=String(d.ACCT_ID); modalIsdc=false;
 }
 
 function openFromDefaulter(acctId){
@@ -3029,205 +2927,3 @@ function openMainDetail(acctId){
   var mo=gel('detail-modal'); mo.classList.add('open'); document.body.style.overflow='hidden';
   modalCurrentAcct=String(acctId); modalIsdc=false;
 }
-
-
-function expDefaultersX(){
-  if(!DEF_DATA.length)return alert('No data.');
-  var ws=XLSX.utils.json_to_sheet(DEF_DATA);
-  var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Defaulters');
-  XLSX.writeFile(wb,'Defaulters_'+Date.now()+'.xlsx');
-}
-
-// ─── POLE DC (DFP) ────────────────────────────────────────────────────────────
-let DFP_ALL=[], DFP_FD=[], _dfpLoaded=false, dfpPage=1, _dfpSortCol=null, _dfpSortAsc=true;
-
-function loadDfp(){
-  if(_dfpLoaded)return;
-  var tbody=gel('dfp-tbody');
-  if(tbody) tbody.innerHTML='<tr><td colspan="8" style="padding:40px;text-align:center;color:var(--muted);font-family:var(--fh);">⌛ Loading Pole DC data…</td></tr>';
-  fetch(DFP_FILE)
-    .then(r => r.ok ? r.text() : Promise.reject('DFP file not found'))
-    .then(text => {
-      _dfpLoaded=true;
-      DFP_ALL=[];
-      var nl=text.indexOf('\n'); if(nl<0)return;
-      var hdrs=text.substring(0,nl).replace(/\r/,'').split(',').map(h=>h.replace(/"/g,'').trim().toUpperCase());
-      var iAcct=findCol(hdrs,['ACCT_ID','ACCOUNT_ID']), iName=findCol(hdrs,['NAME']), iMob=findCol(hdrs,['MOBILE','MOBILE_NO']),
-          iOut=findCol(hdrs,['TOTAL OUTSTANDING','OUTSTANDING']), iSub=findCol(hdrs,['SUBSTATION']), iFeed=findCol(hdrs,['FEEDER']),
-          iLat=findCol(hdrs,['LAT']), iLon=findCol(hdrs,['LON']);
-      
-      var pos=nl+1, len=text.length;
-      while(pos<len){
-        var end=text.indexOf('\n',pos); if(end<0)end=len;
-        var line=text.substring(pos,end).trim(); pos=end+1;
-        if(!line)continue;
-        
-        // Better CSV split handling for quoted commas
-        var v=[], inQuotes=false, current='';
-        for(var i=0; i<line.length; i++){
-          var c=line[i];
-          if(c==='"'&&(i===0||line[i-1]!=='\\')){inQuotes=!inQuotes;}
-          else if(c===','&&!inQuotes){v.push(current.trim());current='';}
-          else{current+=c;}
-        }
-        v.push(current.trim());
-        v=v.map(val=>val.replace(/^"|"$/g,'').trim());
-
-        var acct=v[iAcct]; if(!acct)continue;
-        var lat=v[iLat]||'', lon=v[iLon]||'';
-        if(parseFloat(lat)>50){var t=lat;lat=lon;lon=t;}
-        DFP_ALL.push({
-          ACCT_ID:acct, NAME:v[iName]||'', MOBILE_NO:v[iMob]||'',
-          OUTSTANDING:parseFloat(v[iOut])||0, SUBSTATION:v[iSub]||'', FEEDER:v[iFeed]||'',
-          LAT:lat, LON:lon
-        });
-      }
-      DFP_FD=DFP_ALL.slice();
-      buildDfpPanel();
-    })
-    .catch(e => { if(tbody) tbody.innerHTML='<tr><td colspan="8" style="padding:40px;text-align:center;color:#F43F5E;">⚠ Error: '+e+'</td></tr>'; });
-}
-
-function buildDfpPanel(){
-  var subs=[...new Set(DFP_ALL.map(r=>r.SUBSTATION).filter(Boolean))].sort();
-  var sel=gel('dfp-sub'); if(sel){
-    while(sel.options.length>1)sel.remove(1);
-    subs.forEach(s=>{var o=document.createElement('option');o.value=o.textContent=s;sel.appendChild(o);});
-  }
-  runDfpFilter();
-}
-
-function runDfpFilter(){
-  var q=(gel('dfp-search')?gel('dfp-search').value:'').toLowerCase();
-  var sub=gel('dfp-sub')?gel('dfp-sub').value:'';
-  DFP_FD=DFP_ALL.filter(r=>{
-    if(sub&&r.SUBSTATION!==sub)return false;
-    if(q&&!String(r.ACCT_ID).includes(q)&&!(r.NAME&&r.NAME.toLowerCase().includes(q))&&!(r.MOBILE_NO&&r.MOBILE_NO.includes(q)))return false;
-    return true;
-  });
-  var ci=gel('dfp-count-info'); if(ci)ci.textContent='Showing '+DFP_FD.length+' of '+DFP_ALL.length+' records';
-  renderDfpTable(1);
-}
-
-function renderDfpTable(page){
-  dfpPage=page; var tbody=gel('dfp-tbody'); if(!tbody)return;
-  var slice=DFP_FD.slice((page-1)*PS, page*PS);
-  tbody.innerHTML=slice.map((r,i)=>{
-    var rank=(page-1)*PS+i+1;
-    var out=Math.round(r.OUTSTANDING);
-    return '<tr>'+
-      '<td style="color:var(--muted);font-size:11px;">'+rank+'</td>'+
-      '<td style="font-family:var(--fh);color:#4F46E5;font-weight:700;cursor:pointer;" onclick="openFromDfpRow(\''+r.ACCT_ID+'\')">'+r.ACCT_ID+'</td>'+
-      '<td style="font-weight:600;">'+r.NAME+'</td>'+
-      '<td>'+r.MOBILE_NO+'</td>'+
-      '<td style="font-family:var(--fh);font-weight:700;color:#F43F5E;">₹'+out.toLocaleString()+'</td>'+
-      '<td>'+r.SUBSTATION+'</td>'+
-      '<td>'+r.FEEDER+'</td>'+
-      '<td>'+(r.LAT?'<a class="ml" href="https://www.google.com/maps?q='+r.LAT+','+r.LON+'" target="_blank">📍</a>':'')+'</td>'+
-    '</tr>';
-  }).join('');
-  rp('dfp-pg',page,Math.ceil(DFP_FD.length/PS),renderDfpTable);
-}
-
-function sortDfpCol(col){
-  if(_dfpSortCol===col)_dfpSortAsc=!_dfpSortAsc; else{_dfpSortCol=col;_dfpSortAsc=true;}
-  DFP_FD.sort((a,b)=>{
-    var av=col==='OUTSTANDING'?a[col]:String(a[col]||'').toLowerCase();
-    var bv=col==='OUTSTANDING'?b[col]:String(b[col]||'').toLowerCase();
-    if(av<bv)return _dfpSortAsc?-1:1; if(av>bv)return _dfpSortAsc?1:-1; return 0;
-  });
-  renderDfpTable(1);
-}
-
-function openFromDfpRow(acctId){
-  var r=DFP_ALL.find(x=>String(x.ACCT_ID)===String(acctId)); if(!r)return;
-  var lat=parseFloat(r.LAT), lon=parseFloat(r.LON);
-  gel('modal-title').textContent='POLE DISCONNECTED — '+r.NAME;
-  gel('modal-grid').innerHTML=
-    '<div class="modal-field"><div class="lbl">ACCT ID</div><div class="val">'+r.ACCT_ID+'</div></div>'+
-    '<div class="modal-field"><div class="lbl">MOBILE</div><div class="val">'+(r.MOBILE_NO||'-')+'</div></div>'+
-    '<div class="modal-field"><div class="lbl">SUBSTATION</div><div class="val">'+r.SUBSTATION+'</div></div>'+
-    '<div class="modal-field"><div class="lbl">FEEDER</div><div class="val">'+r.FEEDER+'</div></div>'+
-    '<div class="modal-field"><div class="lbl">OUTSTANDING</div><div class="val" style="font-size:16px;font-weight:700;color:#F43F5E;">₹'+Math.round(r.OUTSTANDING).toLocaleString()+'</div></div>';
-  
-  gel('modal-pay-section').style.display='none';
-  gel('modal-atr-section').style.display='none';
-  
-  if(lat&&lon){
-    gel('modal-nearby-section').style.display='block';
-    gel('modal-nearby-section').querySelector('div:first-child').textContent='📍 NEARBY CONSUMERS (Pole DC & Defaulters)';
-    modalNearbyLat=lat; modalNearbyLon=lon;
-    
-    // Combine DFP and Defaulters for nearby
-    var pool = DFP_ALL.map(x=>Object.assign({},x,{_type:'POLE DC'}))
-      .concat(DEF_ALL.map(x=>Object.assign({},x,{_type:'DEFAULTER'})));
-      
-    var nearby=pool.filter(x=>String(x.ACCT_ID)!==String(acctId)&&x.LAT&&x.LON)
-      .map(x=>{var xl=parseFloat(x.LAT),xo=parseFloat(x.LON); return Object.assign({},x,{_dist:haversine(lat,lon,xl,xo)});})
-      .filter(x=>x._dist<=0.5).sort((a,b)=>a._dist-b._dist).slice(0,10);
-      
-    var lst=gel('modal-nb-list'); if(lst) lst.innerHTML=nearby.map(x=>{
-      var dist=x._dist<1?(x._dist*1000).toFixed(0)+'m':x._dist.toFixed(2)+'km';
-      var cls=x._type==='DEFAULTER'?'#F43F5E':'#4F46E5';
-      return '<div class="nb-card">'+
-        '<div style="display:flex;justify-content:space-between;">'+
-        '<div><div style="font-size:12px;font-weight:700;">'+x.NAME+'</div><div style="font-size:10px;color:var(--muted);">'+x.ACCT_ID+' | <b style="color:'+cls+'">'+x._type+'</b></div></div>'+
-        '<div style="text-align:right"><div style="font-size:11px;font-weight:700;color:#4F46E5;">'+dist+'</div><div style="font-size:12px;font-weight:700;">₹'+Math.round(x.OUTSTANDING).toLocaleString()+'</div></div>'+
-        '</div></div>';
-    }).join('');
-    gel('modal-nb-count').textContent=nearby.length+' FOUND';
-    gel('modal-map-btn').style.display='inline-flex';
-    gel('modal-map-btn').href='#';
-    gel('modal-map-btn').onclick=function(e){e.preventDefault(); closeModal(); openDfpMap(acctId);};
-    gel('modal-map-btn').textContent='📍 VIEW ON MAP WITH NEARBY';
-  } else {
-    gel('modal-nearby-section').style.display='none';
-    gel('modal-map-btn').style.display='none';
-  }
-  
-  gel('detail-modal').classList.add('open'); document.body.style.overflow='hidden';
-}
-
-function openDfpMap(acctId){
-  var r=DFP_ALL.find(x=>String(x.ACCT_ID)===String(acctId)); if(!r)return;
-  var lat=parseFloat(r.LAT), lon=parseFloat(r.LON);
-  if(lat>50){var t=lat;lat=lon;lon=t;}
-
-  var pool = DFP_ALL.map(x=>Object.assign({},x,{_type:'POLE DC'}))
-    .concat(DEF_ALL.map(x=>Object.assign({},x,{_type:'DEFAULTER'})));
-
-  var nearby=pool.filter(x=>{
-    var lt=parseFloat(x.LAT),lg=parseFloat(x.LON);
-    return String(x.ACCT_ID)!==String(acctId)&&lt&&lg&&!isNaN(lt)&&!isNaN(lg);
-  }).map(x=>{
-    var xLat=parseFloat(x.LAT),xLon=parseFloat(x.LON);
-    if(xLat>50){var t=xLat;xLat=xLon;xLon=t;}
-    return Object.assign({},x,{_dist:haversine(lat,lon,xLat,xLon),_lat:xLat,_lon:xLon});
-  }).filter(x=>x._dist<=2).sort((a,b)=>a._dist-b._dist).slice(0,15);
-
-  var data=[{
-    lat:lat,lon:lon,name:r.NAME||'Unknown',acct:String(r.ACCT_ID),
-    mobile:r.MOBILE_NO||'-',out:Math.round(r.OUTSTANDING||0),
-    sub:r.SUBSTATION||'-',feed:r.FEEDER||'-',
-    addr:'-', lmv:'-', atr:r._type||'POLE DC', main:true, dist:0
-  }].concat(nearby.map(x=>{
-    return {
-      lat:x._lat,lon:x._lon,name:x.NAME||'Unknown',acct:String(x.ACCT_ID),
-      mobile:x.MOBILE_NO||'-',out:Math.round(x.OUTSTANDING||0),
-      sub:x.SUBSTATION||'-',feed:x.FEEDER||'-',
-      addr:'-', lmv:'-', atr:x._type, main:false, dist:x._dist
-    };
-  }));
-
-  try{localStorage.setItem('uppcl_map_data',JSON.stringify({data:data,lat:lat,lon:lon}));}catch(e){}
-  window.open('https://anshu10kumar04-pixel.github.io/uppcl-data/map.html','_blank');
-}
-
-function resetDfp(){ gel('dfp-search').value=''; gel('dfp-sub').value=''; runDfpFilter(); }
-function expDfpX(){ if(!DFP_FD.length)return alert('No data.'); XLSX.writeFile(XLSX.utils.book_new().appendChild(XLSX.utils.json_to_sheet(DFP_FD),'Pole DC'),'Pole_DC_'+Date.now()+'.xlsx'); }
-
-window.loadDefaulters=loadDefaulters;
-window.renderDefaulters=renderDefaulters;
-</script>
-</body>
-</html>
