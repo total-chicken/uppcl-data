@@ -1,56 +1,7 @@
 {
-  "billed_eudd1": [
-    "billed/billed_eudd1a.csv",
-    "billed/billed_eudd1b.csv",
-    "billed/billed_eudd1c.csv",
-    "billed/billed_eudd1d.csv",
-    "billed/billed_eudd1e.csv",
-    "billed/billed_eudd1f.csv",
-    "billed/billed_eudd1g.csv",
-    "billed/billed_eudd1h.csv"
-  ],
-  "unbilled_eudd1": [
-    "unbilled/unbilled_eudd1a.csv"
-  ],
-  "billed_eudd2": [
-    "billed/billed_eudd2a.csv",
-    "billed/billed_eudd2b.csv",
-    "billed/billed_eudd2c.csv",
-    "billed/billed_eudd2d.csv",
-    "billed/billed_eudd2e.csv",
-    "billed/billed_eudd2f.csv",
-    "billed/billed_eudd2g.csv",
-    "billed/billed_eudd2h.csv",
-    "billed/billed_eudd2i.csv"
-  ],
-  "unbilled_eudd2": [
-    "unbilled/unbilled_eudd2a.csv"
-  ],
-  "daily_date": "11062026",
-  "updated": "2026-06-16T05:28:02.578597Z",
-  "source": "local-ftp-sync",
-  "eudd1": [
-    "master/eudd1a.csv",
-    "master/eudd1b.csv",
-    "master/eudd1c.csv",
-    "master/eudd1d.csv"
-  ],
-  "eudd2": [
-    "master/eudd2a.csv",
-    "master/eudd2b.csv",
-    "master/eudd2c.csv",
-    "master/eudd2d.csv"
-  ],
-  "sync_status": {
-    "233511": {
-      "master_period": "MAY_2026",
-      "billed_date": "16062026",
-      "unbilled_date": "16062026"
-    },
-    "233512": {
-      "master_period": "MAY_2026",
-      "billed_date": "16062026",
-      "unbilled_date": "16062026"
-    }
-  }
+  "DV": {},
+  "MV": {},
+  "PV": {},
+  "PU": {},
+  "updated": "2026-06-19T00:00:00Z"
 }
