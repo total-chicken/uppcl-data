@@ -1,7 +1,0 @@
-flask
-flask-cors
-pandas
-requests
-gitpython
-python-dotenv
-openpyxl

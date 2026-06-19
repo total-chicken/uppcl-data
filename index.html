@@ -609,17 +609,17 @@ select option{background:#fff;color:#1E1B4B;}
 
 <script>
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
-const GH_OWNER='anshu10kumar04-pixel', GH_REPO='uppcl-data', GH_BRANCH='main';
+const GH_OWNER='total-chicken', GH_REPO='uppcl-data', GH_BRANCH='main';
 const RAW_BASE='https://raw.githubusercontent.com/'+GH_OWNER+'/'+GH_REPO+'/main/';
 const MANIFEST_URL=RAW_BASE+'manifest.json';
 let FILES=[];
 let SUB_DIVISION_MAP={};
-const DC_FILE = 'https://raw.githubusercontent.com/anshu10kumar04-pixel/uppcl-data/main/DISCONNECTED.xlsx';
+const DC_FILE = 'https://raw.githubusercontent.com/total-chicken/uppcl-data/main/DISCONNECTED.xlsx';
 const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzd-Lq9Tx1dP8gn_dBb9ELyAm9B9PpKf0hPkcRL6EpQPIfc1ctPj3EhOmBzWIFqYjJzkg/exec';
-const DEFAULTER_FILE = 'https://raw.githubusercontent.com/anshu10kumar04-pixel/uppcl-data/main/defaulter.csv';
-const DFP_FILE = 'https://raw.githubusercontent.com/anshu10kumar04-pixel/uppcl-data/main/dfp.csv';
-const METERNO_FILE  = 'https://raw.githubusercontent.com/anshu10kumar04-pixel/uppcl-data/main/METERNO.csv';
-const WORKER_URL = 'https://anshu10kumar04-pixel.github.io/uppcl-data/worker.js';
+const DEFAULTER_FILE = 'https://raw.githubusercontent.com/total-chicken/uppcl-data/main/defaulter.csv';
+const DFP_FILE = 'https://raw.githubusercontent.com/total-chicken/uppcl-data/main/dfp.csv';
+const METERNO_FILE  = 'https://raw.githubusercontent.com/total-chicken/uppcl-data/main/METERNO.csv';
+const WORKER_URL = 'https://total-chicken.github.io/uppcl-data/worker.js';
 const LOCAL_SYNC_URL = 'http://localhost:7321';
 var _syncPollTimer = null;
 
@@ -3332,7 +3332,7 @@ function openDefaulterMap(acctId){
   }));
 
   try{localStorage.setItem('uppcl_map_data',JSON.stringify({data:data,lat:lat,lon:lon}));}catch(e){}
-  window.open('https://anshu10kumar04-pixel.github.io/uppcl-data/map.html','_blank');
+  window.open('https://total-chicken.github.io/uppcl-data/map.html','_blank');
 }
 
 function openMainDetail(acctId){
@@ -3695,7 +3695,7 @@ function openDfpMap(acctId){
   }));
 
   try{localStorage.setItem('uppcl_map_data',JSON.stringify({data:data,lat:lat,lon:lon}));}catch(e){}
-  window.open('https://anshu10kumar04-pixel.github.io/uppcl-data/map.html','_blank');
+  window.open('https://total-chicken.github.io/uppcl-data/map.html','_blank');
 }
 
 function resetDfp(){ gel('dfp-search').value=''; gel('dfp-sub').value=''; runDfpFilter(); }
