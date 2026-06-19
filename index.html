@@ -1013,10 +1013,11 @@ function buildSettingsPanel(){
       '<td style="padding:6px 10px;font-size:11px;color:var(--muted);">'+(div||'—')+'</td></tr>';
   }).join('');
 
+  var _divLabel=CURRENT_DISCOM&&CURRENT_DIVISION?CURRENT_DISCOM+' / '+CURRENT_DIVISION:'your division';
   var llCard=
     '<div class="settings-card" style="background:#F0F9FF;border-color:#BAE6FD;">'+
       '<div style="font-family:var(--fh);font-size:16px;font-weight:700;margin-bottom:12px;color:#0369A1;display:flex;align-items:center;gap:8px;">📍 UPLOAD LAT/LONG MAPPING</div>'+
-      '<div style="font-size:12px;color:var(--muted);margin-bottom:15px;line-height:1.5;">Bulk update consumer locations. Provide a file with columns: <b>ACCT_ID, LAT, LON</b>.</div>'+
+      '<div style="font-size:12px;color:var(--muted);margin-bottom:15px;line-height:1.5;">Update coordinates for <b>'+_divLabel+'</b> only. File must have columns: <b>ACCT_ID, LAT, LON</b>.</div>'+
       '<input type="file" id="latlong-file" accept=".xlsx,.xls,.csv" style="width:100%;margin-bottom:15px;padding:8px;border:1px solid #BAE6FD;border-radius:8px;font-size:12px;background:#fff;"/>'+
       '<button class="btn" style="background:#0EA5E9;color:#fff;width:100%;" onclick="processLatLongUpload()">🛰️ UPDATE COORDINATES</button>'+
       '<div id="latlong-log" style="margin-top:12px;font-size:11px;font-family:monospace;display:none;"></div>'+
@@ -1047,7 +1048,7 @@ function buildSettingsPanel(){
     '<div style="max-width:1400px;margin:0 auto;">'+
       '<div style="font-family:var(--fh);font-size:22px;font-weight:700;color:#4F46E5;margin-bottom:18px;text-align:center;">⚙️ SYSTEM SETTINGS</div>'+
       '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;align-items:start;">'+
-        '<div style="display:flex;flex-direction:column;gap:20px;">'+patCard+llCard+'</div>'+
+        '<div style="display:flex;flex-direction:column;gap:20px;">'+llCard+'</div>'+
         '<div style="display:flex;flex-direction:column;gap:20px;">'+ftpSyncCard+'</div>'+
         '<div style="display:flex;flex-direction:column;gap:20px;">'+buildUserManagementHTML()+'</div>'+
       '</div>'+
@@ -1245,10 +1246,12 @@ async function saveDivisionAssignments(){
 function processLatLongUpload(){
   var fEl = gel('latlong-file');
   if(!fEl || !fEl.files[0]) return alert('Please choose a file first.');
-  if(!getGhPat()) return alert('Enter GitHub PAT in the card above.');
-  
+  if(!getGhPat()) return alert('No GitHub token available. Ask the superadmin to set the PAT.');
+  if(!CURRENT_DISCOM || !CURRENT_DIVISION) return alert('No division selected. Cannot determine upload path.');
+
+  var geoPath = CURRENT_DISCOM+'/'+CURRENT_DIVISION+'/geo_mapping.json';
   var logEl = gel('latlong-log'); logEl.style.display='block'; logEl.innerHTML='⏳ Reading…';
-  
+
   var reader = new FileReader();
   reader.onload = function(e){
     try {
@@ -1256,27 +1259,26 @@ function processLatLongUpload(){
       var ws = wb.Sheets[wb.SheetNames[0]];
       var rows = XLSX.utils.sheet_to_json(ws, {defval:''});
       if(!rows.length) throw new Error('File is empty.');
-      
+
       var keys = Object.keys(rows[0]), hdrs = keys.map(k => String(k).trim().toUpperCase());
       var iAcct = findCol(hdrs, ['ACCT_ID', 'ACCOUNT_ID']);
       var iLat = findCol(hdrs, ['LAT', 'LATITUDE']);
       var iLon = findCol(hdrs, ['LON', 'LONGITUDE', 'LONG']);
-      
+
       if(iAcct < 0 || iLat < 0 || iLon < 0) throw new Error('Missing columns (Need: ACCT_ID, LAT, LON)');
-      
+
       var mapping = {};
       rows.forEach(r => {
         var v = keys.map(k => r[k]);
         var acct = ac(v[iAcct]);
         if(acct) mapping[acct] = [v[iLat], v[iLon]];
       });
-      
-      logEl.innerHTML = '✅ Parsed ' + rows.length + ' points. Uploading to GitHub…';
-      var content = JSON.stringify(mapping);
-      ghPutFile('geo_mapping.json', content, 'Update coordinates mapping')
-        .then(() => { logEl.innerHTML = '🎉 DONE! Coordinates updated. Reload to apply.'; })
-        .catch(err => { logEl.innerHTML = '❌ Error: ' + err.message; });
-        
+
+      logEl.innerHTML = '✅ Parsed ' + rows.length + ' points. Uploading to ' + geoPath + '…';
+      ghPutFile(geoPath, JSON.stringify(mapping), 'Update coordinates: '+CURRENT_DISCOM+'/'+CURRENT_DIVISION)
+        .then(function(){ logEl.innerHTML = '🎉 DONE! Coordinates updated for '+CURRENT_DISCOM+'/'+CURRENT_DIVISION+'. Reload to apply.'; })
+        .catch(function(err){ logEl.innerHTML = '❌ Error: ' + err.message; });
+
     } catch(err){ logEl.innerHTML = '❌ Error: ' + err.message; }
   };
   reader.readAsArrayBuffer(fEl.files[0]);
@@ -2206,12 +2208,19 @@ function parseFileInto(text, type){
 function ia(){
   var subSet=new Set(),feedSet=new Set(),catSet=new Set();
   
-  // Load Geo Mapping Overrides
+  // Load Geo Mapping Overrides (division-scoped)
   var geoMap = {};
-  fetch(RAW_BASE + 'geo_mapping.json').then(r => r.ok ? r.json() : {}).then(map => {
-    geoMap = map;
+  var _geoPath = (CURRENT_DISCOM && CURRENT_DIVISION)
+    ? RAW_BASE + CURRENT_DISCOM + '/' + CURRENT_DIVISION + '/geo_mapping.json'
+    : null;
+  if(_geoPath){
+    fetch(_geoPath+'?t='+Date.now()).then(r => r.ok ? r.json() : {}).then(map => {
+      geoMap = map;
+      applyGeoAndStats();
+    }).catch(() => { applyGeoAndStats(); });
+  } else {
     applyGeoAndStats();
-  }).catch(() => { applyGeoAndStats(); });
+  }
 
   function applyGeoAndStats(){
     D.forEach(function(r){
