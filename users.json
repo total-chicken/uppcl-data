@@ -14,6 +14,18 @@
       "divisions": [
         "ALL"
       ]
+    },
+    {
+      "username": "user",
+      "role": "user",
+      "password": "202ca0a2131bab8a20f435f75c8babcd9e54ac418a6145e7762c728febbfcdec",
+      "createdBy": "admin",
+      "discoms": [
+        "DV"
+      ],
+      "divisions": [
+        "EUDD1"
+      ]
     }
   ],
   "shared_gh_pat": "[#]ghp_[#]J811eOkl8fZ0ZryU[#]qKdToFfOxR8iDb3N9YfF[#]"
