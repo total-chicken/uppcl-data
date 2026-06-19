@@ -1135,28 +1135,33 @@ async function renderAssignDivisions(){
   var user=USERS_DB.users.find(function(u){ return u.username===username; });
   if(!user){ if(panel) panel.innerHTML='<p style="color:var(--muted);">User not found.</p>'; return; }
 
-  var html='';
+  var html='<div style="position:sticky;top:0;background:#EEF2FF;padding:8px 0 10px;z-index:1;">';
+  html+='<input type="text" id="div-search" placeholder="Search division code…" oninput="filterAssignDivisions(this.value)"';
+  html+=' style="width:100%;padding:8px 12px;border:1.5px solid #C7D2FE;border-radius:9px;font-size:13px;font-family:var(--fb);outline:none;box-sizing:border-box;">';
+  html+='</div>';
+  html+='<div id="div-assign-groups">';
   Object.keys(byDiscom).sort().forEach(function(dc){
     var divs=byDiscom[dc];
-    html+='<div style="margin-bottom:14px;">';
+    html+='<div class="dc-group" data-dc="'+dc+'" style="margin-bottom:14px;">';
     html+='<div style="display:flex;align-items:center;justify-content:space-between;font-family:var(--fh);font-size:12px;font-weight:700;color:#4338CA;padding:6px 0;border-bottom:1.5px solid #C7D2FE;margin-bottom:8px;">';
     html+='<span>'+dc+'</span>';
     html+='<label style="display:flex;align-items:center;gap:5px;font-weight:600;font-size:11px;color:var(--muted);cursor:pointer;">';
     html+='<input type="checkbox" class="dc-all-cb" data-dc="'+dc+'" onchange="toggleAllDivInDC(this)"> ALL</label>';
     html+='</div>';
-    html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:5px;">';
+    html+='<div class="div-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:5px;">';
     divs.forEach(function(dv){
       var hasDiscom=(user.discoms||[]).includes(dc);
       var hasDiv=(user.divisions||[]).includes('ALL')||(user.divisions||[]).includes(dv);
       var chk=hasDiscom&&hasDiv;
-      html+='<label class="div-lbl" style="display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer;padding:4px 6px;border-radius:6px;background:'+(chk?'#EEF2FF':'#F9FAFB')+';border:1px solid '+(chk?'#C7D2FE':'#E5E7EB')+';">';
+      html+='<label class="div-lbl" data-dv="'+dv+'" style="display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer;padding:4px 6px;border-radius:6px;background:'+(chk?'#EEF2FF':'#F9FAFB')+';border:1px solid '+(chk?'#C7D2FE':'#E5E7EB')+';">';
       html+='<input type="checkbox" class="div-cb" data-dc="'+dc+'" data-dv="'+dv+'" '+(chk?'checked':'')+' onchange="onDivCbChange(this)"> ';
       html+=dv;
       html+='</label>';
     });
     html+='</div></div>';
   });
-  html+='<button class="btn btn-acc" onclick="saveDivisionAssignments()" style="width:100%;font-size:13px;margin-top:4px;">💾 SAVE ASSIGNMENTS</button>';
+  html+='</div>';
+  html+='<button class="btn btn-acc" onclick="saveDivisionAssignments()" style="width:100%;font-size:13px;margin-top:8px;">💾 SAVE ASSIGNMENTS</button>';
   if(panel) panel.innerHTML=html;
 
   /* sync "ALL" checkbox initial states */
@@ -1191,6 +1196,22 @@ function onDivCbChange(cb){
     allCb.checked=cbs.length&&cbs.every(function(c){ return c.checked; });
     allCb.indeterminate=!allCb.checked&&cbs.some(function(c){ return c.checked; });
   }
+}
+
+function filterAssignDivisions(q){
+  q=q.trim().toUpperCase();
+  var panel=gel('div-assign-panel');
+  if(!panel) return;
+  panel.querySelectorAll('.dc-group').forEach(function(group){
+    var visible=0;
+    group.querySelectorAll('.div-lbl').forEach(function(lbl){
+      var dv=lbl.dataset.dv||'';
+      var show=!q||dv.toUpperCase().includes(q);
+      lbl.style.display=show?'':'none';
+      if(show) visible++;
+    });
+    group.style.display=visible?'':'none';
+  });
 }
 
 async function loadDivisionAssignment(){ renderAssignDivisions(); }
@@ -1691,75 +1712,51 @@ async function resetUserPassword(name) {
 }
 
 async function initUserDatabase() {
-  // 1. Try Fetch from GitHub
+  var ghData = null, localData = null;
+
+  // 1. Load from GitHub
   try {
     const res = await fetch(RAW_BASE + 'users.json?t=' + Date.now());
     if (res.ok) {
-      const data = await res.json();
-      if (data && Array.isArray(data.users)) {
-        USERS_DB = data;
-        localStorage.setItem('uppcl_users_db', JSON.stringify(USERS_DB));
-        if (USERS_DB.shared_gh_pat) {
-          const decryptedPat = deobfuscatePat(USERS_DB.shared_gh_pat);
-          localStorage.setItem('gh_pat', decryptedPat);
-        }
-        return;
-      }
+      const d = await res.json();
+      if (d && Array.isArray(d.users)) ghData = d;
     }
-  } catch (e) {
-    console.warn("Failed to fetch users.json from GitHub", e);
-  }
+  } catch (e) { console.warn("Failed to fetch users.json from GitHub", e); }
 
-  // 2. Try Fetch from Local Path (fallback for local development)
+  // 2. Load from localStorage
   try {
-    const res = await fetch('users.json?t=' + Date.now());
-    if (res.ok) {
-      const data = await res.json();
-      if (data && Array.isArray(data.users)) {
-        USERS_DB = data;
-        localStorage.setItem('uppcl_users_db', JSON.stringify(USERS_DB));
-        if (USERS_DB.shared_gh_pat) {
-          const decryptedPat = deobfuscatePat(USERS_DB.shared_gh_pat);
-          localStorage.setItem('gh_pat', decryptedPat);
-        }
-        return;
-      }
-    }
-  } catch (e) {
-    console.warn("Failed to fetch local users.json", e);
-  }
+    const d = JSON.parse(localStorage.getItem('uppcl_users_db'));
+    if (d && Array.isArray(d.users)) localData = d;
+  } catch (e) {}
 
-  // 3. Try LocalStorage Cache
-  if (!USERS_DB.users || USERS_DB.users.length === 0) {
-    try {
-      const localData = JSON.parse(localStorage.getItem('uppcl_users_db'));
-      if (localData && Array.isArray(localData.users)) {
-        USERS_DB = localData;
-        if (USERS_DB.shared_gh_pat) {
-          const decryptedPat = deobfuscatePat(USERS_DB.shared_gh_pat);
-          localStorage.setItem('gh_pat', decryptedPat);
+  // 3. Merge: start with GitHub (authoritative), then add any local-only users
+  //    This prevents CDN-cached GitHub responses from hiding newly created users
+  if (ghData) {
+    USERS_DB = ghData;
+    if (localData) {
+      localData.users.forEach(function(lu){
+        if (!USERS_DB.users.find(function(gu){ return gu.username === lu.username; })) {
+          USERS_DB.users.push(lu);
+          console.log("Merged local-only user into DB:", lu.username);
         }
-        return;
-      }
-    } catch (e) {
-      console.error("Local users.json parse failed", e);
+      });
     }
-  }
-
-  // 4. Emergency Defaults (if everything else fails)
-  if (!USERS_DB.users || USERS_DB.users.length === 0) {
+  } else if (localData) {
+    USERS_DB = localData;
+  } else {
+    // 4. Emergency defaults (nothing available)
     const superadminPass = await encryptPassword("superadminpassword");
-    const adminPass = await encryptPassword("adminpassword");
-    const userPass = await encryptPassword("userpassword");
     USERS_DB = {
       users: [
-        { username: "superadmin", role: "superadmin", password: superadminPass, createdBy: "system" },
-        { username: "admin", role: "admin", password: adminPass, createdBy: "superadmin" },
-        { username: "user", role: "user", password: userPass, createdBy: "admin" }
+        { username: "superadmin", role: "superadmin", password: superadminPass, createdBy: "system" }
       ],
       shared_gh_pat: ""
     };
-    localStorage.setItem('uppcl_users_db', JSON.stringify(USERS_DB));
+  }
+
+  localStorage.setItem('uppcl_users_db', JSON.stringify(USERS_DB));
+  if (USERS_DB.shared_gh_pat) {
+    localStorage.setItem('gh_pat', deobfuscatePat(USERS_DB.shared_gh_pat));
   }
 }
 
