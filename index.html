@@ -301,14 +301,6 @@ select option{background:#fff;color:#1E1B4B;}
     <div class="login-sub">CONSUMER DATA INTELLIGENCE · JHANSI</div>
     
     <div style="margin-top: 15px; text-align: left;">
-      <label style="font-family:var(--fh);font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px;letter-spacing:.05em;">DISCOM</label>
-      <select id="login-discom" onchange="populateLoginDivisions()" style="width:100%;padding:10px 12px;margin-bottom:12px;background:#F8FAFF;border:1.5px solid #C7D2FE;border-radius:10px;color:var(--text);font-size:13px;font-family:var(--fb);outline:none;">
-        <option value="">— Select DISCOM —</option>
-      </select>
-      <label style="font-family:var(--fh);font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px;letter-spacing:.05em;">DIVISION</label>
-      <select id="login-division" style="width:100%;padding:10px 12px;margin-bottom:14px;background:#F8FAFF;border:1.5px solid #C7D2FE;border-radius:10px;color:var(--text);font-size:13px;font-family:var(--fb);outline:none;">
-        <option value="">— Select Division —</option>
-      </select>
       <label style="font-family:var(--fh);font-size:13px;font-weight:700;color:var(--text);display:block;margin-bottom:6px;">USERNAME</label>
       <input type="text" id="login-username" placeholder="Enter username" style="width:100%;border:1.5px solid #C7D2FE;border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:14px;font-family:var(--fb);outline:none;background:#F8FAFF;color:var(--text);transition:all 0.2s;" onkeydown="if(event.key==='Enter')gel('login-password').focus()"/>
       
@@ -346,7 +338,9 @@ select option{background:#fff;color:#1E1B4B;}
       <div>
         <div class="logo-text">UPP<span>CL</span> TOOL</div>
         <div class="logo-sub">CONSUMER DATA INTELLIGENCE &nbsp;<span class="role-badge" id="role-indicator"></span></div>
-        <div id="division-indicator" style="font-size:10px;color:rgba(255,255,255,0.7);letter-spacing:.05em;margin-top:1px;"></div>
+        <div id="division-wrap" style="display:none;margin-top:3px;">
+          <select id="division-selector" onchange="switchDivision(this.value)" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.35);border-radius:7px;color:#fff;font-size:11px;padding:3px 8px;font-family:var(--fh);font-weight:700;letter-spacing:.05em;cursor:pointer;outline:none;max-width:200px;"></select>
+        </div>
       </div>
     </div>
     <div class="hdr-right">
@@ -955,40 +949,57 @@ function buildSettingsPanel(){
     '</div>';
 
   if(CURRENT_ROLE==='superadmin'){
-    /* ── SUPERADMIN SETTINGS ── */
+    var discoverCard=
+      '<div class="settings-card" style="background:#FFF7ED;border-color:#FED7AA;">'+
+        '<div style="font-family:var(--fh);font-size:16px;font-weight:700;margin-bottom:12px;color:#9A3412;display:flex;align-items:center;gap:8px;">🔍 DISCOVER DIVISIONS</div>'+
+        '<div style="font-size:12px;color:var(--muted);margin-bottom:15px;line-height:1.5;">Scans FTP for all DISCOMs and registers division codes in manifest.json.</div>'+
+        '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;background:#fff;border:1px solid #FED7AA;margin-bottom:12px;">'+
+          '<span id="ftp-dot" style="width:10px;height:10px;border-radius:50%;background:#9CA3AF;flex-shrink:0;"></span>'+
+          '<span id="ftp-status-text" style="font-family:var(--fh);font-size:12px;font-weight:600;flex:1;color:#4B5563;">Checking…</span>'+
+          '<button onclick="checkSyncServer()" style="background:transparent;border:1px solid #FED7AA;border-radius:6px;padding:3px 8px;font-family:var(--fh);font-size:11px;font-weight:700;color:#EA580C;cursor:pointer;">↺</button>'+
+        '</div>'+
+        '<button class="btn" style="background:#EA580C;color:#fff;width:100%;padding:12px;font-family:var(--fh);font-size:13px;font-weight:700;" id="discover-btn" onclick="discoverDivisions()">🔍 RUN DISCOVERY</button>'+
+        '<div id="discover-status" style="margin-top:10px;font-size:12px;color:var(--muted);min-height:16px;"></div>'+
+        '<pre id="ftp-sync-log" style="display:none;background:#0F172A;color:#A7F3D0;font-size:10px;font-family:monospace;padding:12px;border-radius:10px;max-height:220px;overflow-y:auto;margin-top:10px;white-space:pre-wrap;word-break:break-all;"></pre>'+
+      '</div>';
+
+    var assignCard=
+      '<div class="settings-card" style="background:#EEF2FF;border-color:#C7D2FE;">'+
+        '<div style="font-family:var(--fh);font-size:16px;font-weight:700;margin-bottom:12px;color:#4338CA;display:flex;align-items:center;gap:8px;">📋 ASSIGN DIVISIONS</div>'+
+        '<div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.5;">Select a user then check which divisions they can access.</div>'+
+        '<div style="margin-bottom:12px;">'+
+          '<label style="font-family:var(--fh);font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.05em;display:block;margin-bottom:5px;">SELECT USER</label>'+
+          '<select id="assign-user-sel" onchange="renderAssignDivisions()" style="width:100%;padding:9px 12px;border:1.5px solid #C7D2FE;border-radius:10px;font-size:13px;font-family:var(--fb);outline:none;background:#fff;">'+
+            '<option value="">— Choose an admin/user —</option>'+
+          '</select>'+
+        '</div>'+
+        '<div id="div-assign-panel" style="font-size:12px;color:var(--muted);min-height:20px;"></div>'+
+        '<div id="assign-status" style="margin-top:8px;font-size:12px;color:var(--muted);min-height:16px;"></div>'+
+      '</div>';
+
+    /* ── 3-COLUMN GRID: each column expands independently ── */
     gel('panel-settings').innerHTML=
-      '<div style="max-width:1200px;margin:0 auto;">'+
-        '<div style="font-family:var(--fh);font-size:24px;font-weight:700;color:#4F46E5;margin-bottom:20px;text-align:center;">👑 SUPER ADMIN PANEL</div>'+
-        '<div class="settings-container">'+
-          patCard+
-          dlCard+
-
-          /* DISCOVER DIVISIONS */
-          '<div class="settings-card" style="background:#FFF7ED;border-color:#FED7AA;">'+
-            '<div style="font-family:var(--fh);font-size:16px;font-weight:700;margin-bottom:12px;color:#9A3412;display:flex;align-items:center;gap:8px;">🔍 DISCOVER DIVISIONS FROM FTP</div>'+
-            '<div style="font-size:12px;color:var(--muted);margin-bottom:15px;line-height:1.5;">Connects to <b>ftp.uppclonline.com</b> for all 4 DISCOMs, lists division codes from master data filenames, and registers them in <b>manifest.json</b>.</div>'+
-            '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;background:#fff;border:1px solid #FED7AA;margin-bottom:15px;">'+
-              '<span id="ftp-dot" style="width:10px;height:10px;border-radius:50%;background:#9CA3AF;flex-shrink:0;"></span>'+
-              '<span id="ftp-status-text" style="font-family:var(--fh);font-size:13px;font-weight:600;flex:1;color:#4B5563;">Checking server…</span>'+
-              '<button onclick="checkSyncServer()" style="background:transparent;border:1px solid #FED7AA;border-radius:6px;padding:4px 10px;font-family:var(--fh);font-size:11px;font-weight:700;color:#EA580C;cursor:pointer;">REFRESH</button>'+
-            '</div>'+
-            '<button class="btn" style="background:#EA580C;color:#fff;width:100%;padding:14px;font-family:var(--fh);font-size:14px;font-weight:700;" id="discover-btn" onclick="discoverDivisions()">🔍 RUN DISCOVERY (ALL DISCOMS)</button>'+
-            '<div id="discover-status" style="margin-top:12px;font-size:12px;color:var(--muted);min-height:18px;"></div>'+
-            '<pre id="ftp-sync-log" style="display:none;background:#0F172A;color:#A7F3D0;font-size:10px;font-family:monospace;padding:12px;border-radius:10px;max-height:200px;overflow-y:auto;margin-top:12px;"></pre>'+
-          '</div>'+
-
-          /* ASSIGN DIVISIONS */
-          '<div class="settings-card" style="background:#EEF2FF;border-color:#C7D2FE;">'+
-            '<div style="font-family:var(--fh);font-size:16px;font-weight:700;margin-bottom:12px;color:#4338CA;display:flex;align-items:center;gap:8px;">📋 ASSIGN DIVISIONS TO ADMINS</div>'+
-            '<div style="font-size:12px;color:var(--muted);margin-bottom:15px;line-height:1.5;">Grant or revoke access to DISCOM/Division combinations for each Admin and User account.</div>'+
-            '<button class="btn btn-acc" onclick="loadDivisionAssignment()" style="margin-bottom:15px;font-size:13px;">⟳ LOAD DIVISIONS</button>'+
-            '<div id="div-assign-panel" style="font-size:12px;color:var(--muted);">Click "Load Divisions" to begin.</div>'+
-          '</div>'+
-
-          buildUserManagementHTML()+
+      '<div style="max-width:1400px;margin:0 auto;">'+
+        '<div style="font-family:var(--fh);font-size:22px;font-weight:700;color:#4F46E5;margin-bottom:18px;text-align:center;">👑 SUPER ADMIN PANEL</div>'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;align-items:start;">'+
+          /* COL 1 */
+          '<div style="display:flex;flex-direction:column;gap:20px;">'+patCard+assignCard+'</div>'+
+          /* COL 2 */
+          '<div style="display:flex;flex-direction:column;gap:20px;">'+dlCard+buildUserManagementHTML()+'</div>'+
+          /* COL 3 */
+          '<div style="display:flex;flex-direction:column;gap:20px;">'+discoverCard+'</div>'+
         '</div>'+
       '</div>';
+
     checkSyncServer();
+    /* Populate user selector for division assignment */
+    (function(){
+      var sel=gel('assign-user-sel'); if(!sel) return;
+      USERS_DB.users.filter(function(u){return u.role!=='superadmin';}).forEach(function(u){
+        var o=document.createElement('option'); o.value=u.username; o.textContent=u.username+' ('+u.role+')';
+        sel.appendChild(o);
+      });
+    })();
     return;
   }
 
@@ -1002,43 +1013,43 @@ function buildSettingsPanel(){
       '<td style="padding:6px 10px;font-size:11px;color:var(--muted);">'+(div||'—')+'</td></tr>';
   }).join('');
 
+  var llCard=
+    '<div class="settings-card" style="background:#F0F9FF;border-color:#BAE6FD;">'+
+      '<div style="font-family:var(--fh);font-size:16px;font-weight:700;margin-bottom:12px;color:#0369A1;display:flex;align-items:center;gap:8px;">📍 UPLOAD LAT/LONG MAPPING</div>'+
+      '<div style="font-size:12px;color:var(--muted);margin-bottom:15px;line-height:1.5;">Bulk update consumer locations. Provide a file with columns: <b>ACCT_ID, LAT, LON</b>.</div>'+
+      '<input type="file" id="latlong-file" accept=".xlsx,.xls,.csv" style="width:100%;margin-bottom:15px;padding:8px;border:1px solid #BAE6FD;border-radius:8px;font-size:12px;background:#fff;"/>'+
+      '<button class="btn" style="background:#0EA5E9;color:#fff;width:100%;" onclick="processLatLongUpload()">🛰️ UPDATE COORDINATES</button>'+
+      '<div id="latlong-log" style="margin-top:12px;font-size:11px;font-family:monospace;display:none;"></div>'+
+    '</div>';
+
+  var ftpSyncCard=
+    '<div class="settings-card" style="background:#FFF7ED;border-color:#FED7AA;">'+
+      '<div style="font-family:var(--fh);font-size:16px;font-weight:700;margin-bottom:12px;color:#9A3412;display:flex;align-items:center;gap:8px;">📡 FTP DATA SYNC</div>'+
+      '<div style="font-size:12px;color:var(--muted);margin-bottom:12px;">Syncing for: <b>'+(CURRENT_DISCOM&&CURRENT_DIVISION?CURRENT_DISCOM+' / '+CURRENT_DIVISION:'not selected')+'</b></div>'+
+      '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;background:#fff;border:1px solid #FED7AA;margin-bottom:12px;">'+
+        '<span id="ftp-dot" style="width:10px;height:10px;border-radius:50%;background:#9CA3AF;flex-shrink:0;"></span>'+
+        '<span id="ftp-status-text" style="font-family:var(--fh);font-size:12px;font-weight:600;flex:1;color:#4B5563;">Checking…</span>'+
+        '<button onclick="checkSyncServer()" style="background:transparent;border:1px solid #FED7AA;border-radius:6px;padding:3px 8px;font-family:var(--fh);font-size:11px;font-weight:700;color:#EA580C;cursor:pointer;">↺</button>'+
+      '</div>'+
+      '<div id="ftp-synced-info" style="display:none;background:#fff;border:1px solid #FED7AA;border-radius:10px;padding:10px;margin-bottom:12px;font-size:11px;line-height:1.6;"></div>'+
+      '<div style="font-family:var(--fh);font-size:11px;font-weight:700;color:#9A3412;letter-spacing:1px;margin-bottom:8px;">SELECT DATA:</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">'+
+        '<label style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;cursor:pointer;"><input type="checkbox" id="sync-master" checked style="accent-color:#EA580C;width:15px;height:15px;"> MASTER</label>'+
+        '<label style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;cursor:pointer;"><input type="checkbox" id="sync-billed" checked style="accent-color:#EA580C;width:15px;height:15px;"> BILLED</label>'+
+        '<label style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;cursor:pointer;"><input type="checkbox" id="sync-unbilled" checked style="accent-color:#EA580C;width:15px;height:15px;"> UNBILLED</label>'+
+        '<label style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:#F43F5E;cursor:pointer;"><input type="checkbox" id="sync-force" style="accent-color:#F43F5E;width:15px;height:15px;"> FORCE ⚠</label>'+
+      '</div>'+
+      '<button class="btn" style="background:#EA580C;color:#fff;width:100%;padding:12px;" id="ftp-sync-btn" onclick="triggerFtpSync()">🔄 START SYNC</button>'+
+      '<pre id="ftp-sync-log" style="display:none;background:#0F172A;color:#A7F3D0;font-size:10px;font-family:monospace;padding:12px;border-radius:10px;max-height:200px;overflow-y:auto;margin-top:10px;white-space:pre-wrap;word-break:break-all;"></pre>'+
+    '</div>';
+
   gel('panel-settings').innerHTML=
-    '<div style="max-width:1200px;margin:0 auto;">'+
-      '<div style="font-family:var(--fh);font-size:24px;font-weight:700;color:#4F46E5;margin-bottom:20px;text-align:center;">⚙️ SYSTEM SETTINGS</div>'+
-      '<div class="settings-container">'+
-        patCard+
-
-        /* LAT LONG UPLOAD */
-        '<div class="settings-card" style="background:#F0F9FF;border-color:#BAE6FD;">'+
-          '<div style="font-family:var(--fh);font-size:16px;font-weight:700;margin-bottom:12px;color:#0369A1;display:flex;align-items:center;gap:8px;">📍 UPLOAD LAT/LONG MAPPING</div>'+
-          '<div style="font-size:12px;color:var(--muted);margin-bottom:15px;line-height:1.5;">Bulk update consumer locations. Provide a file with columns: <b>ACCT_ID, LAT, LON</b>.</div>'+
-          '<input type="file" id="latlong-file" accept=".xlsx,.xls,.csv" style="width:100%;margin-bottom:15px;padding:8px;border:1px solid #BAE6FD;border-radius:8px;font-size:12px;background:#fff;"/>'+
-          '<button class="btn" style="background:#0EA5E9;color:#fff;width:100%;" onclick="processLatLongUpload()">🛰️ UPDATE COORDINATES</button>'+
-          '<div id="latlong-log" style="margin-top:12px;font-size:11px;font-family:monospace;display:none;"></div>'+
-        '</div>'+
-
-        /* FTP SYNC */
-        '<div class="settings-card" style="background:#FFF7ED;border-color:#FED7AA;">'+
-          '<div style="font-family:var(--fh);font-size:16px;font-weight:700;margin-bottom:12px;color:#9A3412;display:flex;align-items:center;gap:8px;">📡 FTP DATA SYNC</div>'+
-          '<div style="font-size:12px;color:var(--muted);margin-bottom:12px;">Syncing for: <b>'+(CURRENT_DISCOM&&CURRENT_DIVISION?CURRENT_DISCOM+' / '+CURRENT_DIVISION:'not selected')+'</b></div>'+
-          '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;background:#fff;border:1px solid #FED7AA;margin-bottom:15px;">'+
-            '<span id="ftp-dot" style="width:10px;height:10px;border-radius:50%;background:#9CA3AF;flex-shrink:0;"></span>'+
-            '<span id="ftp-status-text" style="font-family:var(--fh);font-size:13px;font-weight:600;flex:1;color:#4B5563;">Checking server…</span>'+
-            '<button onclick="checkSyncServer()" style="background:transparent;border:1px solid #FED7AA;border-radius:6px;padding:4px 10px;font-family:var(--fh);font-size:11px;font-weight:700;color:#EA580C;cursor:pointer;">REFRESH</button>'+
-          '</div>'+
-          '<div id="ftp-synced-info" style="display:none;background:#fff;border:1px solid #FED7AA;border-radius:10px;padding:12px;margin-bottom:15px;font-size:11px;line-height:1.6;"></div>'+
-          '<div style="font-family:var(--fh);font-size:11px;font-weight:700;color:#9A3412;letter-spacing:1px;margin-bottom:10px;">SELECT DATA:</div>'+
-          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:15px;">'+
-            '<label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;cursor:pointer;"><input type="checkbox" id="sync-master" checked style="accent-color:#EA580C;width:16px;height:16px;"> MASTER</label>'+
-            '<label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;cursor:pointer;"><input type="checkbox" id="sync-billed" checked style="accent-color:#EA580C;width:16px;height:16px;"> BILLED</label>'+
-            '<label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;cursor:pointer;"><input type="checkbox" id="sync-unbilled" checked style="accent-color:#EA580C;width:16px;height:16px;"> UNBILLED</label>'+
-            '<label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#F43F5E;cursor:pointer;"><input type="checkbox" id="sync-force" style="accent-color:#F43F5E;width:16px;height:16px;"> FORCE ⚠</label>'+
-          '</div>'+
-          '<button class="btn" style="background:#EA580C;color:#fff;width:100%;padding:14px;" id="ftp-sync-btn" onclick="triggerFtpSync()">🔄 START SYNC PROCESS</button>'+
-          '<pre id="ftp-sync-log" style="display:none;background:#0F172A;color:#A7F3D0;font-size:10px;font-family:monospace;padding:12px;border-radius:10px;max-height:180px;overflow-y:auto;margin-top:12px;"></pre>'+
-        '</div>'+
-
-        buildUserManagementHTML()+
+    '<div style="max-width:1400px;margin:0 auto;">'+
+      '<div style="font-family:var(--fh);font-size:22px;font-weight:700;color:#4F46E5;margin-bottom:18px;text-align:center;">⚙️ SYSTEM SETTINGS</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;align-items:start;">'+
+        '<div style="display:flex;flex-direction:column;gap:20px;">'+patCard+llCard+'</div>'+
+        '<div style="display:flex;flex-direction:column;gap:20px;">'+ftpSyncCard+'</div>'+
+        '<div style="display:flex;flex-direction:column;gap:20px;">'+buildUserManagementHTML()+'</div>'+
       '</div>'+
     '</div>';
   checkSyncServer();
@@ -1058,7 +1069,7 @@ function discoverDivisions(){
   .then(function(d){
     if(!d.ok){
       if(statusEl) statusEl.textContent='❌ '+d.message;
-      if(btn){ btn.disabled=false; btn.textContent='🔍 RUN DISCOVERY (ALL DISCOMS)'; }
+      if(btn){ btn.disabled=false; btn.textContent='🔍 RUN DISCOVERY'; }
       return;
     }
     if(statusEl) statusEl.textContent='✅ Discovery running — see log below.';
@@ -1069,96 +1080,142 @@ function discoverDivisions(){
         if(logEl){ logEl.textContent=s.log.join('\n'); logEl.scrollTop=logEl.scrollHeight; }
         if(!s.running){
           clearInterval(_syncPollTimer);
-          if(btn){ btn.disabled=false; btn.textContent='🔍 RUN DISCOVERY (ALL DISCOMS)'; }
-          if(statusEl) statusEl.textContent='✅ Discovery complete. Refresh Assign Divisions panel.';
+          if(btn){ btn.disabled=false; btn.textContent='🔍 RUN DISCOVERY'; }
+          _assignManifestCache=null;
+          if(statusEl) statusEl.textContent='✅ Discovery complete. Select a user to assign divisions.';
         }
       }).catch(function(){clearInterval(_syncPollTimer);});
     },1500);
   }).catch(function(){
     if(statusEl) statusEl.textContent='❌ Local server offline. Run local_server.py first.';
-    if(btn){ btn.disabled=false; btn.textContent='🔍 RUN DISCOVERY (ALL DISCOMS)'; }
+    if(btn){ btn.disabled=false; btn.textContent='🔍 RUN DISCOVERY'; }
   });
 }
 
-async function loadDivisionAssignment(){
+var _assignManifestCache=null;
+
+async function renderAssignDivisions(){
   var panel=gel('div-assign-panel');
-  panel.innerHTML='<span style="color:var(--muted)">⏳ Loading manifest…</span>';
-  var m;
-  try{
-    var url=MANIFEST_URL+'?nocache='+Date.now();
-    var res=await fetch(url);
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    m=await res.json();
-  } catch(e){
-    panel.innerHTML='❌ Could not load manifest.json: '+e.message;
-    return;
+  var statusEl=gel('assign-status');
+  var selEl=gel('assign-user-sel');
+  var username=selEl?selEl.value:'';
+  if(!username){ if(panel) panel.innerHTML=''; if(statusEl) statusEl.textContent=''; return; }
+  if(panel) panel.innerHTML='<span style="color:var(--muted)">⏳ Loading manifest…</span>';
+  if(statusEl) statusEl.textContent='';
+
+  if(!_assignManifestCache){
+    try{
+      var res=await fetch(MANIFEST_URL+'?nocache='+Date.now());
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      _assignManifestCache=await res.json();
+    } catch(e){
+      if(panel) panel.innerHTML='❌ Could not load manifest: '+e.message;
+      return;
+    }
   }
+  var m=_assignManifestCache;
 
   var SKIP={'updated':1,'sync_status':1};
-  var allDivs=[];
+  var byDiscom={};
   Object.keys(m).forEach(function(dc){
     if(SKIP[dc]) return;
     var dcVal=m[dc];
     if(!dcVal||typeof dcVal!=='object'||Array.isArray(dcVal)) return;
-    Object.keys(dcVal).sort().forEach(function(dv){
-      if(SKIP[dv]) return;
-      var dvVal=dcVal[dv];
-      if(dvVal&&typeof dvVal==='object'&&!Array.isArray(dvVal)){
-        allDivs.push({dc:dc,dv:dv});
-      }
-    });
+    var divs=Object.keys(dcVal).filter(function(dv){
+      return !SKIP[dv]&&dcVal[dv]&&typeof dcVal[dv]==='object'&&!Array.isArray(dcVal[dv]);
+    }).sort();
+    if(divs.length) byDiscom[dc]=divs;
   });
 
-  if(!allDivs.length){
-    panel.innerHTML='<p style="color:var(--muted);font-size:12px;">No divisions in manifest.json (top-level keys: '+Object.keys(m).join(', ')+').<br>Run Discovery first.</p>';
+  if(!Object.keys(byDiscom).length){
+    if(panel) panel.innerHTML='<p style="color:var(--muted);font-size:12px;">No divisions in manifest. Run Discovery first.</p>';
     return;
   }
 
-  var adminUsers=USERS_DB.users.filter(function(u){ return u.role!=='superadmin'; });
-  if(!adminUsers.length){ panel.innerHTML='<p style="color:var(--muted);font-size:12px;">No admin/user accounts found.</p>'; return; }
+  var user=USERS_DB.users.find(function(u){ return u.username===username; });
+  if(!user){ if(panel) panel.innerHTML='<p style="color:var(--muted);">User not found.</p>'; return; }
 
-  var html='<div style="overflow-x:auto;margin-bottom:12px;"><table style="width:100%;font-size:11px;border-collapse:collapse;">';
-  html+='<thead><tr><th style="text-align:left;padding:6px 10px;border-bottom:2px solid #C7D2FE;white-space:nowrap;min-width:90px;">USER / ROLE</th>';
-  allDivs.forEach(function(d){
-    html+='<th style="padding:4px 6px;border-bottom:2px solid #C7D2FE;text-align:center;white-space:nowrap;min-width:60px;font-size:10px;">'+d.dc+'<br>'+d.dv+'</th>';
-  });
-  html+='</tr></thead><tbody>';
-  adminUsers.forEach(function(u){
-    html+='<tr><td style="padding:6px 10px;border-bottom:1px solid #EEF2FF;white-space:nowrap;"><b>'+u.username+'</b><br><span style="color:var(--muted);font-size:10px;">'+u.role+'</span></td>';
-    allDivs.forEach(function(d){
-      var hasDiscom=(u.discoms||[]).includes(d.dc);
-      var hasDiv=(u.divisions||[]).includes('ALL')||(u.divisions||[]).includes(d.dv);
-      var checked=hasDiscom&&hasDiv;
-      html+='<td style="text-align:center;padding:4px;border-bottom:1px solid #EEF2FF;"><input type="checkbox" '+(checked?'checked':'')+' data-user="'+u.username+'" data-dc="'+d.dc+'" data-dv="'+d.dv+'"/></td>';
+  var html='';
+  Object.keys(byDiscom).sort().forEach(function(dc){
+    var divs=byDiscom[dc];
+    html+='<div style="margin-bottom:14px;">';
+    html+='<div style="display:flex;align-items:center;justify-content:space-between;font-family:var(--fh);font-size:12px;font-weight:700;color:#4338CA;padding:6px 0;border-bottom:1.5px solid #C7D2FE;margin-bottom:8px;">';
+    html+='<span>'+dc+'</span>';
+    html+='<label style="display:flex;align-items:center;gap:5px;font-weight:600;font-size:11px;color:var(--muted);cursor:pointer;">';
+    html+='<input type="checkbox" class="dc-all-cb" data-dc="'+dc+'" onchange="toggleAllDivInDC(this)"> ALL</label>';
+    html+='</div>';
+    html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:5px;">';
+    divs.forEach(function(dv){
+      var hasDiscom=(user.discoms||[]).includes(dc);
+      var hasDiv=(user.divisions||[]).includes('ALL')||(user.divisions||[]).includes(dv);
+      var chk=hasDiscom&&hasDiv;
+      html+='<label class="div-lbl" style="display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer;padding:4px 6px;border-radius:6px;background:'+(chk?'#EEF2FF':'#F9FAFB')+';border:1px solid '+(chk?'#C7D2FE':'#E5E7EB')+';">';
+      html+='<input type="checkbox" class="div-cb" data-dc="'+dc+'" data-dv="'+dv+'" '+(chk?'checked':'')+' onchange="onDivCbChange(this)"> ';
+      html+=dv;
+      html+='</label>';
     });
-    html+='</tr>';
+    html+='</div></div>';
   });
-  html+='</tbody></table></div>';
-  html+='<button class="btn btn-acc" onclick="saveDivisionAssignments()" style="font-size:13px;">💾 SAVE ASSIGNMENTS</button>';
-  html+='<div id="assign-status" style="margin-top:10px;font-size:12px;color:var(--muted);min-height:16px;"></div>';
-  panel.innerHTML=html;
+  html+='<button class="btn btn-acc" onclick="saveDivisionAssignments()" style="width:100%;font-size:13px;margin-top:4px;">💾 SAVE ASSIGNMENTS</button>';
+  if(panel) panel.innerHTML=html;
+
+  /* sync "ALL" checkbox initial states */
+  if(panel) panel.querySelectorAll('.dc-all-cb').forEach(function(allCb){
+    var dc=allCb.dataset.dc;
+    var cbs=Array.from(panel.querySelectorAll('.div-cb[data-dc="'+dc+'"]'));
+    allCb.checked=cbs.length&&cbs.every(function(c){ return c.checked; });
+    allCb.indeterminate=!allCb.checked&&cbs.some(function(c){ return c.checked; });
+  });
 }
 
+function toggleAllDivInDC(allCb){
+  var dc=allCb.dataset.dc;
+  var panel=gel('div-assign-panel');
+  if(!panel) return;
+  panel.querySelectorAll('.div-cb[data-dc="'+dc+'"]').forEach(function(cb){
+    cb.checked=allCb.checked;
+    var lbl=cb.closest('label');
+    if(lbl){ lbl.style.background=allCb.checked?'#EEF2FF':'#F9FAFB'; lbl.style.borderColor=allCb.checked?'#C7D2FE':'#E5E7EB'; }
+  });
+}
+
+function onDivCbChange(cb){
+  var lbl=cb.closest('label');
+  if(lbl){ lbl.style.background=cb.checked?'#EEF2FF':'#F9FAFB'; lbl.style.borderColor=cb.checked?'#C7D2FE':'#E5E7EB'; }
+  var dc=cb.dataset.dc;
+  var panel=gel('div-assign-panel');
+  if(!panel) return;
+  var cbs=Array.from(panel.querySelectorAll('.div-cb[data-dc="'+dc+'"]'));
+  var allCb=panel.querySelector('.dc-all-cb[data-dc="'+dc+'"]');
+  if(allCb){
+    allCb.checked=cbs.length&&cbs.every(function(c){ return c.checked; });
+    allCb.indeterminate=!allCb.checked&&cbs.some(function(c){ return c.checked; });
+  }
+}
+
+async function loadDivisionAssignment(){ renderAssignDivisions(); }
+
 async function saveDivisionAssignments(){
-  var checkboxes=gel('div-assign-panel').querySelectorAll('input[type=checkbox]');
-  var newAssign={};
-  checkboxes.forEach(function(cb){
-    var un=cb.dataset.user, dc=cb.dataset.dc, dv=cb.dataset.dv;
-    if(!newAssign[un]) newAssign[un]={discoms:new Set(),divisions:new Set()};
-    if(cb.checked){ newAssign[un].discoms.add(dc); newAssign[un].divisions.add(dv); }
-  });
-  USERS_DB.users.forEach(function(u){
-    if(u.role==='superadmin') return;
-    if(newAssign[u.username]){
-      u.discoms=Array.from(newAssign[u.username].discoms);
-      u.divisions=Array.from(newAssign[u.username].divisions);
-    } else { u.discoms=[]; u.divisions=[]; }
-  });
+  var selEl=gel('assign-user-sel');
+  var username=selEl?selEl.value:'';
   var statusEl=gel('assign-status');
+  if(!username){ if(statusEl) statusEl.textContent='⚠️ No user selected.'; return; }
+
+  var panel=gel('div-assign-panel');
+  var discoms=new Set(), divisions=new Set();
+  if(panel) Array.from(panel.querySelectorAll('.div-cb')).forEach(function(cb){
+    if(cb.checked){ discoms.add(cb.dataset.dc); divisions.add(cb.dataset.dv); }
+  });
+
+  var user=USERS_DB.users.find(function(u){ return u.username===username; });
+  if(!user){ if(statusEl) statusEl.textContent='❌ User not found.'; return; }
+  user.discoms=Array.from(discoms);
+  user.divisions=Array.from(divisions);
+
   if(statusEl) statusEl.textContent='⏳ Saving to GitHub…';
   try{
     await saveUserDatabase();
-    if(statusEl) statusEl.textContent='✅ Assignments saved to users.json';
+    if(statusEl) statusEl.textContent='✅ Saved: '+username+' → '+divisions.size+' division(s) across '+discoms.size+' DISCOM(s).';
   } catch(e){
     if(statusEl) statusEl.textContent='❌ Save failed: '+e.message;
   }
@@ -1805,28 +1862,19 @@ async function handleLogin() {
     errEl.textContent = "";
     CURRENT_USER = user;
 
-    var selDiscom   = gel('login-discom')   ? gel('login-discom').value   : '';
-    var selDivision = gel('login-division') ? gel('login-division').value : '';
-
     if (user.role !== 'superadmin') {
-      if (!selDiscom || !selDivision) {
-        errEl.textContent = "Please select DISCOM and Division";
+      var userDiscoms  = user.discoms   || [];
+      var userDivs     = user.divisions || [];
+      if (!userDiscoms.length || !userDivs.length) {
+        errEl.textContent = "No divisions assigned. Contact admin.";
         return;
       }
-      if (user.discoms && user.discoms.length && !user.discoms.includes(selDiscom)) {
-        errEl.textContent = "Access denied: DISCOM not authorized";
-        return;
-      }
-      var divOk = !user.divisions || !user.divisions.length ||
-        user.divisions.includes('ALL') || user.divisions.includes(selDivision);
-      if (!divOk) {
-        errEl.textContent = "Access denied: Division not authorized";
-        return;
-      }
+      CURRENT_DISCOM   = userDiscoms[0];
+      CURRENT_DIVISION = userDivs[0];
+    } else {
+      CURRENT_DISCOM   = null;
+      CURRENT_DIVISION = null;
     }
-
-    CURRENT_DISCOM   = selDiscom   || null;
-    CURRENT_DIVISION = selDivision || null;
     loginSuccess(user.role);
     userEl.value = "";
     passEl.value = "";
@@ -1861,8 +1909,35 @@ function loginSuccess(role){
     applyRoleRestrictions(role);
     if(D.length===0) autoFetch();
   }
-  var di=gel('division-indicator');
-  if(di) di.textContent=(CURRENT_DISCOM&&CURRENT_DIVISION)?CURRENT_DISCOM+' · '+CURRENT_DIVISION:'';
+  populateDivisionSelector();
+}
+
+function populateDivisionSelector(){
+  var wrap=gel('division-wrap'), sel=gel('division-selector');
+  if(!wrap||!sel) return;
+  if(!CURRENT_USER||CURRENT_ROLE==='superadmin'){ wrap.style.display='none'; return; }
+  var discoms=CURRENT_USER.discoms||[], divs=CURRENT_USER.divisions||[];
+  sel.innerHTML='';
+  discoms.forEach(function(dc){
+    divs.forEach(function(dv){
+      var o=document.createElement('option');
+      o.value=dc+'/'+dv; o.textContent=dc+' · '+dv;
+      if(dc===CURRENT_DISCOM&&dv===CURRENT_DIVISION) o.selected=true;
+      sel.appendChild(o);
+    });
+  });
+  wrap.style.display=sel.options.length?'block':'none';
+}
+
+function switchDivision(val){
+  var p=val.split('/'); if(p.length<2) return;
+  CURRENT_DISCOM=p[0]; CURRENT_DIVISION=p[1];
+  try{
+    var s=JSON.parse(localStorage.getItem('uppcl_session')||'{}');
+    s.discom=CURRENT_DISCOM; s.division=CURRENT_DIVISION;
+    localStorage.setItem('uppcl_session',JSON.stringify(s));
+  }catch(e){}
+  D=[]; FD=[]; autoFetch();
 }
 
 function applyRoleRestrictions(role){
@@ -1881,18 +1956,17 @@ function logout(){
   var ls=gel('login-screen'); ls.style.display='flex'; ls.style.pointerEvents='all';
   gel('app').style.display='none';
   gel('login-username').value=''; gel('login-password').value=''; gel('login-error').textContent='';
-  var di=gel('division-indicator'); if(di) di.textContent='';
+  var wrap=gel('division-wrap'); if(wrap) wrap.style.display='none';
+  var sel=gel('division-selector'); if(sel) sel.innerHTML='';
   ['tab-lookup','tab-dc','tab-dfp','tab-defaulter'].forEach(function(id){ var t=gel(id); if(t) t.style.display=''; });
   _lastTab=''; _settingsBuilt=false; _dcLoaded=false; _defBuilt=false; D=[];
   document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
   document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active');});
   gel('panel-lookup').classList.add('active');
   var lt=document.querySelector('.tab[onclick*="lookup"]'); if(lt) lt.classList.add('active');
-  populateLoginDiscoms();
 }
 window.addEventListener('DOMContentLoaded', async function(){
   await initUserDatabase();
-  await populateLoginDiscoms();
   var session = null;
   try { session = JSON.parse(localStorage.getItem('uppcl_session')); } catch(e){}
   if(session && session.role && session.ts && (Date.now() - session.ts < SESSION_TIMEOUT)){
