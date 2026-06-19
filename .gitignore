@@ -1,5 +1,6 @@
 
 UPPCL/config.json
+local_server.py
 *.xlsx
 *.csv
 debug_financials.js
