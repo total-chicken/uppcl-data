@@ -1084,15 +1084,33 @@ async function loadDivisionAssignment(){
   var panel=gel('div-assign-panel');
   panel.innerHTML='<span style="color:var(--muted)">⏳ Loading manifest…</span>';
   var m;
-  try{ m=await fetch(MANIFEST_URL+'?t='+Date.now()).then(function(r){return r.json();}); }
-  catch(e){ panel.innerHTML='❌ Could not load manifest.json'; return; }
+  try{
+    var url=MANIFEST_URL+'?nocache='+Date.now();
+    var res=await fetch(url);
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    m=await res.json();
+  } catch(e){
+    panel.innerHTML='❌ Could not load manifest.json: '+e.message;
+    return;
+  }
 
+  var SKIP={'updated':1,'sync_status':1};
   var allDivs=[];
-  ['DV','MV','PV','PU'].forEach(function(dc){
-    Object.keys(m[dc]||{}).sort().forEach(function(dv){ allDivs.push({dc:dc,dv:dv}); });
+  Object.keys(m).forEach(function(dc){
+    if(SKIP[dc]) return;
+    var dcVal=m[dc];
+    if(!dcVal||typeof dcVal!=='object'||Array.isArray(dcVal)) return;
+    Object.keys(dcVal).sort().forEach(function(dv){
+      if(SKIP[dv]) return;
+      var dvVal=dcVal[dv];
+      if(dvVal&&typeof dvVal==='object'&&!Array.isArray(dvVal)){
+        allDivs.push({dc:dc,dv:dv});
+      }
+    });
   });
+
   if(!allDivs.length){
-    panel.innerHTML='<p style="color:var(--muted);font-size:12px;">No divisions found. Run Discovery first.</p>';
+    panel.innerHTML='<p style="color:var(--muted);font-size:12px;">No divisions in manifest.json (top-level keys: '+Object.keys(m).join(', ')+').<br>Run Discovery first.</p>';
     return;
   }
 
@@ -1741,8 +1759,11 @@ async function populateLoginDivisions(){
   var discom = gel('login-discom') ? gel('login-discom').value : '';
   if(!discom) return;
   try {
-    var m = await fetch(MANIFEST_URL+'?t='+Date.now()).then(function(r){return r.json();});
-    var divs = Object.keys((m[discom])||{}).sort();
+    var res = await fetch(MANIFEST_URL+'?nocache='+Date.now());
+    var m = res.ok ? await res.json() : {};
+    var divs = Object.keys((m[discom])||{}).filter(function(k){
+      var v=(m[discom]||{})[k]; return v&&typeof v==='object'&&!Array.isArray(v);
+    }).sort();
     divs.forEach(function(dv){
       var o = document.createElement('option');
       o.value = dv; o.textContent = dv;
