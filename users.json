@@ -20,6 +20,12 @@
       "password": "ad951ef690851c10cb79bd107c7b1d656ce96fc6e5eea2b2a86a33a5c6ceb19fd9f154",
       "role": "admin",
       "createdBy": "superadmin"
+    },
+    {
+      "username": "div_mau",
+      "password": "42819adcde0f22ec9dd88107f6c038f3545dbc1677c4cf4930a2c2a578c84f5c8695d5",
+      "role": "admin",
+      "createdBy": "superadmin"
     }
   ],
   "shared_gh_pat": "[#]ghp_[#]J811eOkl8fZ0ZryU[#]qKdToFfOxR8iDb3N9YfF[#]"
