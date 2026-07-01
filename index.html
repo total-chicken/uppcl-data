@@ -886,7 +886,7 @@ function autoSyncAtr(){
 }
 
 // ─── SETTINGS / GITHUB UPLOAD ─────────────────────────────────────────────────
-var CSV_COLS=['ACCT_ID','MOBILE_NO','NAME','ADDRESS','CATEGORY','LOAD','LAT','LON','SUBSTATION','FEEDER','LP DATE','LP AMT','TOTAL OUTSTANDING'];
+var CSV_COLS=['ACCT_ID','SDO_CODE','NAME','FATHER_NAME','ADDRESS','SUPPLY_TYPE','LOAD','LOAD_UNIT','CON_STATUS','CONNECTION_TYPE','BILL_CYC_CD','LAT','LON','SERIAL_NBR','METER_READ_REMARK','LAST_BILL_DATE','BILL_BASIS','PAY_AMT','PAY_DATE','TOTAL_OUTSTANDING','SUBSTATION','FEEDER','MOBILE_NO'];
 function getGhPat(){ return localStorage.getItem('gh_pat')||''; }
 
 function ghApi(path,opts){
@@ -1315,19 +1315,29 @@ function processAndUpload(){
       var keys = Object.keys(firstRow);
       var hdrs = keys.map(k => String(k).trim().toUpperCase());
       
-      var iAcct = findCol(hdrs, ['ACCT_ID', 'ACCOUNT_ID']);
-      var iMob  = findCol(hdrs, ['MOBILE_NO', 'MOBILE']);
-      var iName = findCol(hdrs, ['NAME', 'CONSUMER_NAME']);
-      var iAddr = findCol(hdrs, ['ADDRESS', 'ADDRES']);
-      var iCat  = findCol(hdrs, ['CATEGORY', 'TARIFF_TYPE', 'SUPPLY_TYPE', 'TARIFF']);
-      var iLoad = findCol(hdrs, ['LOAD', 'SANCTION_LOAD', 'SANCT_LOAD']);
-      var iLat  = findCol(hdrs, ['LAT', 'LATITUDE']);
-      var iLon  = findCol(hdrs, ['LON', 'LONGITUDE', 'LONG']);
-      var iSub  = findCol(hdrs, ['SUBSTATION', 'SUB_STATION']);
-      var iFeed = findCol(hdrs, ['FEEDER']);
-      var iDate = findCol(hdrs, ['PAY_DATE', 'LP DATE', 'LAST_PAY_DATE']);
-      var iAmt  = findCol(hdrs, ['PAY_AMT', 'LP AMT', 'LAST_PAY_AMT', 'LAST_PAYMENT_AMOUNT']);
-      var iOut  = findCol(hdrs, ['TOTAL_OUTSTANDING', 'TOTAL OUTSTANDING', 'AMOUNT_PAYABLE', 'OUTSTANDING']);
+      var iAcct    = findCol(hdrs, ['ACCT_ID', 'ACCOUNT_ID']);
+      var iSdo     = findCol(hdrs, ['SDO_CODE', 'SDO']);
+      var iName    = findCol(hdrs, ['NAME', 'CONSUMER_NAME']);
+      var iFath    = findCol(hdrs, ['FATHER_NAME', 'FATHER', 'FNAME', 'F_NAME']);
+      var iAddr    = findCol(hdrs, ['ADDRESS', 'ADDRES']);
+      var iSupply  = findCol(hdrs, ['SUPPLY_TYPE', 'CATEGORY', 'TARIFF_TYPE', 'TARIFF']);
+      var iLoad    = findCol(hdrs, ['LOAD', 'SANCTION_LOAD', 'SANCT_LOAD']);
+      var iLunit   = findCol(hdrs, ['LOAD_UNIT', 'LOAD UNIT']);
+      var iConStat = findCol(hdrs, ['CON_STATUS', 'CONNECTION_STATUS', 'CONS_STATUS']);
+      var iConType = findCol(hdrs, ['CONNECTION_TYPE', 'CONN_TYPE', 'CON_TYPE']);
+      var iBillCyc = findCol(hdrs, ['BILL_CYC_CD', 'BILL_CYC', 'BILLING_CYCLE']);
+      var iLat     = findCol(hdrs, ['LAT', 'LATITUDE']);
+      var iLon     = findCol(hdrs, ['LON', 'LONGITUDE', 'LONG']);
+      var iSerl    = findCol(hdrs, ['SERIAL_NBR', 'METER_SERIAL_NBR', 'MTR_SRL_NO', 'METER_NO']);
+      var iRemark  = findCol(hdrs, ['METER_READ_REMARK', 'MR_REMARK', 'REMARK']);
+      var iLbill   = findCol(hdrs, ['LAST_BILL_DATE', 'BILL_DATE', 'LAST BILL DATE']);
+      var iBbasis  = findCol(hdrs, ['BILL_BASIS', 'BILLING_BASIS']);
+      var iAmt     = findCol(hdrs, ['PAY_AMT', 'LP AMT', 'LAST_PAY_AMT', 'LAST_PAYMENT_AMOUNT']);
+      var iDate    = findCol(hdrs, ['PAY_DATE', 'LP DATE', 'LAST_PAY_DATE']);
+      var iOut     = findCol(hdrs, ['TOTAL_OUTSTANDING', 'TOTAL OUTSTANDING', 'AMOUNT_PAYABLE', 'OUTSTANDING']);
+      var iSub     = findCol(hdrs, ['SUBSTATION', 'SUB_STATION']);
+      var iFeed    = findCol(hdrs, ['FEEDER']);
+      var iMob     = findCol(hdrs, ['MOBILE_NO', 'MOBILE']);
 
       settingsLog('✅ Parsed '+rawRows.length+' rows. Mapping columns…');
 
@@ -1336,23 +1346,33 @@ function processAndUpload(){
         var vals = keys.map(k => r[k]);
         var sub = iSub>=0 ? String(vals[iSub]||'').trim() : '';
         var div = subDivMap[sub]||'eudd1';
-        var lat = iLat>=0 ? vals[iLat] : '';
-        var lon = iLon>=0 ? vals[iLon] : '';
+        var lat = iLat>=0 ? String(vals[iLat]||'').trim() : '';
+        var lon = iLon>=0 ? String(vals[iLon]||'').trim() : '';
         if(parseFloat(lat)>50){var t=lat;lat=lon;lon=t;}
-        
+
         groups[div].push({
-          ACCT_ID: iAcct>=0 ? vals[iAcct] : '',
-          MOBILE_NO: iMob>=0 ? vals[iMob] : '',
-          NAME: iName>=0 ? vals[iName] : '',
-          ADDRESS: iAddr>=0 ? vals[iAddr] : '',
-          CATEGORY: iCat>=0 ? vals[iCat] : '',
-          LOAD: iLoad>=0 ? vals[iLoad] : '',
+          ACCT_ID:           iAcct>=0    ? String(vals[iAcct]   ||'').trim() : '',
+          SDO_CODE:          iSdo>=0     ? String(vals[iSdo]    ||'').trim() : '',
+          NAME:              iName>=0    ? String(vals[iName]   ||'').trim() : '',
+          FATHER_NAME:       iFath>=0    ? String(vals[iFath]   ||'').trim() : '',
+          ADDRESS:           iAddr>=0    ? String(vals[iAddr]   ||'').trim() : '',
+          SUPPLY_TYPE:       iSupply>=0  ? String(vals[iSupply] ||'').trim() : '',
+          LOAD:              iLoad>=0    ? String(vals[iLoad]   ||'').trim() : '',
+          LOAD_UNIT:         iLunit>=0   ? String(vals[iLunit]  ||'').trim() : '',
+          CON_STATUS:        iConStat>=0 ? String(vals[iConStat]||'').trim() : '',
+          CONNECTION_TYPE:   iConType>=0 ? String(vals[iConType]||'').trim() : '',
+          BILL_CYC_CD:       iBillCyc>=0 ? String(vals[iBillCyc]||'').trim() : '',
           LAT: lat, LON: lon,
+          SERIAL_NBR:        iSerl>=0   ? String(vals[iSerl]  ||'').trim() : '',
+          METER_READ_REMARK: iRemark>=0 ? String(vals[iRemark]||'').trim() : '',
+          LAST_BILL_DATE:    iLbill>=0  ? String(vals[iLbill] ||'').trim() : '',
+          BILL_BASIS:        iBbasis>=0 ? String(vals[iBbasis]||'').trim() : '',
+          PAY_AMT:           iAmt>=0    ? String(vals[iAmt]   ||'').trim() : '',
+          PAY_DATE:          iDate>=0   ? String(vals[iDate]  ||'').trim() : '',
+          TOTAL_OUTSTANDING: iOut>=0    ? String(vals[iOut]   ||'').trim() : '',
           SUBSTATION: sub,
-          FEEDER: iFeed>=0 ? vals[iFeed] : '',
-          'LP DATE': iDate>=0 ? vals[iDate] : '',
-          'LP AMT': iAmt>=0 ? vals[iAmt] : '',
-          'TOTAL OUTSTANDING': iOut>=0 ? vals[iOut] : ''
+          FEEDER:            iFeed>=0 ? String(vals[iFeed]||'').trim() : '',
+          MOBILE_NO:         iMob>=0  ? String(vals[iMob] ||'').trim() : ''
         });
       });
 
@@ -2097,21 +2117,29 @@ function parseFileInto(text, type){
   var nl=text.indexOf('\n', start); if(nl<0)return;
   var hdrs=text.substring(start,nl).replace(/\r/,'').split(',').map(function(h){return h.replace(/"/g,'').trim().toUpperCase();});
   
-  var iAcct = findCol(hdrs, ['ACCT_ID', 'ACCOUNT_ID']);
-  var iMob  = findCol(hdrs, ['MOBILE_NO', 'MOBILE']);
-  var iName = findCol(hdrs, ['NAME', 'CONSUMER_NAME']);
-  var iFath = findCol(hdrs, ['FATHER_NAME']);
-  var iAddr = findCol(hdrs, ['ADDRESS', 'ADDRES']);
-  var iCat  = findCol(hdrs, ['CATEGORY', 'TARIFF_TYPE', 'SUPPLY_TYPE', 'TARIFF']);
-  var iLoad = findCol(hdrs, ['LOAD', 'SANCTION_LOAD', 'SANCT_LOAD']);
-  var iLat  = findCol(hdrs, ['LAT', 'LATITUDE']);
-  var iLon  = findCol(hdrs, ['LON', 'LONGITUDE', 'LONG']);
-  var iSub  = findCol(hdrs, ['SUBSTATION', 'SUB_STATION']);
-  var iFeed = findCol(hdrs, ['FEEDER']);
-  var iSerl = findCol(hdrs, ['SERIAL_NBR', 'METER_SERIAL_NBR', 'MTR_SRL_NO', 'METER_NO']);
+  var iAcct    = findCol(hdrs, ['ACCT_ID', 'ACCOUNT_ID']);
+  var iSdo     = findCol(hdrs, ['SDO_CODE', 'SDO']);
+  var iName    = findCol(hdrs, ['NAME', 'CONSUMER_NAME']);
+  var iFath    = findCol(hdrs, ['FATHER_NAME', 'FATHER', 'FNAME', 'F_NAME']);
+  var iAddr    = findCol(hdrs, ['ADDRESS', 'ADDRES']);
+  var iSupply  = findCol(hdrs, ['SUPPLY_TYPE', 'CATEGORY', 'TARIFF_TYPE', 'TARIFF']);
+  var iLoad    = findCol(hdrs, ['LOAD', 'SANCTION_LOAD', 'SANCT_LOAD']);
+  var iLunit   = findCol(hdrs, ['LOAD_UNIT', 'LOAD UNIT']);
+  var iConStat = findCol(hdrs, ['CON_STATUS', 'CONNECTION_STATUS', 'CONS_STATUS']);
+  var iConType = findCol(hdrs, ['CONNECTION_TYPE', 'CONN_TYPE', 'CON_TYPE']);
+  var iBillCyc = findCol(hdrs, ['BILL_CYC_CD', 'BILL_CYC', 'BILLING_CYCLE']);
+  var iLat     = findCol(hdrs, ['LAT', 'LATITUDE']);
+  var iLon     = findCol(hdrs, ['LON', 'LONGITUDE', 'LONG']);
+  var iSerl    = findCol(hdrs, ['SERIAL_NBR', 'METER_SERIAL_NBR', 'MTR_SRL_NO', 'METER_NO']);
+  var iRemark  = findCol(hdrs, ['METER_READ_REMARK', 'MR_REMARK', 'REMARK']);
+  var iLbill   = findCol(hdrs, ['LAST_BILL_DATE', 'BILL_DATE', 'LAST BILL DATE']);
+  var iBbasis  = findCol(hdrs, ['BILL_BASIS', 'BILLING_BASIS']);
   var iPayAmt  = findCol(hdrs, ['PAY_AMT', 'LP AMT', 'LAST_PAY_AMT', 'LAST_PAYMENT_AMOUNT']);
   var iPayDate = findCol(hdrs, ['PAY_DATE', 'LP DATE', 'LAST_PAY_DATE']);
   var iTotOut  = findCol(hdrs, ['TOTAL_OUTSTANDING', 'TOTAL OUTSTANDING', 'AMOUNT_PAYABLE', 'OUTSTANDING']);
+  var iSub     = findCol(hdrs, ['SUBSTATION', 'SUB_STATION']);
+  var iFeed    = findCol(hdrs, ['FEEDER']);
+  var iMob     = findCol(hdrs, ['MOBILE_NO', 'MOBILE']);
 
   var pos=nl+1,len=text.length;
   while(pos<len){
@@ -2163,17 +2191,25 @@ function parseFileInto(text, type){
     var fLat=parseFloat(lat); if(fLat>50){var t=lat;lat=lon;lon=t;}
     
     var row={
-      ACCT_ID:acct,
-      MOBILE_NO:(v[iMob]||''),
-      NAME:(v[iName]||''),
-      FATHER_NAME:iFath>=0?(v[iFath]||''):'',
-      ADDRESS:(v[iAddr]||''),
-      CATEGORY:(v[iCat]||''),
-      LOAD:(v[iLoad]||''),
+      ACCT_ID:     acct,
+      SDO_CODE:    iSdo>=0     ? (v[iSdo]    ||'') : '',
+      NAME:        (v[iName]   ||''),
+      FATHER_NAME: iFath>=0    ? (v[iFath]   ||'') : '',
+      ADDRESS:     (v[iAddr]   ||''),
+      SUPPLY_TYPE: iSupply>=0  ? (v[iSupply] ||'') : '',
+      LOAD:        (v[iLoad]   ||''),
+      LOAD_UNIT:   iLunit>=0   ? (v[iLunit]  ||'') : '',
+      CON_STATUS:  iConStat>=0 ? (v[iConStat]||'') : '',
+      CONNECTION_TYPE: iConType>=0 ? (v[iConType]||'') : '',
+      BILL_CYC_CD: iBillCyc>=0 ? (v[iBillCyc]||'') : '',
       LAT:lat, LON:lon,
-      SUBSTATION:(v[iSub]||''),
-      FEEDER:(v[iFeed]||''),
-      SERIAL_NBR:iSerl>=0?(v[iSerl]||''):'',
+      SERIAL_NBR:        iSerl>=0   ? (v[iSerl]  ||'') : '',
+      METER_READ_REMARK: iRemark>=0 ? (v[iRemark]||'') : '',
+      LAST_BILL_DATE:    iLbill>=0  ? (v[iLbill] ||'') : '',
+      BILL_BASIS:        iBbasis>=0 ? (v[iBbasis]||'') : '',
+      SUBSTATION:  (v[iSub] ||''),
+      FEEDER:      (v[iFeed]||''),
+      MOBILE_NO:   iMob>=0 ? (v[iMob]||'') : '',
       SOURCE: type,
       Google_Map_Link:(lat&&lon)?'https://www.google.com/maps?q='+lat+','+lon:''
     };
@@ -2198,7 +2234,7 @@ function parseFileInto(text, type){
       TOTAL_OUTSTANDING:outValue,
       STATUS:'INSERVICE',
       NAME:row.NAME,
-      SUPPLY_TYPE:row.CATEGORY||'-'
+      SUPPLY_TYPE:row.SUPPLY_TYPE||'-'
     };
     D.push(row);
   }
@@ -2232,7 +2268,7 @@ function ia(){
       }
       if(r.SUBSTATION)subSet.add(r.SUBSTATION);
       if(r.FEEDER)feedSet.add(r.FEEDER);
-      if(r.CATEGORY)catSet.add(r.CATEGORY);
+      if(r.SUPPLY_TYPE)catSet.add(r.SUPPLY_TYPE);
     });
     setText('s-tot',D.length.toLocaleString());
     setText('s-sub',subSet.size.toString());
@@ -2301,15 +2337,22 @@ function buildConsumerCard(r, q){
     '<div class="dn">'+hl(r.NAME || 'Unknown')+'</div>'+
     '<div style="margin-top:4px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">'+
     '<span class="da">ACCT: '+hl(String(r.ACCT_ID))+'</span>'+
-    catBadge(r.CATEGORY)+'</div></div>'+
+    catBadge(r.SUPPLY_TYPE)+'</div></div>'+
     '<div style="text-align:right"><div style="color:rgba(255,255,255,0.7);font-size:10px;font-family:var(--fh);">LOAD</div>'+
-    '<div style="font-family:var(--fh);font-size:26px;font-weight:700;color:#FCD34D;">'+(r.LOAD || '-')+' <span style="font-size:13px;color:rgba(255,255,255,0.7);">kW</span></div></div></div>'+
+    '<div style="font-family:var(--fh);font-size:26px;font-weight:700;color:#FCD34D;">'+(r.LOAD || '-')+' <span style="font-size:13px;color:rgba(255,255,255,0.7);">'+(r.LOAD_UNIT||'kW')+'</span></div></div></div>'+
     '<div class="db"><div class="dgrid">'+
       '<div class="df"><div class="lbl">MOBILE</div><div class="val">'+(r.MOBILE_NO || '-')+'</div></div>'+
       '<div class="df"><div class="lbl">METER NO</div><div class="val" style="font-family:var(--fh);color:#1D4ED8;font-weight:700;">'+(METER_DATA[String(r.ACCT_ID)] || r.SERIAL_NBR || '-')+'</div></div>'+
+      '<div class="df"><div class="lbl">FATHER NAME</div><div class="val">'+(r.FATHER_NAME || '-')+'</div></div>'+
+      '<div class="df"><div class="lbl">SDO CODE</div><div class="val">'+(r.SDO_CODE || '-')+'</div></div>'+
+      '<div class="df"><div class="lbl">CON STATUS</div><div class="val" style="font-weight:700;color:#059669;">'+(r.CON_STATUS || '-')+'</div></div>'+
+      '<div class="df"><div class="lbl">CONNECTION TYPE</div><div class="val">'+(r.CONNECTION_TYPE || '-')+'</div></div>'+
+      '<div class="df"><div class="lbl">BILL CYCLE</div><div class="val">'+(r.BILL_CYC_CD || '-')+'</div></div>'+
+      '<div class="df"><div class="lbl">BILL BASIS</div><div class="val">'+(r.BILL_BASIS || '-')+'</div></div>'+
+      '<div class="df"><div class="lbl">LAST BILL DATE</div><div class="val">'+(r.LAST_BILL_DATE || '-')+'</div></div>'+
+      '<div class="df"><div class="lbl">MR REMARK</div><div class="val">'+(r.METER_READ_REMARK || '-')+'</div></div>'+
       '<div class="df"><div class="lbl">SUBSTATION</div><div class="val">'+(r.SUBSTATION || '-')+'</div></div>'+
       '<div class="df"><div class="lbl">FEEDER</div><div class="val">'+(r.FEEDER || '-')+'</div></div>'+
-
       '<div class="df" style="grid-column:span 2"><div class="lbl">ADDRESS</div><div class="val">'+(r.ADDRESS || '-')+'</div></div>'+
       '<div class="df"><div class="lbl">LATITUDE</div><div class="val">'+(lat || r.LAT || '-')+'</div></div>'+
       '<div class="df"><div class="lbl">LONGITUDE</div><div class="val">'+(lon || r.LON || '-')+'</div></div>'+
@@ -2945,10 +2988,13 @@ function parseDefaulterText(text){
     .map(function(h){return h.replace(/"/g,'').trim();});
   var iAcct=hdrs.indexOf('ACCT_ID'), iMob=hdrs.indexOf('MOBILE_NO'),
       iName=hdrs.indexOf('NAME'), iAddr=hdrs.indexOf('ADDRESS'),
-      iCat=hdrs.indexOf('CATEGORY'), iLat=hdrs.indexOf('LAT'),
+      iCat=findCol(hdrs,['SUPPLY_TYPE','CATEGORY','TARIFF_TYPE','TARIFF']),
+      iLat=hdrs.indexOf('LAT'),
       iLon=hdrs.indexOf('LON'), iSub=hdrs.indexOf('SUBSTATION'),
-      iFeed=hdrs.indexOf('FEEDER'), iDate=hdrs.indexOf('LP DATE'),
-      iAmt=hdrs.indexOf('LP AMT'), iOut=hdrs.indexOf('TOTAL OUTSTANDING');
+      iFeed=hdrs.indexOf('FEEDER'),
+      iDate=findCol(hdrs,['PAY_DATE','LP DATE','LAST_PAY_DATE']),
+      iAmt=findCol(hdrs,['PAY_AMT','LP AMT','LAST_PAY_AMT']),
+      iOut=findCol(hdrs,['TOTAL_OUTSTANDING','TOTAL OUTSTANDING','AMOUNT_PAYABLE']);
   var pos=nl+1, len=text.length;
   while(pos<len){
     var end=text.indexOf('\n',pos); if(end<0)end=len;
@@ -3038,7 +3084,7 @@ function buildDefAllFromMasterData(){
     var r = dIdx[key];
     DEF_ALL.push({
       ACCT_ID: key, NAME: r?r.NAME:'-', MOBILE: r?r.MOBILE_NO:'-',
-      ADDRESS: r?r.ADDRESS:'-', SUPPLY_TYPE: r?r.CATEGORY:'-',
+      ADDRESS: r?r.ADDRESS:'-', SUPPLY_TYPE: r?r.SUPPLY_TYPE:'-',
       LOAD: r?pf(r.LOAD):0, OUTSTANDING: out,
       PAY_AMT: pf(m.LP_AMT), PAY_DATE: m.LP_DATE,
       SUBSTATION: r?r.SUBSTATION:'-', FEEDER: r?r.FEEDER:'-',
@@ -3059,7 +3105,7 @@ function buildDefAllFromBilledData(){
     DEF_ALL.push({
       ACCT_ID: key, NAME: p.NAME||(r?r.NAME:'-'),
       MOBILE: r?r.MOBILE_NO:'-', ADDRESS: r?r.ADDRESS:'-',
-      SUPPLY_TYPE: p.SUPPLY_TYPE||(r?r.CATEGORY:'-'),
+      SUPPLY_TYPE: p.SUPPLY_TYPE||(r?r.SUPPLY_TYPE:'-'),
       LOAD: r?pf(r.LOAD):0, OUTSTANDING: out,
       PAY_AMT: pf(p.PAY_AMT), PAY_DATE: p.PAY_DATE,
       SUBSTATION: r?r.SUBSTATION:'-', FEEDER: r?r.FEEDER:'-',
@@ -3453,7 +3499,7 @@ function openMainDetail(acctId){
   gel('modal-grid').innerHTML =
     '<div class="modal-field"><div class="lbl">MOBILE</div><div class="val">'+(r.MOBILE_NO||'-')+'</div></div>'+
     '<div class="modal-field"><div class="lbl">METER NO</div><div class="val" style="font-family:var(--fh);color:#1D4ED8;font-weight:700;">'+meterNo+'</div></div>'+
-    '<div class="modal-field"><div class="lbl">CATEGORY</div><div class="val">'+catBadge(r.CATEGORY)+'</div></div>'+
+    '<div class="modal-field"><div class="lbl">SUPPLY TYPE</div><div class="val">'+catBadge(r.SUPPLY_TYPE)+'</div></div>'+
     '<div class="modal-field"><div class="lbl">LOAD</div><div class="val">'+(r.LOAD||'-')+' kW</div></div>'+
     '<div class="modal-field"><div class="lbl">SUBSTATION</div><div class="val">'+(r.SUBSTATION||'-')+'</div></div>'+
     '<div class="modal-field"><div class="lbl">FEEDER</div><div class="val">'+(r.FEEDER||'-')+'</div></div>'+
