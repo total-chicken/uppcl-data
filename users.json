@@ -20,18 +20,6 @@
       "password": "ad951ef690851c10cb79bd107c7b1d656ce96fc6e5eea2b2a86a33a5c6ceb19fd9f154",
       "role": "admin",
       "createdBy": "superadmin"
-    },
-    {
-      "username": "div_mau",
-      "password": "89f4de5be5039e0f0bce938445e92042d2a37a84ab7a62514e5837d32925ee4778203b",
-      "role": "admin",
-      "createdBy": "superadmin",
-      "discoms": [
-        "DV"
-      ],
-      "divisions": [
-        "DIV233632"
-      ]
     }
   ],
   "shared_gh_pat": "[#]ghp_[#]J811eOkl8fZ0ZryU[#]qKdToFfOxR8iDb3N9YfF[#]"
