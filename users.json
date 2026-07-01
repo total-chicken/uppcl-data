@@ -25,7 +25,13 @@
       "username": "div_mau",
       "password": "42819adcde0f22ec9dd88107f6c038f3545dbc1677c4cf4930a2c2a578c84f5c8695d5",
       "role": "admin",
-      "createdBy": "superadmin"
+      "createdBy": "superadmin",
+      "discoms": [
+        "DV"
+      ],
+      "divisions": [
+        "DIV233632"
+      ]
     }
   ],
   "shared_gh_pat": "[#]ghp_[#]J811eOkl8fZ0ZryU[#]qKdToFfOxR8iDb3N9YfF[#]"
