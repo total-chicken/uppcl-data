@@ -672,11 +672,14 @@ function triggerFtpSync(){
       var alreadySynced=[];
       var today=new Date();
       var ddmmyyyy=('0'+today.getDate()).slice(-2)+('0'+(today.getMonth()+1)).slice(-2)+today.getFullYear();
+      var _mo=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+      var currentPeriod=_mo[today.getMonth()]+'_'+today.getFullYear();
       Object.keys(ss).forEach(function(div){
         var s=ss[div];
         if(types.includes('billed')&&s.billed_date===ddmmyyyy) alreadySynced.push('DIV'+div+' Billed ('+ddmmyyyy+')');
         if(types.includes('unbilled')&&s.unbilled_date===ddmmyyyy) alreadySynced.push('DIV'+div+' Unbilled ('+ddmmyyyy+')');
-        if(types.includes('master')&&s.master_period) alreadySynced.push('DIV'+div+' Master ('+s.master_period+')');
+        // Only warn for master if the synced period matches the current month
+        if(types.includes('master')&&s.master_period&&s.master_period===currentPeriod) alreadySynced.push('DIV'+div+' Master ('+s.master_period+')');
       });
       if(alreadySynced.length){
         var msg='⚠ Already synced:\n'+alreadySynced.join('\n')+'\n\nRefetch anyway?';
