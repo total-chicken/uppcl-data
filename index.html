@@ -3076,11 +3076,10 @@ function updateDefFilterUI(type){
 function buildDefAllFromMasterData(){
   DEF_ALL = [];
   var dIdx = {}; D.forEach(function(r){ dIdx[ac(r.ACCT_ID)] = r; });
-  
+
   Object.keys(MASTER_MAP).forEach(function(key){
     var m = MASTER_MAP[key];
     var out = pf(m.TOTAL_OUTSTANDING);
-    if(out < 1) return;
     var r = dIdx[key];
     DEF_ALL.push({
       ACCT_ID: key, NAME: r?r.NAME:'-', MOBILE: r?r.MOBILE_NO:'-',
@@ -3096,11 +3095,10 @@ function buildDefAllFromMasterData(){
 function buildDefAllFromBilledData(){
   DEF_ALL = [];
   var dIdx = {}; D.forEach(function(r){ dIdx[ac(r.ACCT_ID)] = r; });
-  
+
   Object.keys(PAY_DATA).forEach(function(key){
     var p = PAY_DATA[key];
     var out = pf(p.TOTAL_OUTSTANDING);
-    if(out < 1) return;
     var r = dIdx[key];
     DEF_ALL.push({
       ACCT_ID: key, NAME: p.NAME||(r?r.NAME:'-'),
