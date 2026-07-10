@@ -357,6 +357,7 @@ select option{background:#fff;color:#1E1B4B;}
   <div class="tabs">
     <div class="tab active" id="tab-lookup" onclick="st('lookup')" ontouchstart="st('lookup')">🔍 SEARCH</div>
     <div class="tab" id="tab-defaulter" onclick="st('defaulter')" ontouchstart="st('defaulter')">⚠️ DEFAULTERS</div>
+    <div class="tab" id="tab-atrpages" onclick="st('atrpages')" ontouchstart="st('atrpages')">📋 ATR PAGES</div>
     <div class="tab" id="tab-settings" onclick="st('settings')" ontouchstart="st('settings')" style="display:none">⚙️ SETTINGS</div>
   </div>
 
@@ -488,8 +489,13 @@ select option{background:#fff;color:#1E1B4B;}
       <button class="btn btn-out" onclick="expDefaulterAtr()" style="border-color:#4F46E5; color:#4F46E5;">📋 ATR REPORT</button>
       <button class="btn" id="atr-upload-btn" style="background:#059669;color:#fff;border:none;" onclick="uploadAtrToGithub(false)">⬆ UPLOAD ATR</button>
       <button class="btn" style="background:#0EA5E9;color:#fff;border:none;" onclick="loadAtrFromGithub(true)">🔄 REFRESH ATR</button>
+      <button class="btn" id="atrpg-save-btn" style="background:#7C3AED;color:#fff;border:none;" onclick="saveCurrentFilterAsAtrPage()">💾 SAVE AS ATR PAGE</button>
       <div style="flex:1;"></div>
       <div id="def-summary" style="font-family:var(--fh);font-size:14px;font-weight:700;color:#64748B;"></div>
+    </div>
+    <div id="atrpg-banner" style="display:none;align-items:center;justify-content:space-between;gap:10px;background:#F5F3FF;border:1.5px solid #DDD6FE;border-radius:12px;padding:10px 16px;margin-bottom:16px;">
+      <div style="font-family:var(--fh);font-size:13px;font-weight:700;color:#6D28D9;">📋 Viewing ATR Page: <span id="atrpg-banner-name"></span></div>
+      <button class="btn" style="background:#6D28D9;color:#fff;border:none;padding:6px 14px;" onclick="exitAtrPage()">✕ EXIT PAGE VIEW</button>
     </div>
     <div id="def-loading-msg" style="display:none;padding:24px;text-align:center;font-family:var(--fh);color:var(--muted);">⏳ Loading defaulter data…</div>
     <!-- Search bar just above table -->
@@ -520,6 +526,21 @@ select option{background:#fff;color:#1E1B4B;}
       <tbody id="def-tbody"></tbody>
     </table></div>
     <div class="pg" id="def-pg"></div>
+  </div>
+
+  <!-- ATR PAGES PANEL -->
+  <div class="panel" id="panel-atrpages">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:15px;margin-bottom:20px;">
+      <div>
+        <div style="font-family:var(--fh);font-size:22px;font-weight:800;color:#6D28D9;letter-spacing:0.5px;">📋 ATR PAGES</div>
+        <div style="font-size:12px;color:var(--muted);font-weight:600;">Named, filtered defaulter views — open one to enter ATR for just that slice</div>
+      </div>
+      <button class="btn btn-out" style="border-color:#6D28D9;color:#6D28D9;" onclick="loadAtrPagesFromGithub()">🔄 REFRESH</button>
+    </div>
+    <div style="font-size:12px;color:var(--muted);background:#F8FAFF;border:1px solid #E2E8F0;border-radius:10px;padding:12px 16px;margin-bottom:20px;">
+      Admins: go to the <b>DEFAULTERS</b> tab, set the SDO / Substation / Supply / Outstanding / Load filters you want, then click <b>💾 SAVE AS ATR PAGE</b> there to publish it here.
+    </div>
+    <div id="atrpg-list"></div>
   </div>
 
   <!-- SETTINGS PANEL -->
@@ -1484,6 +1505,216 @@ function updateAtrSyncUi(){
   btn.style.background = n ? '#F59E0B' : '#059669';
 }
 
+// ─── ATR PAGES — admin-defined named filter presets, saved to GitHub JSON ────
+// Same folder as atr_data.json:  <DISCOM>/<DIVISION>/atr_pages.json
+//   { "updated":"ISO", "division":"…", "pages":[{id,name,filter,createdBy,ts}] }
+// Any logged-in user can open a page; only admin/superadmin can create/delete one.
+
+function isAdminRole(){ return CURRENT_ROLE==='admin' || CURRENT_ROLE==='superadmin'; }
+
+var ATR_PAGES = [];
+var _atrPageActive = null;
+
+function atrPagesJsonPath(){
+  return (CURRENT_DISCOM && CURRENT_DIVISION)
+    ? CURRENT_DISCOM + '/' + CURRENT_DIVISION + '/atr_pages.json'
+    : 'atr_pages.json';
+}
+
+function fetchRemoteAtrPages_(){
+  if(getGhPat()){
+    return ghApi(atrPagesJsonPath()).then(function(r){
+      if(r.status===404) return {pages:[], sha:null};
+      if(!r.ok) throw new Error('GitHub HTTP '+r.status);
+      return r.json().then(function(f){
+        var obj = {};
+        try{ obj = JSON.parse(decodeURIComponent(escape(atob((f.content||'').replace(/\n/g,''))))); }catch(e){}
+        return {pages: obj.pages||[], sha: f.sha||null};
+      });
+    });
+  }
+  return fetch(RAW_BASE + atrPagesJsonPath() + '?t=' + Date.now()).then(function(r){
+    if(r.status===404) return {pages:[], sha:null};
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    return r.json().then(function(obj){ return {pages: obj.pages||[], sha:null}; });
+  });
+}
+
+function loadAtrPagesFromGithub(){
+  fetchRemoteAtrPages_().then(function(remote){
+    ATR_PAGES = remote.pages;
+    renderAtrPagesList();
+  }).catch(function(e){
+    console.log('ATR pages load failed:', e.message);
+    var wrap = gel('atrpg-list');
+    if(wrap) wrap.innerHTML = '<div style="padding:20px;text-align:center;color:#DC2626;">⚠ Failed to load ATR pages: '+e.message+'</div>';
+  });
+}
+
+function buildAtrPagesPanel(){ loadAtrPagesFromGithub(); }
+
+function writeAtrPages_(pages, msg, onDone){
+  var payload = { updated: new Date().toISOString(), division: CURRENT_DIVISION||'', pages: pages };
+  fetchRemoteAtrPages_().then(function(remote){
+    var body = {
+      message: msg,
+      content: btoa(unescape(encodeURIComponent(JSON.stringify(payload)))),
+      branch: GH_BRANCH
+    };
+    if(remote.sha) body.sha = remote.sha;
+    return ghApi(atrPagesJsonPath(), {method:'PUT', body: JSON.stringify(body)});
+  }).then(function(r){
+    if(!r.ok) return r.json().then(function(e){ throw new Error(e.message||('HTTP '+r.status)); });
+    onDone(true);
+  }).catch(function(e){ onDone(false, e); });
+}
+
+function saveCurrentFilterAsAtrPage(){
+  if(!isAdminRole()){ alert('Only an admin can create ATR pages.'); return; }
+  if(!getGhPat()){ alert('⚠ GitHub token missing. Set the PAT in SETTINGS, then retry.'); return; }
+  var name = prompt('Name this ATR page (e.g. "SDO 12 Collection"):');
+  if(!name || !name.trim()) return;
+  var page = {
+    id: 'pg_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
+    name: name.trim(),
+    filter: {
+      sub: _defSelSubs.slice(), supply: _defSelSupplies.slice(), sdo: _defSelSdos.slice(),
+      outOp: gel('def-out-op').value, outV1: pf(gel('def-out-v1').value), outV2: pf(gel('def-out-v2').value),
+      loadOp: gel('def-load-op').value, loadV1: pf(gel('def-load-v1').value), loadV2: pf(gel('def-load-v2').value),
+      source: _defSource
+    },
+    createdBy: (CURRENT_USER && CURRENT_USER.username) || '',
+    ts: new Date().toISOString()
+  };
+  fetchRemoteAtrPages_().then(function(remote){
+    var pages = remote.pages.concat([page]);
+    writeAtrPages_(pages, 'ATR page created: '+page.name, function(ok, err){
+      if(ok){ ATR_PAGES = pages; alert('✅ ATR page "'+page.name+'" saved. Find it under the ATR PAGES tab.'); }
+      else alert('❌ Save failed: '+(err&&err.message||'unknown error'));
+    });
+  }).catch(function(e){ alert('❌ Save failed: '+e.message); });
+}
+
+function deleteAtrPage(id){
+  if(!isAdminRole()){ alert('Only an admin can delete ATR pages.'); return; }
+  if(!confirm('Delete this ATR page? This cannot be undone.')) return;
+  if(!getGhPat()){ alert('⚠ GitHub token missing.'); return; }
+  fetchRemoteAtrPages_().then(function(remote){
+    var pages = remote.pages.filter(function(p){ return p.id!==id; });
+    writeAtrPages_(pages, 'ATR page deleted', function(ok, err){
+      if(ok){ ATR_PAGES = pages; renderAtrPagesList(); }
+      else alert('❌ Delete failed: '+(err&&err.message||'unknown error'));
+    });
+  }).catch(function(e){ alert('❌ Delete failed: '+e.message); });
+}
+
+function countAtrPageMatches(f){
+  var m = getLocalAtr();
+  var total=0, filled=0;
+  DEF_ALL.forEach(function(r){
+    if(f.sub && f.sub.length && f.sub.indexOf(r.SUBSTATION)<0) return;
+    if(f.supply && f.supply.length && f.supply.indexOf(r.SUPPLY_TYPE)<0) return;
+    if(f.sdo && f.sdo.length && f.sdo.indexOf(r.SDO_CODE)<0) return;
+    if(f.outOp==='gt' && r.OUTSTANDING<=f.outV1) return;
+    if(f.outOp==='lt' && r.OUTSTANDING>=f.outV1) return;
+    if(f.outOp==='between' && (r.OUTSTANDING<f.outV1 || r.OUTSTANDING>f.outV2)) return;
+    if(f.loadOp && f.loadOp!=='any'){
+      var rLoad = pf(r.LOAD);
+      if(f.loadOp==='gt' && rLoad<=f.loadV1) return;
+      if(f.loadOp==='lt' && rLoad>=f.loadV1) return;
+      if(f.loadOp==='between' && (rLoad<f.loadV1 || rLoad>f.loadV2)) return;
+    }
+    total++;
+    if(m[String(r.ACCT_ID)]) filled++;
+  });
+  return {total:total, filled:filled};
+}
+
+function renderAtrPagesList(){
+  var wrap = gel('atrpg-list'); if(!wrap) return;
+  if(!ATR_PAGES.length){
+    wrap.innerHTML = '<div style="padding:30px;text-align:center;color:var(--muted);font-family:var(--fh);">No ATR pages yet.</div>';
+    return;
+  }
+  var canMatch = DEF_ALL.length>0;
+  wrap.innerHTML = '<div class="settings-container">'+ATR_PAGES.map(function(p){
+    var f = p.filter||{};
+    var chips = [];
+    if(f.sdo && f.sdo.length) chips.push('SDO: '+f.sdo.join(', '));
+    if(f.sub && f.sub.length) chips.push('Substation: '+f.sub.join(', '));
+    if(f.supply && f.supply.length) chips.push('Supply: '+f.supply.join(', '));
+    if(f.outOp && f.outOp!=='any') chips.push('Outstanding: '+f.outOp+(f.outV1?' '+f.outV1:'')+(f.outOp==='between'?'–'+f.outV2:''));
+    if(f.loadOp && f.loadOp!=='any') chips.push('Load: '+f.loadOp+(f.loadV1?' '+f.loadV1:'')+(f.loadOp==='between'?'–'+f.loadV2:''));
+    chips.push((f.source||'master').toUpperCase()+' SOURCE');
+    var m = canMatch ? countAtrPageMatches(f) : null;
+    return '<div class="settings-card">'+
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px;">'+
+        '<div>'+
+          '<div style="font-family:var(--fh);font-size:17px;font-weight:700;color:#6D28D9;">'+p.name+'</div>'+
+          '<div style="font-size:11px;color:var(--muted);margin-top:2px;">by '+(p.createdBy||'-')+' · '+new Date(p.ts).toLocaleDateString()+'</div>'+
+        '</div>'+
+        (isAdminRole() ? '<button onclick="deleteAtrPage(\''+p.id+'\')" style="background:transparent;border:1.5px solid #FECACA;color:#DC2626;border-radius:8px;padding:6px 10px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">🗑 DELETE</button>' : '')+
+      '</div>'+
+      '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">'+chips.map(function(c){
+        return '<span style="background:#EEF2FF;color:#4338CA;font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;">'+c+'</span>';
+      }).join('')+'</div>'+
+      (m ? '<div style="font-size:12px;color:var(--muted);margin-bottom:14px;">'+m.total.toLocaleString()+' defaulter(s) match · '+m.filled.toLocaleString()+' ATR already filled</div>' : '')+
+      '<button class="btn btn-acc" style="width:100%;background:#6D28D9;" onclick="openAtrPage(\''+p.id+'\')">▶ OPEN PAGE</button>'+
+    '</div>';
+  }).join('')+'</div>';
+}
+
+function openAtrPage(id){
+  var page = ATR_PAGES.find(function(p){ return p.id===id; });
+  if(!page) return;
+  if(!D.length){ alert('Data is still loading — please wait a moment and try again.'); return; }
+  var f = page.filter||{};
+
+  _atrPageActive = page;
+  st('defaulter');
+
+  // st('defaulter') schedules loadDefaulters() in a requestAnimationFrame, which
+  // unconditionally calls setDefSource() and wipes the sub/supply/sdo selections.
+  // Queue our own rAF (runs after that one in the same frame) to apply the page's
+  // filter on top of that reset instead of racing it.
+  requestAnimationFrame(function(){
+    if(f.source && f.source!==_defSource) setDefSource(f.source);
+
+    _defSelSubs = (f.sub||[]).slice();
+    _defSelSupplies = (f.supply||[]).slice();
+    _defSelSdos = (f.sdo||[]).slice();
+    buildMsOptions('sub', getAllSubValues()); updateMsBtn('sub');
+    buildMsOptions('supply', getAllSupplyValues()); updateMsBtn('supply');
+    buildMsOptions('sdo', getAllSdoValues()); updateMsBtn('sdo');
+    refreshFeedOptions();
+
+    gel('def-out-op').value = f.outOp||'any';
+    gel('def-out-v1').value = f.outV1||'';
+    gel('def-out-v2').value = f.outV2||'';
+    updateDefFilterUI('out');
+    gel('def-load-op').value = f.loadOp||'any';
+    gel('def-load-v1').value = f.loadV1||'';
+    gel('def-load-v2').value = f.loadV2||'';
+    updateDefFilterUI('load');
+
+    _atrPageActive = page;
+    var banner = gel('atrpg-banner');
+    if(banner){ banner.style.display='flex'; gel('atrpg-banner-name').textContent = page.name; }
+
+    runDefaulterFilter();
+  });
+}
+
+function exitAtrPage(){
+  _atrPageActive = null;
+  var banner = gel('atrpg-banner');
+  if(banner) banner.style.display='none';
+  clearMs('sub'); clearMs('supply'); clearMs('sdo');
+  var outOp=gel('def-out-op'), loadOp=gel('def-load-op');
+  if(outOp){ outOp.value='any'; updateDefFilterUI('out'); }
+  if(loadOp){ loadOp.value='any'; updateDefFilterUI('load'); }
+}
+
 // ─── CRYPTO & PAT OBFUSCATION ────────────────────────────────────────────────
 const CRYPTO_SALT = "uppcl_salt_2026";
 const CRYPTO_ITERATIONS = 1000;
@@ -1887,6 +2118,8 @@ function applyRoleRestrictions(role){
   var st=gel('tab-settings');
   if(role==='superadmin' || role==='admin'){ if(st) st.style.display=''; }
   else { if(st) st.style.display='none'; }
+  var saveBtn=gel('atrpg-save-btn');
+  if(saveBtn) saveBtn.style.display=(role==='superadmin'||role==='admin')?'':'none';
   if(role==='user'){
     document.querySelectorAll('button').forEach(function(btn){
       if(btn.textContent.includes('SHEET SYNC')||btn.textContent.includes('EXPORT KML')) btn.style.display='none';
@@ -1901,8 +2134,9 @@ function logout(){
   gel('login-username').value=''; gel('login-password').value=''; gel('login-error').textContent='';
   var wrap=gel('division-wrap'); if(wrap) wrap.style.display='none';
   var sel=gel('division-selector'); if(sel) sel.innerHTML='';
-  ['tab-lookup','tab-defaulter'].forEach(function(id){ var t=gel(id); if(t) t.style.display=''; });
+  ['tab-lookup','tab-defaulter','tab-atrpages'].forEach(function(id){ var t=gel(id); if(t) t.style.display=''; });
   _lastTab=''; _settingsBuilt=false; _defBuilt=false; D=[];
+  ATR_PAGES=[]; exitAtrPage();
   document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
   document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active');});
   gel('panel-lookup').classList.add('active');
@@ -1932,11 +2166,12 @@ function st(name){
   document.querySelectorAll('.tab').forEach(function(tab){
     tab.classList.toggle('active', tab.getAttribute('onclick')&&tab.getAttribute('onclick').indexOf("'"+name+"'")>-1);
   });
-  ['lookup','defaulter','settings'].forEach(function(n){
+  ['lookup','defaulter','atrpages','settings'].forEach(function(n){
     var p=gel('panel-'+n); if(p)p.classList.toggle('active',n===name);
   });
   requestAnimationFrame(function(){
     if(name==='defaulter') loadDefaulters();
+    if(name==='atrpages') buildAtrPagesPanel();
     if(name==='settings') buildSettingsPanel();
   });
 }
@@ -2382,6 +2617,10 @@ function refreshFeedOptions(){
 
 // ─── DEFAULTERS ───────────────────────────────────────────────────────────────
 function loadDefaulters(){
+  // Entering this tab always resets filters below (via setDefSource) — clear any
+  // stale ATR-page banner too; openAtrPage() re-applies both after this runs.
+  _atrPageActive = null;
+  var banner = gel('atrpg-banner'); if(banner) banner.style.display='none';
   // Panel HTML is static - always in DOM
   if(D.length === 0){
     var msg = gel('def-loading-msg');
