@@ -505,22 +505,22 @@ select option{background:#fff;color:#1E1B4B;}
         style="flex:1;background:#fff;border:1.5px solid #C7D2FE;border-radius:10px;padding:10px 16px;font-family:var(--fh);font-size:13px;font-weight:600;letter-spacing:0.5px;outline:none;color:#1E1B4B;"/>
       <button onclick="clearDefSearch()" style="background:#EEF2FF;border:1.5px solid #C7D2FE;border-radius:10px;padding:10px 16px;font-family:var(--fh);font-size:12px;font-weight:700;color:#4F46E5;cursor:pointer;white-space:nowrap;">✕ CLEAR</button>
     </div>
-    <div class="tw" style="overflow-x:auto;"><table style="table-layout:fixed;min-width:1180px;">
+    <div class="tw" style="overflow-x:auto;"><table style="table-layout:fixed;min-width:1500px;">
       <thead><tr>
         <th style="width:40px" class="mob-hide">RANK</th>
         <th style="width:100px;cursor:pointer" onclick="defSort(&#39;ACCT_ID&#39;)">ACCT ID <span id="dsrt-ACCT_ID">⇅</span></th>
-        <th style="width:120px;cursor:pointer" onclick="defSort(&#39;NAME&#39;)">NAME <span id="dsrt-NAME">⇅</span></th>
+        <th style="width:130px;cursor:pointer" onclick="defSort(&#39;NAME&#39;)">NAME <span id="dsrt-NAME">⇅</span></th>
         <th style="width:100px">MOBILE</th>
-        <th style="width:85px">METER NO</th>
-        <th style="width:75px;cursor:pointer" onclick="defSort(&#39;SUPPLY_TYPE&#39;)">SUPPLY <span id="dsrt-SUPPLY_TYPE">⇅</span></th>
-        <th style="width:80px;cursor:pointer" onclick="defSort(&#39;SDO_CODE&#39;)">SDO <span id="dsrt-SDO_CODE">⇅</span></th>
-        <th style="min-width:150px;cursor:pointer" onclick="defSort(&#39;ADDRESS&#39;)">ADDRESS <span id="dsrt-ADDRESS">⇅</span></th>
+        <th style="width:110px">METER NO</th>
+        <th style="width:80px;cursor:pointer" onclick="defSort(&#39;SUPPLY_TYPE&#39;)">SUPPLY <span id="dsrt-SUPPLY_TYPE">⇅</span></th>
+        <th style="width:140px;cursor:pointer" onclick="defSort(&#39;SDO_CODE&#39;)">SDO <span id="dsrt-SDO_CODE">⇅</span></th>
+        <th style="min-width:220px;cursor:pointer" onclick="defSort(&#39;ADDRESS&#39;)">ADDRESS <span id="dsrt-ADDRESS">⇅</span></th>
         <th style="width:110px;cursor:pointer" onclick="defSort(&#39;OUTSTANDING&#39;)">OUTSTANDING <span id="dsrt-OUTSTANDING">⇅</span></th>
         <th style="width:85px;cursor:pointer" onclick="defSort(&#39;PAY_DATE&#39;)">LP DATE <span id="dsrt-PAY_DATE">⇅</span></th>
         <th style="display:none">LP AMT <span id="dsrt-PAY_AMT">⇅</span></th>
         <th style="width:70px;cursor:pointer" onclick="defSort(&#39;ATR_STATUS&#39;)" class="mob-hide">ATR <span id="dsrt-ATR_STATUS">⇅</span></th>
-        <th style="width:90px;cursor:pointer" onclick="defSort(&#39;SUBSTATION&#39;)">SUBSTATION <span id="dsrt-SUBSTATION">⇅</span></th>
-        <th style="width:95px;cursor:pointer" onclick="defSort(&#39;FEEDER&#39;)">FEEDER <span id="dsrt-FEEDER">⇅</span></th>
+        <th style="width:150px;cursor:pointer" onclick="defSort(&#39;SUBSTATION&#39;)">SUBSTATION <span id="dsrt-SUBSTATION">⇅</span></th>
+        <th style="width:150px;cursor:pointer" onclick="defSort(&#39;FEEDER&#39;)">FEEDER <span id="dsrt-FEEDER">⇅</span></th>
         <th style="width:45px">MAP</th>
       </tr></thead>
       <tbody id="def-tbody"></tbody>
@@ -2686,7 +2686,8 @@ function parseDefaulterText(text){
       iFeed=hdrs.indexOf('FEEDER'),
       iDate=findCol(hdrs,['PAY_DATE','LP DATE','LAST_PAY_DATE']),
       iAmt=findCol(hdrs,['PAY_AMT','LP AMT','LAST_PAY_AMT']),
-      iOut=findCol(hdrs,['TOTAL_OUTSTANDING','TOTAL OUTSTANDING','AMOUNT_PAYABLE']);
+      iOut=findCol(hdrs,['TOTAL_OUTSTANDING','TOTAL OUTSTANDING','AMOUNT_PAYABLE']),
+      iMeter=findCol(hdrs,['METER_NO','METER NO','METERNO']);
   var pos=nl+1, len=text.length;
   while(pos<len){
     var end=text.indexOf('\n',pos); if(end<0)end=len;
@@ -2715,6 +2716,7 @@ function parseDefaulterText(text){
       PAY_DATE:lpDate, STATUS:'INSERVICE',
       SUBSTATION:(v[iSub]||'').replace(/"/g,''), FEEDER:(v[iFeed]||'').replace(/"/g,''),
       LAT:lat, LON:lon,
+      METER_NO:iMeter>=0?(v[iMeter]||'').replace(/"/g,'').trim():'',
       SDO_CODE:'', DIVISION:CURRENT_DIVISION||''
     });
   }
@@ -2933,18 +2935,18 @@ function renderDefaulters(page){
     return '<tr>'+
       '<td class="mob-hide" style="font-family:var(--fh);font-size:14px;font-weight:700;text-align:center;">'+rIcon+'</td>'+
       '<td style="font-family:var(--fh);color:#4F46E5;font-weight:700;cursor:pointer;" data-id="'+r.ACCT_ID+'" data-row="'+rowJson+'" onclick="openFromDefRow(this)">'+r.ACCT_ID+'</td>'+
-      '<td style="font-weight:700;">'+r.NAME+'</td>'+
+      '<td style="font-weight:700;white-space:normal;word-break:break-word;">'+r.NAME+'</td>'+
       '<td>'+r.MOBILE+'</td>'+
-      '<td style="font-family:var(--fh);font-size:11px;color:#1D4ED8;font-weight:700;">'+meterNo+'</td>'+
+      '<td style="font-family:var(--fh);font-size:11px;color:#1D4ED8;font-weight:700;white-space:normal;word-break:break-word;">'+meterNo+'</td>'+
       '<td><span style="font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;background:#EEF2FF;color:#4338CA;">'+r.SUPPLY_TYPE+'</span></td>'+
-      '<td style="font-family:var(--fh);font-size:11px;font-weight:700;color:#0369A1;">'+(r.SDO_CODE||'-')+'</td>'+
-      '<td style="font-size:11px;color:#374151;" title="'+r.ADDRESS+'">'+r.ADDRESS+'</td>'+
+      '<td style="font-family:var(--fh);font-size:11px;font-weight:700;color:#0369A1;white-space:normal;word-break:break-word;">'+(r.SDO_CODE||'-')+'</td>'+
+      '<td style="font-size:11px;color:#374151;white-space:normal;word-break:break-word;" title="'+r.ADDRESS+'">'+r.ADDRESS+'</td>'+
       '<td style="font-family:var(--fh);font-weight:700;color:'+outColor+';font-size:13px;">₹'+out.toLocaleString()+'</td>'+
       '<td style="font-size:11px;color:var(--muted);">'+r.PAY_DATE+'</td>'+
       '<td style="display:none">'+(paid>0?'₹'+paid.toLocaleString():'-')+'</td>'+
       '<td class="mob-hide"><span style="font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;background:'+(atrBgs[atr]||'#F9FAFB')+';color:'+(atrColors[atr]||'#9CA3AF')+';">'+atr+'</span></td>'+
-      '<td>'+r.SUBSTATION+'</td>'+
-      '<td>'+r.FEEDER+'</td>'+
+      '<td style="white-space:normal;word-break:break-word;">'+r.SUBSTATION+'</td>'+
+      '<td style="white-space:normal;word-break:break-word;">'+r.FEEDER+'</td>'+
       '<td>'+(mapUrl?'<a class="ml" href="#" data-id="'+r.ACCT_ID+'" onclick="event.preventDefault();openDefaulterMap(this.dataset.id)">📍</a>':'')+'</td>'+
     '</tr>';
   }).join('');
@@ -3056,6 +3058,22 @@ function openDefaulterModal(acctId){
 
 // Save the ATR chosen in the consumer modal: localStorage + DEF_ALL + Google Sheet.
 // (This button was previously wired to a function that didn't exist.)
+function updateAtrSelectStyle(){
+  var s=gel('modal-atr-sel'); if(!s)return;
+  var v=s.value;
+  if(v==='PAID')s.className='atr-paid';
+  else if(v==='LOCK')s.className='atr-lock';
+  else if(v==='THEFT')s.className='atr-theft';
+  else if(v==='OTHER')s.className='atr-other';
+  else s.className='atr-dc';
+}
+
+function closeModal(){
+  var mo=gel('detail-modal'); if(mo){ mo.classList.remove('open'); }
+  document.body.style.overflow='';
+  modalCurrentAcct=null; modalIsdc=false;
+}
+
 function saveModalAtr(){
   if(!modalCurrentAcct){ alert('No consumer selected.'); return; }
   var sel = gel('modal-atr-sel');
