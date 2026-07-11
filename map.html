@@ -4,6 +4,8 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
 <title>UPPCL Consumer Map</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 html,body{height:100%;width:100%;overflow:hidden;font-family:'Segoe UI',Roboto,sans-serif;}
@@ -78,22 +80,15 @@ function showDetail(d) {
 }
 
 function initMap() {
-  var map = new google.maps.Map(document.getElementById('map'), {
-    center: {lat: clat, lng: clon},
-    zoom: 16,
-    mapTypeControl: false,
-    fullscreenControl: true,
-    streetViewControl: true,
-    zoomControl: true,
-    gestureHandling: 'greedy',
-    styles: [
-      {featureType:'poi',stylers:[{visibility:'simplified'}]},
-      {featureType:'transit',stylers:[{visibility:'off'}]}
-    ]
-  });
+  var map = L.map('map', { zoomControl: true }).setView([clat, clon], 16);
 
-  var infoWindow = new google.maps.InfoWindow();
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  }).addTo(map);
+
   var lst = document.getElementById('lst');
+  var mainMarker = null;
 
   if (!DATA.length) {
     lst.innerHTML = '<div class="no-data">No data.<br/>Go back and click MAP button again.</div>';
@@ -102,22 +97,16 @@ function initMap() {
 
   DATA.forEach(function(d) {
     var color = pinColor(d);
-    var sz = d.main ? 16 : 11;
+    var sz = d.main ? 12 : 8;
 
-    var marker = new google.maps.Marker({
-      position: {lat: d.lat, lng: d.lon},
-      map: map,
-      zIndex: d.main ? 999 : 1,
-      icon: {
-        path: google.maps.SymbolPath.CIRCLE,
-        scale: sz,
-        fillColor: color,
-        fillOpacity: 1,
-        strokeColor: '#fff',
-        strokeWeight: d.main ? 3 : 2
-      },
-      title: d.name
-    });
+    var marker = L.circleMarker([d.lat, d.lon], {
+      radius: sz,
+      fillColor: color,
+      fillOpacity: 1,
+      color: '#fff',
+      weight: d.main ? 3 : 2
+    }).addTo(map);
+    marker.bindTooltip(d.name);
 
     var outColor = d.out > 100000 ? '#EA4335' : d.out > 10000 ? '#F9AB00' : '#34A853';
     var content =
@@ -132,18 +121,14 @@ function initMap() {
       '<div style="font-size:10px;color:#888;margin-top:4px;">' + d.addr + '</div>' +
       (d.main ? '' : '<div style="margin-top:4px;color:#4285F4;font-size:10px;">📏 ' + (d.dist<1?(d.dist*1000).toFixed(0)+' m':d.dist.toFixed(2)+' km') + ' away</div>') +
       '</div>';
+    marker.bindPopup(content);
 
-    marker.addListener('click', function() {
-      infoWindow.setContent(content);
-      infoWindow.open(map, marker);
+    marker.on('click', function() {
       showDetail(d);
     });
 
     if (d.main) {
-      setTimeout(function() {
-        infoWindow.setContent(content);
-        infoWindow.open(map, marker);
-      }, 600);
+      mainMarker = marker;
     }
 
     // Sidebar list
@@ -162,26 +147,25 @@ function initMap() {
         '<div class="item-dist">' + ds + '</div>' +
       '</div>';
 
-    el.addEventListener('click', (function(d, marker, content) {
+    el.addEventListener('click', (function(d, marker) {
       return function() {
-        map.setCenter({lat:d.lat,lng:d.lon});
-        map.setZoom(18);
-        infoWindow.setContent(content);
-        infoWindow.open(map, marker);
+        map.setView([d.lat, d.lon], 18);
+        marker.openPopup();
         showDetail(d);
       };
-    })(d, marker, content));
+    })(d, marker));
 
     lst.appendChild(el);
   });
 
+  if (mainMarker) {
+    setTimeout(function() { mainMarker.openPopup(); }, 600);
+  }
+
   if (DATA.length > 0) showDetail(DATA[0]);
 }
-</script>
 
-<!-- Google Maps API - dynamic interactive map -->
-<script async defer
-  src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB41DRUbKWJHPxaFjMAwdrzWzbVKartNGg&callback=initMap">
+initMap();
 </script>
 </body>
 </html>
