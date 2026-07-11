@@ -378,6 +378,17 @@ select option{background:#fff;color:#1E1B4B;}
       <button onclick="dl()">FIND</button>
     </div>
     <div id="lr"></div>
+
+    <div class="settings-card" style="margin-top:24px;background:#F0F9FF;border-color:#BAE6FD;">
+      <div style="font-family:var(--fh);font-size:16px;font-weight:700;margin-bottom:8px;color:#0369A1;display:flex;align-items:center;gap:8px;">📍 BULK LAT/LONG FINDER</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.5;">Paste Account IDs and/or Meter Numbers below, one per line — mixing both is fine. Each value is matched against <b>Account ID first</b>; if no account matches, it's matched against <b>Meter No</b> instead.</div>
+      <textarea id="llf-input" placeholder="9946948064&#10;GE3836076&#10;2253257546" style="width:100%;min-height:90px;border:1.5px solid #BAE6FD;border-radius:8px;padding:8px 10px;font-family:var(--fh);font-size:12px;resize:vertical;outline:none;"></textarea>
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <button class="btn" style="background:#0EA5E9;color:#fff;flex:1;" onclick="runLatLongFinder()">🛰️ FIND COORDINATES</button>
+        <button class="btn btn-out" style="border-color:#0EA5E9;color:#0EA5E9;" onclick="exportLatLongFinder()">⬇ EXPORT</button>
+      </div>
+      <div id="llf-results" style="margin-top:14px;"></div>
+    </div>
   </div>
 
   <!-- DEFAULTERS PANEL -->
@@ -505,7 +516,7 @@ select option{background:#fff;color:#1E1B4B;}
         style="flex:1;background:#fff;border:1.5px solid #C7D2FE;border-radius:10px;padding:10px 16px;font-family:var(--fh);font-size:13px;font-weight:600;letter-spacing:0.5px;outline:none;color:#1E1B4B;"/>
       <button onclick="clearDefSearch()" style="background:#EEF2FF;border:1.5px solid #C7D2FE;border-radius:10px;padding:10px 16px;font-family:var(--fh);font-size:12px;font-weight:700;color:#4F46E5;cursor:pointer;white-space:nowrap;">✕ CLEAR</button>
     </div>
-    <div class="tw" style="overflow-x:auto;"><table style="table-layout:fixed;min-width:1500px;">
+    <div class="tw" style="overflow-x:auto;"><table style="table-layout:fixed;min-width:1560px;">
       <thead><tr>
         <th style="width:40px" class="mob-hide">RANK</th>
         <th style="width:100px;cursor:pointer" onclick="defSort(&#39;ACCT_ID&#39;)">ACCT ID <span id="dsrt-ACCT_ID">⇅</span></th>
@@ -516,7 +527,7 @@ select option{background:#fff;color:#1E1B4B;}
         <th style="width:140px;cursor:pointer" onclick="defSort(&#39;SDO_CODE&#39;)">SDO <span id="dsrt-SDO_CODE">⇅</span></th>
         <th style="min-width:220px;cursor:pointer" onclick="defSort(&#39;ADDRESS&#39;)">ADDRESS <span id="dsrt-ADDRESS">⇅</span></th>
         <th style="width:110px;cursor:pointer" onclick="defSort(&#39;OUTSTANDING&#39;)">OUTSTANDING <span id="dsrt-OUTSTANDING">⇅</span></th>
-        <th style="width:85px;cursor:pointer" onclick="defSort(&#39;PAY_DATE&#39;)">LP DATE <span id="dsrt-PAY_DATE">⇅</span></th>
+        <th style="width:105px;cursor:pointer" onclick="defSort(&#39;PAY_DATE&#39;)">LP DATE <span id="dsrt-PAY_DATE">⇅</span></th>
         <th style="display:none">LP AMT <span id="dsrt-PAY_AMT">⇅</span></th>
         <th style="width:70px;cursor:pointer" onclick="defSort(&#39;ATR_STATUS&#39;)" class="mob-hide">ATR <span id="dsrt-ATR_STATUS">⇅</span></th>
         <th style="width:150px;cursor:pointer" onclick="defSort(&#39;SUBSTATION&#39;)">SUBSTATION <span id="dsrt-SUBSTATION">⇅</span></th>
@@ -566,8 +577,8 @@ select option{background:#fff;color:#1E1B4B;}
         <div id="modal-atr-counts" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;"></div>
         <div class="lbl">UPDATE STATUS FOR THIS CONSUMER:</div>
         <select id="modal-atr-sel" class="atr-dc" onchange="updateAtrSelectStyle();toggleAtrComment()"></select>
-        <div id="modal-atr-comment-wrap" style="display:none;margin-top:8px;">
-          <div class="lbl" style="margin-bottom:4px;">📝 REMARKS / COMMENT:</div>
+        <div id="modal-atr-comment-wrap" style="display:block;margin-top:8px;">
+          <div class="lbl" style="margin-bottom:4px;">📝 REMARK:</div>
           <textarea id="modal-atr-comment" placeholder="Enter remarks here…" style="width:100%;border:1.5px solid #C7D2FE;border-radius:8px;padding:8px 10px;font-family:var(--fb);font-size:13px;font-weight:500;color:#1E1B4B;outline:none;resize:vertical;min-height:60px;max-height:120px;"></textarea>
         </div>
         <button class="save-atr-btn" onclick="saveModalAtr()">💾 SAVE ATR STATUS</button>
@@ -2525,6 +2536,81 @@ function buildConsumerCard(r, q){
     '</div></div>';
 }
 
+// ─── BULK LAT/LONG FINDER (Account ID first, Meter No fallback) ──────────────
+var _llfResults = [];
+function runLatLongFinder(){
+  var ta = gel('llf-input'); if(!ta) return;
+  var lines = (ta.value||'').split(/\r?\n/).map(function(s){return s.trim();}).filter(Boolean);
+  if(!lines.length){ alert('Paste at least one Account ID or Meter No.'); return; }
+  if(!D.length){ alert('Data still loading — please wait a moment and try again.'); return; }
+
+  var acctIdx = {}, meterIdx = {};
+  D.forEach(function(r){
+    var a = String(r.ACCT_ID);
+    if(a && !acctIdx[a]) acctIdx[a] = r;
+    if(r.SERIAL_NBR){
+      var m = String(r.SERIAL_NBR).trim();
+      if(m && !meterIdx[m]) meterIdx[m] = r;
+    }
+  });
+  // fill gaps from the global METERNO.csv map (ACCT_ID -> SERIAL_NBR)
+  Object.keys(METER_DATA).forEach(function(a){
+    var m = METER_DATA[a];
+    if(m && !meterIdx[m] && acctIdx[a]) meterIdx[m] = acctIdx[a];
+  });
+
+  var results = lines.map(function(val){
+    var r = acctIdx[val], matched = 'ACCT ID';
+    if(!r){ r = meterIdx[val]; matched = 'METER NO'; }
+    if(!r) return {input:val, matched:'NOT FOUND', acct:'-', name:'-', lat:'', lon:''};
+    var lat = parseFloat(r.LAT), lon = parseFloat(r.LON);
+    if(lat>50){ var t=lat; lat=lon; lon=t; }
+    var okLat = lat && !isNaN(lat), okLon = lon && !isNaN(lon);
+    return {
+      input: val, matched: matched, acct: String(r.ACCT_ID), name: r.NAME||'-',
+      lat: okLat?lat:'', lon: okLon?lon:''
+    };
+  });
+
+  _llfResults = results;
+  renderLatLongResults(results);
+}
+
+function renderLatLongResults(results){
+  var wrap = gel('llf-results'); if(!wrap) return;
+  var found = results.filter(function(x){return x.matched!=='NOT FOUND';}).length;
+  wrap.innerHTML =
+    '<div style="font-size:12px;font-weight:700;color:#0369A1;margin-bottom:8px;">'+found+' / '+results.length+' matched</div>'+
+    '<div class="tw" style="overflow-x:auto;"><table style="min-width:640px;"><thead><tr>'+
+      '<th>INPUT</th><th>MATCHED BY</th><th>ACCT ID</th><th>NAME</th><th>LAT</th><th>LON</th><th>MAP</th>'+
+    '</tr></thead><tbody>'+
+    results.map(function(x){
+      var notFound = x.matched==='NOT FOUND';
+      var mapLink = (x.lat && x.lon) ? '<a class="ml" href="https://www.google.com/maps?q='+x.lat+','+x.lon+'" target="_blank">📍</a>' : '-';
+      return '<tr>'+
+        '<td style="font-family:var(--fh);font-weight:700;">'+x.input+'</td>'+
+        '<td style="color:'+(notFound?'#DC2626':'#059669')+';font-weight:700;">'+x.matched+'</td>'+
+        '<td>'+x.acct+'</td>'+
+        '<td style="white-space:normal;word-break:break-word;">'+x.name+'</td>'+
+        '<td>'+(x.lat||'-')+'</td>'+
+        '<td>'+(x.lon||'-')+'</td>'+
+        '<td>'+mapLink+'</td>'+
+      '</tr>';
+    }).join('')+
+    '</tbody></table></div>';
+}
+
+function exportLatLongFinder(){
+  if(!_llfResults.length){ alert('Run a search first.'); return; }
+  var rows = _llfResults.map(function(x){
+    return {INPUT:x.input, MATCHED_BY:x.matched, ACCT_ID:x.acct, NAME:x.name, LAT:x.lat, LON:x.lon};
+  });
+  var ws = XLSX.utils.json_to_sheet(rows);
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'LatLong');
+  XLSX.writeFile(wb, 'latlong_lookup_'+Date.now()+'.xlsx');
+}
+
 // ─── MULTI-SELECT ─────────────────────────────────────────────────────────────
 var _defSelSubs = [], _defSelFeeds = [], _defSelSupplies = [], _defSelSdos = [];
 
@@ -2724,20 +2810,24 @@ function parseDefaulterText(text){
   console.log('Defaulter pre-loaded:', DEF_ALL.length);
 }
 
-// defaulter.csv has no SDO_CODE — join it from the master/billed data in D
-// (billed CSVs carry SDO_CODE per account). Safe to call repeatedly.
+// defaulter.csv has no SDO_CODE or SERIAL_NBR — join them from the master/billed
+// data in D (which carries SDO_CODE and SERIAL_NBR per account). Safe to call repeatedly.
 function enrichDefAllWithSdo(){
   if(!DEF_ALL.length || !D.length) return;
-  var dIdx = {}; D.forEach(function(r){ if(r.SDO_CODE) dIdx[ac(r.ACCT_ID)] = r.SDO_CODE; });
-  var filled = 0;
+  var dIdx = {};
+  D.forEach(function(r){
+    if(r.SDO_CODE || r.SERIAL_NBR) dIdx[ac(r.ACCT_ID)] = r;
+  });
+  var filled = 0, filledMeter = 0;
   DEF_ALL.forEach(function(r){
-    if(!r.SDO_CODE){
-      var s = dIdx[ac(r.ACCT_ID)];
-      if(s){ r.SDO_CODE = s; filled++; }
-    }
+    var d = dIdx[ac(r.ACCT_ID)];
+    if(!d) { if(!r.DIVISION) r.DIVISION = CURRENT_DIVISION||''; return; }
+    if(!r.SDO_CODE && d.SDO_CODE){ r.SDO_CODE = d.SDO_CODE; filled++; }
+    if(!r.SERIAL_NBR && d.SERIAL_NBR){ r.SERIAL_NBR = d.SERIAL_NBR; filledMeter++; }
     if(!r.DIVISION) r.DIVISION = CURRENT_DIVISION||'';
   });
   if(filled) console.log('SDO_CODE enriched for', filled, 'defaulters');
+  if(filledMeter) console.log('SERIAL_NBR enriched for', filledMeter, 'defaulters');
 }
 
 var DEF_ALL = [];
@@ -2920,7 +3010,7 @@ function renderDefaulters(page){
     var lat=parseFloat(r.LAT),lon=parseFloat(r.LON);
     if(lat>50){var t=lat;lat=lon;lon=t;}
     var mapUrl=(lat&&lon)?'https://www.google.com/maps?q='+lat+','+lon:'';
-    var meterNo=METER_DATA[String(r.ACCT_ID)]||r.METER_NO||'-';
+    var meterNo=r.SERIAL_NBR||METER_DATA[String(r.ACCT_ID)]||r.METER_NO||'-';
     var atr=r.ATR_STATUS||'PENDING';
     var atrColors={'PAID':'#059669','LOCK':'#7C3AED','THEFT':'#DC2626','OTHER':'#374151','PENDING':'#9CA3AF'};
     var atrBgs={'PAID':'#D1FAE5','LOCK':'#EDE9FE','THEFT':'#FEE2E2','OTHER':'#F3F4F6','PENDING':'#F9FAFB'};
@@ -2964,7 +3054,7 @@ function openDefaulterModal(acctId){
   var r = D.find(function(row){return String(row.ACCT_ID)===String(acctId);});
   var lat = parseFloat(defRec.LAT||0), lon = parseFloat(defRec.LON||0);
   if(lat>50){var t=lat;lat=lon;lon=t;}
-  var meterNo = METER_DATA[String(acctId)] || (r?r.SERIAL_NBR:'') || defRec.METER_NO || '-';
+  var meterNo = defRec.SERIAL_NBR || (r?r.SERIAL_NBR:'') || METER_DATA[String(acctId)] || defRec.METER_NO || '-';
 
   gel('modal-title').textContent = defRec.NAME || 'Consumer Details';
   gel('modal-grid').innerHTML =
@@ -3005,10 +3095,7 @@ function openDefaulterModal(acctId){
   var defCommentBox = gel('modal-atr-comment');
   var defCommentWrap = gel('modal-atr-comment-wrap');
   if(defCommentBox){ defCommentBox.value=defComment; defCommentBox.disabled=isSubmitted; }
-  if(defCommentWrap){
-    var showFor=['OTHER','DISPUTE','PROMISE','PARTIAL'];
-    defCommentWrap.style.display=(showFor.indexOf(currentAtr)>=0||defComment)?'block':'none';
-  }
+  if(defCommentWrap){ defCommentWrap.style.display='block'; }
   atrSec.querySelectorAll('.save-atr-btn').forEach(function(b){
     b.disabled=isSubmitted; b.style.opacity=isSubmitted?'0.5':'1';
     b.style.cursor=isSubmitted?'not-allowed':'pointer';
@@ -3058,6 +3145,10 @@ function openDefaulterModal(acctId){
 
 // Save the ATR chosen in the consumer modal: localStorage + DEF_ALL + Google Sheet.
 // (This button was previously wired to a function that didn't exist.)
+function toggleAtrComment(){
+  var cw=gel('modal-atr-comment-wrap'); if(cw) cw.style.display='block';
+}
+
 function updateAtrSelectStyle(){
   var s=gel('modal-atr-sel'); if(!s)return;
   var v=s.value;
@@ -3159,7 +3250,7 @@ function openDefaulterModalDirect(d){
   var defComment=typeof defEntry==='object'?(defEntry.comment||''):'';
   var cb=gel('modal-atr-comment'), cw=gel('modal-atr-comment-wrap');
   if(cb){cb.value=defComment;cb.disabled=isSubmitted;}
-  if(cw){var sf=['OTHER','DISPUTE','PROMISE','PARTIAL'];cw.style.display=(sf.indexOf(currentAtr)>=0||defComment)?'block':'none';}
+  if(cw){cw.style.display='block';}
   atrSec.querySelectorAll('.save-atr-btn').forEach(function(b){
     b.disabled=isSubmitted;b.style.opacity=isSubmitted?'0.5':'1';
     b.style.background=isSubmitted?'#9CA3AF':'#F59E0B';
@@ -3264,7 +3355,7 @@ function openMainDetail(acctId){
   var lat=parseFloat(r.LAT), lon=parseFloat(r.LON);
   if(lat>50){ var t=lat; lat=lon; lon=t; }
 
-  var meterNo = METER_DATA[String(acctId)] || r.SERIAL_NBR || '-';
+  var meterNo = r.SERIAL_NBR || METER_DATA[String(acctId)] || '-';
 
   gel('modal-title').textContent = r.NAME || 'Consumer Details';
   gel('modal-grid').innerHTML =
@@ -3313,10 +3404,7 @@ function openMainDetail(acctId){
     var defCommentBox = gel('modal-atr-comment');
     var defCommentWrap = gel('modal-atr-comment-wrap');
     if(defCommentBox){ defCommentBox.value=defComment; defCommentBox.disabled=isSubmitted; }
-    if(defCommentWrap){
-      var showFor=['OTHER','DISPUTE','PROMISE','PARTIAL'];
-      defCommentWrap.style.display=(showFor.indexOf(currentAtr)>=0||defComment)?'block':'none';
-    }
+    if(defCommentWrap){ defCommentWrap.style.display='block'; }
     var saveBtns = atrSec.querySelectorAll('.save-atr-btn');
     saveBtns.forEach(function(b){
       b.disabled = isSubmitted;
