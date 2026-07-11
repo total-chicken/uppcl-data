@@ -773,6 +773,12 @@ function ac(id){
   return String(id||'').replace(/^0+/,'').trim();
 }
 
+// Strips the leading apostrophe Excel adds to force text-formatted cells
+// (e.g. '71781256) plus stray quotes, so meter numbers match consistently.
+function cleanMeter(v){
+  return String(v||'').replace(/"/g,'').trim().replace(/^'+/,'').trim();
+}
+
 function catBadge(cat){
   var c=(cat||'').toUpperCase().trim();
   var cls='b-oth';
@@ -1227,7 +1233,7 @@ function processLatLongUpload(){
         var a = ac(r.ACCT_ID);
         if(a) acctIdx[a] = a;
         if(r.SERIAL_NBR){
-          var m = String(r.SERIAL_NBR).trim();
+          var m = cleanMeter(r.SERIAL_NBR);
           if(m && !meterIdx[m]) meterIdx[m] = a;
         }
       });
@@ -1239,7 +1245,7 @@ function processLatLongUpload(){
       var mapping = {}, byAcct=0, byMeter=0, unresolved=0;
       rows.forEach(r => {
         var v = keys.map(k => r[k]);
-        var idVal = String(v[iId]||'').trim();
+        var idVal = cleanMeter(v[iId]);
         if(!idVal) return;
         var acct = acctIdx[ac(idVal)] || null;
         if(acct){ byAcct++; }
@@ -1337,7 +1343,7 @@ function processAndUpload(){
           CONNECTION_TYPE:   iConType>=0 ? String(vals[iConType]||'').trim() : '',
           BILL_CYC_CD:       iBillCyc>=0 ? String(vals[iBillCyc]||'').trim() : '',
           LAT: lat, LON: lon,
-          SERIAL_NBR:        iSerl>=0   ? String(vals[iSerl]  ||'').trim() : '',
+          SERIAL_NBR:        iSerl>=0   ? cleanMeter(vals[iSerl]) : '',
           METER_READ_REMARK: iRemark>=0 ? String(vals[iRemark]||'').trim() : '',
           LAST_BILL_DATE:    iLbill>=0  ? String(vals[iLbill] ||'').trim() : '',
           BILL_BASIS:        iBbasis>=0 ? String(vals[iBbasis]||'').trim() : '',
@@ -2383,7 +2389,7 @@ function parseFileInto(text, type){
       CONNECTION_TYPE: iConType>=0 ? (v[iConType]||'') : '',
       BILL_CYC_CD: iBillCyc>=0 ? (v[iBillCyc]||'') : '',
       LAT:lat, LON:lon,
-      SERIAL_NBR:        iSerl>=0   ? (v[iSerl]  ||'') : '',
+      SERIAL_NBR:        iSerl>=0   ? cleanMeter(v[iSerl]) : '',
       METER_READ_REMARK: iRemark>=0 ? (v[iRemark]||'') : '',
       LAST_BILL_DATE:    iLbill>=0  ? (v[iLbill] ||'') : '',
       BILL_BASIS:        iBbasis>=0 ? (v[iBbasis]||'') : '',
@@ -2690,7 +2696,7 @@ function parseMeterData(text){
     var end=text.indexOf('\n',pos); if(end<0)end=len;
     var v=text.substring(pos,end).split(','); pos=end+1;
     var acct=(v[iAcct]||'').replace(/"/g,'').trim();
-    var meter=(v[iMeter]||'').replace(/"/g,'').trim();
+    var meter=cleanMeter(v[iMeter]);
     if(acct && meter) METER_DATA[acct]=meter;
   }
   console.log('Meter data loaded:', Object.keys(METER_DATA).length);
@@ -2739,7 +2745,7 @@ function parseDefaulterText(text){
       PAY_DATE:lpDate, STATUS:'INSERVICE',
       SUBSTATION:(v[iSub]||'').replace(/"/g,''), FEEDER:(v[iFeed]||'').replace(/"/g,''),
       LAT:lat, LON:lon,
-      METER_NO:iMeter>=0?(v[iMeter]||'').replace(/"/g,'').trim():'',
+      METER_NO:iMeter>=0?cleanMeter(v[iMeter]):'',
       SDO_CODE:'', DIVISION:CURRENT_DIVISION||''
     });
   }
