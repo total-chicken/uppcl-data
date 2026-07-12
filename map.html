@@ -152,8 +152,7 @@ function drawRoute(d) {
 
 function selectConsumer(d) {
   showDetail(d);
-  if (!d.main) drawRoute(d);
-  else clearRoute();
+  drawRoute(d);
 }
 
 function showDetail(d) {
@@ -260,6 +259,10 @@ function initMap() {
         '<div><b>Feeder:</b> ' + d.feed + '</div>' +
         '<div style="font-size:10px;color:#888;margin-top:4px;">' + d.addr + '</div>' +
         distLine +
+        '<div style="margin-top:6px;padding-top:6px;border-top:1px solid #eee;">' +
+        '<a href="https://www.google.com/maps/search/?api=1&query=' + d.lat + ',' + d.lon +
+        '" target="_blank" rel="noopener" style="color:#1a73e8;font-size:11px;font-weight:700;text-decoration:none;">🗺️ Open in Google Maps</a>' +
+        '</div>' +
         '</div>';
     };
     marker.bindPopup(makeContent);
