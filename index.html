@@ -461,6 +461,20 @@ select option{background:#fff;color:#1E1B4B;}
         </div>
       </div>
 
+      <div><div class="lbl">MR REMARK / BILL BASIS</div>
+        <div class="ms-wrap" id="def-remark-wrap">
+          <button class="ms-btn" id="def-remark-btn" onclick="toggleMs('def-remark-dd')">MR REMARK / BILL BASIS</button>
+          <div class="ms-dropdown" id="def-remark-dd">
+            <label class="ms-option" style="border-bottom:1px solid #E2E8F0;font-weight:700;">
+              <input type="checkbox" id="def-bbasis-ceil" onchange="onBillBasisCeilChange(this)"/> BILL BASIS = CEIL ONLY
+            </label>
+            <div class="ms-search"><input type="text" placeholder="Search remark…" oninput="filterMsOptions('def-remark-dd',this.value)"/></div>
+            <div id="def-remark-opts"></div>
+            <div class="ms-clear" onclick="clearMs('remark')">Clear All</div>
+          </div>
+        </div>
+      </div>
+
       <div><div class="lbl">SORT BY</div><div class="sw"><select id="def-sort" onchange="runDefaulterFilter()">
         <option value="desc">Highest Outstanding</option>
         <option value="asc">Lowest Outstanding</option>
@@ -1629,6 +1643,7 @@ function saveCurrentFilterAsAtrPage(){
     name: name.trim(),
     filter: {
       sub: _defSelSubs.slice(), supply: _defSelSupplies.slice(), sdo: _defSelSdos.slice(),
+      remark: _defSelRemarks.slice(), bbasisCeil: _defBillBasisCeil,
       outOp: gel('def-out-op').value, outV1: pf(gel('def-out-v1').value), outV2: pf(gel('def-out-v2').value),
       loadOp: gel('def-load-op').value, loadV1: pf(gel('def-load-v1').value), loadV2: pf(gel('def-load-v2').value),
       source: _defSource
@@ -1665,6 +1680,8 @@ function countAtrPageMatches(f){
     if(f.sub && f.sub.length && f.sub.indexOf(r.SUBSTATION)<0) return;
     if(f.supply && f.supply.length && f.supply.indexOf(r.SUPPLY_TYPE)<0) return;
     if(f.sdo && f.sdo.length && f.sdo.indexOf(r.SDO_CODE)<0) return;
+    if(f.remark && f.remark.length && f.remark.indexOf(String(r.METER_READ_REMARK||'').trim())<0) return;
+    if(f.bbasisCeil && String(r.BILL_BASIS||'').trim().toUpperCase()!=='CEIL') return;
     if(f.outOp==='gt' && r.OUTSTANDING<=f.outV1) return;
     if(f.outOp==='lt' && r.OUTSTANDING>=f.outV1) return;
     if(f.outOp==='between' && (r.OUTSTANDING<f.outV1 || r.OUTSTANDING>f.outV2)) return;
@@ -1693,6 +1710,8 @@ function renderAtrPagesList(){
     if(f.sdo && f.sdo.length) chips.push('SDO: '+f.sdo.join(', '));
     if(f.sub && f.sub.length) chips.push('Substation: '+f.sub.join(', '));
     if(f.supply && f.supply.length) chips.push('Supply: '+f.supply.join(', '));
+    if(f.remark && f.remark.length) chips.push('MR Remark: '+f.remark.join(', '));
+    if(f.bbasisCeil) chips.push('Bill Basis: CEIL');
     if(f.outOp && f.outOp!=='any') chips.push('Outstanding: '+f.outOp+(f.outV1?' '+f.outV1:'')+(f.outOp==='between'?'–'+f.outV2:''));
     if(f.loadOp && f.loadOp!=='any') chips.push('Load: '+f.loadOp+(f.loadV1?' '+f.loadV1:'')+(f.loadOp==='between'?'–'+f.loadV2:''));
     chips.push((f.source||'master').toUpperCase()+' SOURCE');
@@ -1733,9 +1752,14 @@ function openAtrPage(id){
     _defSelSubs = (f.sub||[]).slice();
     _defSelSupplies = (f.supply||[]).slice();
     _defSelSdos = (f.sdo||[]).slice();
+    _defSelRemarks = (f.remark||[]).slice();
+    _defBillBasisCeil = !!f.bbasisCeil;
     buildMsOptions('sub', getAllSubValues()); updateMsBtn('sub');
     buildMsOptions('supply', getAllSupplyValues()); updateMsBtn('supply');
     buildMsOptions('sdo', getAllSdoValues()); updateMsBtn('sdo');
+    buildMsOptions('remark', getAllRemarkValues());
+    var ceilCb = gel('def-bbasis-ceil'); if(ceilCb) ceilCb.checked = _defBillBasisCeil;
+    updateRemarkBtn();
     refreshFeedOptions();
 
     gel('def-out-op').value = f.outOp||'any';
@@ -1759,7 +1783,7 @@ function exitAtrPage(){
   _atrPageActive = null;
   var banner = gel('atrpg-banner');
   if(banner) banner.style.display='none';
-  clearMs('sub'); clearMs('supply'); clearMs('sdo');
+  clearMs('sub'); clearMs('supply'); clearMs('sdo'); clearMs('remark');
   var outOp=gel('def-out-op'), loadOp=gel('def-load-op');
   if(outOp){ outOp.value='any'; updateDefFilterUI('out'); }
   if(loadOp){ loadOp.value='any'; updateDefFilterUI('load'); }
@@ -2416,9 +2440,9 @@ function parseFileInto(text, type){
       BILL_CYC_CD: iBillCyc>=0 ? (v[iBillCyc]||'') : '',
       LAT:lat, LON:lon,
       SERIAL_NBR:        iSerl>=0   ? cleanMeter(v[iSerl]) : '',
-      METER_READ_REMARK: iRemark>=0 ? (v[iRemark]||'') : '',
+      METER_READ_REMARK: iRemark>=0 ? String(v[iRemark]||'').trim() : '',
       LAST_BILL_DATE:    iLbill>=0  ? (v[iLbill] ||'') : '',
-      BILL_BASIS:        iBbasis>=0 ? (v[iBbasis]||'') : '',
+      BILL_BASIS:        iBbasis>=0 ? String(v[iBbasis]||'').trim() : '',
       SUBSTATION:  (v[iSub] ||''),
       FEEDER:      (v[iFeed]||''),
       MOBILE_NO:   iMob>=0 ? (v[iMob]||'') : '',
@@ -2580,7 +2604,8 @@ function buildConsumerCard(r, q){
 }
 
 // ─── MULTI-SELECT ─────────────────────────────────────────────────────────────
-var _defSelSubs = [], _defSelFeeds = [], _defSelSupplies = [], _defSelSdos = [];
+var _defSelSubs = [], _defSelFeeds = [], _defSelSupplies = [], _defSelSdos = [], _defSelRemarks = [];
+var _defBillBasisCeil = false;
 
 function toggleMs(id){
   var dd = gel(id);
@@ -2604,7 +2629,7 @@ function filterMsOptions(ddId, q){
 function buildMsOptions(type, values){
   var optsEl = gel('def-'+type+'-opts');
   if(!optsEl) return;
-  var sel = type==='sub' ? _defSelSubs : type==='feed' ? _defSelFeeds : type==='sdo' ? _defSelSdos : _defSelSupplies;
+  var sel = type==='sub' ? _defSelSubs : type==='feed' ? _defSelFeeds : type==='sdo' ? _defSelSdos : type==='remark' ? _defSelRemarks : _defSelSupplies;
   optsEl.innerHTML = '';
   var t = type;
   values.forEach(function(v){
@@ -2621,10 +2646,10 @@ function buildMsOptions(type, values){
 }
 
 function onMsChange(type, cb){
-  var sel = type==='sub' ? _defSelSubs : type==='feed' ? _defSelFeeds : type==='sdo' ? _defSelSdos : _defSelSupplies;
+  var sel = type==='sub' ? _defSelSubs : type==='feed' ? _defSelFeeds : type==='sdo' ? _defSelSdos : type==='remark' ? _defSelRemarks : _defSelSupplies;
   if(cb.checked){ if(sel.indexOf(cb.value)<0) sel.push(cb.value); }
   else { var i=sel.indexOf(cb.value); if(i>=0) sel.splice(i,1); }
-  updateMsBtn(type);
+  if(type==='remark') updateRemarkBtn(); else updateMsBtn(type);
   if(type==='sub') refreshFeedOptions();
   runDefaulterFilter();
 }
@@ -2637,10 +2662,33 @@ function updateMsBtn(type){
   btn.textContent = sel.length===0 ? allLabel : sel.length===1 ? sel[0] : sel.length+' selected';
 }
 
+function updateRemarkBtn(){
+  var btn = gel('def-remark-btn'); if(!btn) return;
+  var parts = [];
+  if(_defBillBasisCeil) parts.push('CEIL');
+  if(_defSelRemarks.length===1) parts.push(_defSelRemarks[0]);
+  else if(_defSelRemarks.length>1) parts.push(_defSelRemarks.length+' remarks');
+  btn.textContent = parts.length ? parts.join(' + ') : 'MR REMARK / BILL BASIS';
+}
+
+function onBillBasisCeilChange(cb){
+  _defBillBasisCeil = !!cb.checked;
+  updateRemarkBtn();
+  runDefaulterFilter();
+}
+
 function clearMs(type){
   if(type==='sub'){ _defSelSubs=[]; buildMsOptions('sub', getAllSubValues()); }
   else if(type==='feed'){ _defSelFeeds=[]; buildMsOptions('feed', getAllFeedValues()); }
   else if(type==='sdo'){ _defSelSdos=[]; buildMsOptions('sdo', getAllSdoValues()); }
+  else if(type==='remark'){
+    _defSelRemarks=[]; _defBillBasisCeil=false;
+    var ceilCb = gel('def-bbasis-ceil'); if(ceilCb) ceilCb.checked=false;
+    buildMsOptions('remark', getAllRemarkValues());
+    updateRemarkBtn();
+    runDefaulterFilter();
+    return;
+  }
   else { _defSelSupplies=[]; buildMsOptions('supply', getAllSupplyValues()); }
   updateMsBtn(type);
   if(type==='sub') refreshFeedOptions();
@@ -2661,6 +2709,9 @@ function getAllSupplyValues(){
 }
 function getAllSdoValues(){
   return [...new Set(DEF_ALL.map(function(r){return r.SDO_CODE;}).filter(Boolean))].sort();
+}
+function getAllRemarkValues(){
+  return [...new Set(DEF_ALL.map(function(r){return String(r.METER_READ_REMARK||'').trim();}).filter(Boolean))].sort();
 }
 
 function refreshFeedOptions(){
@@ -2697,7 +2748,9 @@ function buildDefaulterPanel(){
   buildMsOptions('feed', getAllFeedValues());
   buildMsOptions('supply', getAllSupplyValues());
   buildMsOptions('sdo', getAllSdoValues());
+  buildMsOptions('remark', getAllRemarkValues());
   updateMsBtn('sdo');
+  updateRemarkBtn();
   updateAtrSyncUi();
   runDefaulterFilter();
 }
@@ -2823,12 +2876,14 @@ function setDefSource(src){
   else buildDefAllFromBilledData();
   
   // Dynamically refresh filter options from Master Data
-  _defSelSubs = []; _defSelSupplies = []; _defSelSdos = [];
+  _defSelSubs = []; _defSelSupplies = []; _defSelSdos = []; _defSelRemarks = []; _defBillBasisCeil = false;
+  var ceilCb = gel('def-bbasis-ceil'); if(ceilCb) ceilCb.checked=false;
   buildMsOptions('sub', getAllSubValues());
   buildMsOptions('supply', getAllSupplyValues());
   buildMsOptions('sdo', getAllSdoValues());
-  updateMsBtn('sub'); updateMsBtn('supply'); updateMsBtn('sdo');
-  
+  buildMsOptions('remark', getAllRemarkValues());
+  updateMsBtn('sub'); updateMsBtn('supply'); updateMsBtn('sdo'); updateRemarkBtn();
+
   runDefaulterFilter();
 }
 
@@ -2870,7 +2925,9 @@ function buildDefAllFromMasterData(){
       PAY_AMT: pf(m.LP_AMT), PAY_DATE: m.LP_DATE,
       SUBSTATION: r?r.SUBSTATION:'-', FEEDER: r?r.FEEDER:'-',
       LAT: r?r.LAT:'', LON: r?r.LON:'',
-      SDO_CODE: r?(r.SDO_CODE||''):'', DIVISION: CURRENT_DIVISION||''
+      SDO_CODE: r?(r.SDO_CODE||''):'', DIVISION: CURRENT_DIVISION||'',
+      METER_READ_REMARK: r?String(r.METER_READ_REMARK||'').trim():'',
+      BILL_BASIS: r?String(r.BILL_BASIS||'').trim():''
     });
   });
   enrichDefAllWithSdo();
@@ -2892,7 +2949,9 @@ function buildDefAllFromBilledData(){
       PAY_AMT: pf(p.PAY_AMT), PAY_DATE: p.PAY_DATE,
       SUBSTATION: r?r.SUBSTATION:'-', FEEDER: r?r.FEEDER:'-',
       LAT: r?r.LAT:'', LON: r?r.LON:'',
-      SDO_CODE: r?(r.SDO_CODE||''):'', DIVISION: CURRENT_DIVISION||''
+      SDO_CODE: r?(r.SDO_CODE||''):'', DIVISION: CURRENT_DIVISION||'',
+      METER_READ_REMARK: r?String(r.METER_READ_REMARK||'').trim():'',
+      BILL_BASIS: r?String(r.BILL_BASIS||'').trim():''
     });
   });
   enrichDefAllWithSdo();
@@ -2909,6 +2968,7 @@ function runDefaulterFilter(){
   var loadOp = gel('def-load-op').value, loadV1 = pf(gel('def-load-v1').value), loadV2 = pf(gel('def-load-v2').value);
   
   var sub = _defSelSubs, supply = _defSelSupplies, sdo = _defSelSdos;
+  var remarks = _defSelRemarks, bbasisCeil = _defBillBasisCeil;
   var sortDir = gel('def-sort').value;
   var q = gel('def-search') ? gel('def-search').value.trim().toLowerCase() : '';
 
@@ -2929,7 +2989,9 @@ function runDefaulterFilter(){
     if(sub.length && sub.indexOf(r.SUBSTATION)<0) return false;
     if(supply.length && supply.indexOf(r.SUPPLY_TYPE)<0) return false;
     if(sdo.length && sdo.indexOf(r.SDO_CODE)<0) return false;
-    
+    if(remarks.length && remarks.indexOf(String(r.METER_READ_REMARK||'').trim())<0) return false;
+    if(bbasisCeil && String(r.BILL_BASIS||'').trim().toUpperCase()!=='CEIL') return false;
+
     if(q){
       var meter = METER_DATA[ac(r.ACCT_ID)] || r.METER_NO || '';
       if(!String(r.ACCT_ID).includes(q) &&
