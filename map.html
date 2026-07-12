@@ -185,12 +185,12 @@ function initMap() {
   }).addTo(map);
 
   var satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-    maxZoom: 19,
+    maxZoom: 19, maxNativeZoom: 17,
     attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics'
   });
 
   var satLabels = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
-    maxZoom: 19, pane: 'shadowPane'
+    maxZoom: 19, maxNativeZoom: 17, pane: 'shadowPane'
   });
 
   L.control.layers({
