@@ -1680,8 +1680,11 @@ function countAtrPageMatches(f){
     if(f.sub && f.sub.length && f.sub.indexOf(r.SUBSTATION)<0) return;
     if(f.supply && f.supply.length && f.supply.indexOf(r.SUPPLY_TYPE)<0) return;
     if(f.sdo && f.sdo.length && f.sdo.indexOf(r.SDO_CODE)<0) return;
-    if(f.remark && f.remark.length && f.remark.indexOf(String(r.METER_READ_REMARK||'').trim())<0) return;
-    if(f.bbasisCeil && String(r.BILL_BASIS||'').trim().toUpperCase()!=='CEIL') return;
+    if((f.remark && f.remark.length) || f.bbasisCeil){
+      var isCeil = f.bbasisCeil && String(r.BILL_BASIS||'').trim().toUpperCase()==='CEIL';
+      var matchesRemark = f.remark && f.remark.length && f.remark.indexOf(String(r.METER_READ_REMARK||'').trim())>=0;
+      if(!isCeil && !matchesRemark) return;
+    }
     if(f.outOp==='gt' && r.OUTSTANDING<=f.outV1) return;
     if(f.outOp==='lt' && r.OUTSTANDING>=f.outV1) return;
     if(f.outOp==='between' && (r.OUTSTANDING<f.outV1 || r.OUTSTANDING>f.outV2)) return;
@@ -2989,8 +2992,14 @@ function runDefaulterFilter(){
     if(sub.length && sub.indexOf(r.SUBSTATION)<0) return false;
     if(supply.length && supply.indexOf(r.SUPPLY_TYPE)<0) return false;
     if(sdo.length && sdo.indexOf(r.SDO_CODE)<0) return false;
-    if(remarks.length && remarks.indexOf(String(r.METER_READ_REMARK||'').trim())<0) return false;
-    if(bbasisCeil && String(r.BILL_BASIS||'').trim().toUpperCase()!=='CEIL') return false;
+
+    // MR Remark + Bill Basis are combined in one dropdown as an OR: a row
+    // passes if it matches ANY of the selected remarks, or CEIL if checked.
+    if(remarks.length || bbasisCeil){
+      var isCeil = bbasisCeil && String(r.BILL_BASIS||'').trim().toUpperCase()==='CEIL';
+      var matchesRemark = remarks.length && remarks.indexOf(String(r.METER_READ_REMARK||'').trim())>=0;
+      if(!isCeil && !matchesRemark) return false;
+    }
 
     if(q){
       var meter = METER_DATA[ac(r.ACCT_ID)] || r.METER_NO || '';
