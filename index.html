@@ -741,6 +741,7 @@ function doSync(types, force, btn, logEl){
 // ─── GLOBALS ─────────────────────────────────────────────────────────────────
 let D = [], PAY_DATA = {}, FD = [], METER_DATA = {}; // acct_id -> meter_no
 let MASTER_MAP = {}; // acct_id -> {outstanding, lp_date, lp_amt}
+let BILLED_MAP = {}; // acct_id -> {outstanding, lp_date, lp_amt}, from Billed CSVs only (PAY_DATA is shared/overwritten across all types, so it can't be trusted as "billed" data)
 let GEO_MAP = {}; // acct_id -> [lat, lon], manually-verified Geo Mapping sheet
 let MASTER_LATLON = {}; // acct_id -> [lat, lon], from Master sheet LAT/LON cols
 let BILLED_LATLON = {}; // acct_id -> [lat, lon], from Billed sheet LATITUDE/LONGITUDE cols
@@ -2417,9 +2418,17 @@ function parseFileInto(text, type){
     rawAmt   = iPayAmt>=0  ? (v[iPayAmt]  || '0') : (rawAmt || '0');
     rawDate  = iPayDate>=0 ? (v[iPayDate] || '-') : (rawDate || '-');
     outValue = iTotOut>=0  ? (v[iTotOut]  || '0') : (outValue || '0');
-    
+
     // Auto-swap amount/date if swapped in CSV
     if(rawAmt && rawDate && /\d{2}-\d{2}-\d{4}/.test(rawAmt)){var tmp=rawAmt;rawAmt=rawDate;rawDate=tmp;}
+
+    if(type==='billed'){
+      BILLED_MAP[key] = {
+        TOTAL_OUTSTANDING: outValue,
+        LP_DATE: rawDate,
+        LP_AMT: rawAmt
+      };
+    }
 
     var lat=(v[iLat]||''), lon=(v[iLon]||'');
     var fLat=parseFloat(lat); if(fLat>50){var t=lat;lat=lon;lon=t;}
@@ -2940,16 +2949,18 @@ function buildDefAllFromBilledData(){
   DEF_ALL = [];
   var dIdx = {}; D.forEach(function(r){ dIdx[ac(r.ACCT_ID)] = r; });
 
-  Object.keys(PAY_DATA).forEach(function(key){
-    var p = PAY_DATA[key];
-    var out = pf(p.TOTAL_OUTSTANDING);
+  // Use BILLED_MAP (billed-CSV-only), not PAY_DATA — PAY_DATA is overwritten
+  // by every parsed row regardless of type (master/billed/unbilled), so it
+  // can't be trusted to reflect "billed" figures specifically.
+  Object.keys(BILLED_MAP).forEach(function(key){
+    var b = BILLED_MAP[key];
+    var out = pf(b.TOTAL_OUTSTANDING);
     var r = dIdx[key];
     DEF_ALL.push({
-      ACCT_ID: key, NAME: p.NAME||(r?r.NAME:'-'),
-      MOBILE: r?r.MOBILE_NO:'-', ADDRESS: r?r.ADDRESS:'-',
-      SUPPLY_TYPE: p.SUPPLY_TYPE||(r?r.SUPPLY_TYPE:'-'),
+      ACCT_ID: key, NAME: r?r.NAME:'-', MOBILE: r?r.MOBILE_NO:'-',
+      ADDRESS: r?r.ADDRESS:'-', SUPPLY_TYPE: r?r.SUPPLY_TYPE:'-',
       LOAD: r?pf(r.LOAD):0, OUTSTANDING: out,
-      PAY_AMT: pf(p.PAY_AMT), PAY_DATE: p.PAY_DATE,
+      PAY_AMT: pf(b.LP_AMT), PAY_DATE: b.LP_DATE,
       SUBSTATION: r?r.SUBSTATION:'-', FEEDER: r?r.FEEDER:'-',
       LAT: r?r.LAT:'', LON: r?r.LON:'',
       SDO_CODE: r?(r.SDO_CODE||''):'', DIVISION: CURRENT_DIVISION||'',
