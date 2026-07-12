@@ -47,6 +47,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Segoe UI',Roboto,s
   <div class="topbar">
     <h3 id="sel-name">📍 UPPCL Consumer Map</h3>
     <p id="sel-detail">Click any pin to see details</p>
+    <p id="route-info" style="font-size:11px;color:#1a73e8;font-weight:700;margin-top:2px;"></p>
   </div>
   <div class="legend">
     <div class="leg"><div class="dot" style="background:#F9AB00"></div>Main</div>
@@ -60,6 +61,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Segoe UI',Roboto,s
 
 <script>
 var DATA = [], clat = 25.45, clon = 78.57;
+var theMap = null;
 try {
   var raw = localStorage.getItem('uppcl_map_data');
   if (raw) { var p = JSON.parse(raw); DATA = p.data||[]; clat = p.lat||25.45; clon = p.lon||78.57; }
@@ -93,6 +95,66 @@ function liveDist(d) {
 }
 
 var currentD = null;
+var routeLayers = [];
+var pendingRouteFor = null;
+var routeReqId = 0;
+
+function clearRoute() {
+  routeLayers.forEach(function(l) { theMap.removeLayer(l); });
+  routeLayers = [];
+  document.getElementById('route-info').textContent = '';
+}
+
+function drawStraightFallback(d) {
+  var line = L.polyline([[myLat, myLon], [d.lat, d.lon]], {
+    color: '#4285F4', weight: 4, opacity: 0.8, dashArray: '2,10'
+  }).addTo(theMap);
+  routeLayers.push(line);
+  document.getElementById('route-info').textContent =
+    '📏 ' + fmtDist(haversineKm(myLat, myLon, d.lat, d.lon)) + ' (straight line, no road route found)';
+}
+
+function drawRoute(d) {
+  if (myLat === null) {
+    pendingRouteFor = d;
+    document.getElementById('route-info').textContent = '📡 Waiting for your location…';
+    return;
+  }
+  pendingRouteFor = null;
+  clearRoute();
+  var myReq = ++routeReqId;
+  var url = 'https://router.project-osrm.org/route/v1/driving/' +
+    myLon + ',' + myLat + ';' + d.lon + ',' + d.lat + '?overview=full&geometries=geojson';
+
+  document.getElementById('route-info').textContent = '🧭 Finding route…';
+
+  fetch(url).then(function(r) { return r.json(); }).then(function(res) {
+    if (myReq !== routeReqId) return; // a newer selection superseded this request
+    if (!res.routes || !res.routes.length) { drawStraightFallback(d); return; }
+    var coords = res.routes[0].geometry.coordinates.map(function(c) { return [c[1], c[0]]; });
+
+    var casing = L.polyline(coords, { color: '#ffffff', weight: 9, opacity: 0.9, lineCap: 'round', lineJoin: 'round' }).addTo(theMap);
+    var line = L.polyline(coords, { color: '#4285F4', weight: 6, opacity: 0.95, lineCap: 'round', lineJoin: 'round' }).addTo(theMap);
+    routeLayers.push(casing, line);
+
+    var km = res.routes[0].distance / 1000;
+    var mins = Math.round(res.routes[0].duration / 60);
+    document.getElementById('route-info').textContent =
+      '🚗 ' + km.toFixed(km < 10 ? 2 : 1) + ' km · ~' + mins + ' min via road';
+
+    theMap.fitBounds(line.getBounds(), { paddingTopLeft: [40, 40], paddingBottomRight: [340, 40] });
+  }).catch(function(err) {
+    if (myReq !== routeReqId) return;
+    console.warn('Routing failed:', err);
+    drawStraightFallback(d);
+  });
+}
+
+function selectConsumer(d) {
+  showDetail(d);
+  if (!d.main) drawRoute(d);
+  else clearRoute();
+}
 
 function showDetail(d) {
   currentD = d;
@@ -115,11 +177,31 @@ function updateDistances() {
 
 function initMap() {
   var map = L.map('map', { zoomControl: true }).setView([clat, clon], 16);
+  theMap = map;
 
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  var streetLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
   }).addTo(map);
+
+  var satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    maxZoom: 19,
+    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics'
+  });
+
+  var satLabels = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+    maxZoom: 19, pane: 'shadowPane'
+  });
+
+  L.control.layers({
+    'Street': streetLayer,
+    'Satellite': satLayer
+  }, {}, { collapsed: true, position: 'topleft' }).addTo(map);
+
+  map.on('baselayerchange', function(e) {
+    if (e.name === 'Satellite') { satLabels.addTo(map); }
+    else { map.removeLayer(satLabels); }
+  });
 
   var meMarker = null, meCircle = null;
   map.on('locationfound', function(e) {
@@ -133,6 +215,7 @@ function initMap() {
       meCircle.setLatLng(e.latlng).setRadius(e.accuracy);
     }
     updateDistances();
+    if (pendingRouteFor) { drawRoute(pendingRouteFor); }
   });
   map.on('locationerror', function(e) {
     console.warn('Geolocation unavailable:', e.message);
@@ -182,7 +265,7 @@ function initMap() {
     marker.bindPopup(makeContent);
 
     marker.on('click', function() {
-      showDetail(d);
+      selectConsumer(d);
     });
 
     if (d.main) {
@@ -212,7 +295,7 @@ function initMap() {
       return function() {
         map.setView([d.lat, d.lon], 18);
         marker.openPopup();
-        showDetail(d);
+        selectConsumer(d);
       };
     })(d, marker));
 
