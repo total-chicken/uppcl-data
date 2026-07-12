@@ -53,6 +53,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Segoe UI',Roboto,s
     <div class="leg"><div class="dot" style="background:#EA4335"></div>Defaulter/SM</div>
     <div class="leg"><div class="dot" style="background:#34A853"></div>Paid</div>
     <div class="leg"><div class="dot" style="background:#9C27B0"></div>Lock</div>
+    <div class="leg"><div class="dot" style="background:#4285F4"></div>You</div>
   </div>
   <div class="list" id="lst"></div>
 </div>
@@ -72,20 +73,71 @@ function pinColor(d) {
   return '#EA4335';
 }
 
+var myLat = null, myLon = null;
+var entries = [];
+
+function haversineKm(lat1, lon1, lat2, lon2) {
+  var R = 6371, dLat = (lat2-lat1)*Math.PI/180, dLon = (lon2-lon1)*Math.PI/180;
+  var a = Math.sin(dLat/2)*Math.sin(dLat/2) +
+    Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)*Math.sin(dLon/2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function fmtDist(km) {
+  return km < 1 ? (km*1000).toFixed(0)+' m' : km.toFixed(2)+' km';
+}
+
+function liveDist(d) {
+  if (myLat === null) return null;
+  return haversineKm(myLat, myLon, d.lat, d.lon);
+}
+
+var currentD = null;
+
 function showDetail(d) {
-  var dist = d.main ? '⭐ MAIN CONSUMER' : (d.dist<1?(d.dist*1000).toFixed(0)+' m away':d.dist.toFixed(2)+' km away');
+  currentD = d;
+  var live = liveDist(d);
+  var dist = d.main ? '⭐ MAIN CONSUMER' :
+    (live !== null ? '📡 ' + fmtDist(live) + ' from you' : fmtDist(d.dist) + ' from main');
   document.getElementById('sel-name').textContent = d.name + ' [' + d.acct + ']';
   document.getElementById('sel-detail').textContent =
     '📱 ' + d.mobile + ' | ₹' + d.out.toLocaleString() + ' | ' + dist + '\n📍 ' + d.sub + ' › ' + d.feed;
 }
 
+function updateDistances() {
+  entries.forEach(function(en) {
+    var live = liveDist(en.d);
+    var text = en.d.main ? '⭐ MAIN' : (live !== null ? '📡 ' + fmtDist(live) : fmtDist(en.d.dist));
+    en.distEl.textContent = text;
+  });
+  if (currentD) showDetail(currentD);
+}
+
 function initMap() {
   var map = L.map('map', { zoomControl: true }).setView([clat, clon], 16);
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
   }).addTo(map);
+
+  var meMarker = null, meCircle = null;
+  map.on('locationfound', function(e) {
+    myLat = e.latlng.lat; myLon = e.latlng.lng;
+    if (!meMarker) {
+      meMarker = L.circleMarker(e.latlng, {radius:8, fillColor:'#4285F4', fillOpacity:1, color:'#fff', weight:3})
+        .addTo(map).bindTooltip('You are here');
+      meCircle = L.circle(e.latlng, {radius:e.accuracy, color:'#4285F4', fillColor:'#4285F4', fillOpacity:0.08, weight:1}).addTo(map);
+    } else {
+      meMarker.setLatLng(e.latlng);
+      meCircle.setLatLng(e.latlng).setRadius(e.accuracy);
+    }
+    updateDistances();
+  });
+  map.on('locationerror', function(e) {
+    console.warn('Geolocation unavailable:', e.message);
+  });
+  map.locate({ setView: false, watch: true, enableHighAccuracy: true, maximumAge: 10000, timeout: 10000 });
 
   var lst = document.getElementById('lst');
   var mainMarker = null;
@@ -109,19 +161,25 @@ function initMap() {
     marker.bindTooltip(d.name);
 
     var outColor = d.out > 100000 ? '#EA4335' : d.out > 10000 ? '#F9AB00' : '#34A853';
-    var content =
-      '<div style="font-family:sans-serif;min-width:200px;max-width:250px;font-size:12px;">' +
-      '<div style="font-size:14px;font-weight:700;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid #eee;">' + d.name + '</div>' +
-      '<div><b>Account:</b> ' + d.acct + '</div>' +
-      '<div><b>Mobile:</b> ' + d.mobile + '</div>' +
-      '<div><b>Outstanding:</b> <span style="color:' + outColor + ';font-weight:700">₹' + d.out.toLocaleString() + '</span></div>' +
-      '<div><b>ATR:</b> ' + d.atr + '</div>' +
-      '<div><b>Substation:</b> ' + d.sub + '</div>' +
-      '<div><b>Feeder:</b> ' + d.feed + '</div>' +
-      '<div style="font-size:10px;color:#888;margin-top:4px;">' + d.addr + '</div>' +
-      (d.main ? '' : '<div style="margin-top:4px;color:#4285F4;font-size:10px;">📏 ' + (d.dist<1?(d.dist*1000).toFixed(0)+' m':d.dist.toFixed(2)+' km') + ' away</div>') +
-      '</div>';
-    marker.bindPopup(content);
+    var makeContent = function() {
+      var live = liveDist(d);
+      var distLine = d.main ? '' :
+        '<div style="margin-top:4px;color:#4285F4;font-size:10px;">📏 ' +
+        (live !== null ? fmtDist(live) + ' from you' : fmtDist(d.dist) + ' from main') +
+        '</div>';
+      return '<div style="font-family:sans-serif;min-width:200px;max-width:250px;font-size:12px;">' +
+        '<div style="font-size:14px;font-weight:700;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid #eee;">' + d.name + '</div>' +
+        '<div><b>Account:</b> ' + d.acct + '</div>' +
+        '<div><b>Mobile:</b> ' + d.mobile + '</div>' +
+        '<div><b>Outstanding:</b> <span style="color:' + outColor + ';font-weight:700">₹' + d.out.toLocaleString() + '</span></div>' +
+        '<div><b>ATR:</b> ' + d.atr + '</div>' +
+        '<div><b>Substation:</b> ' + d.sub + '</div>' +
+        '<div><b>Feeder:</b> ' + d.feed + '</div>' +
+        '<div style="font-size:10px;color:#888;margin-top:4px;">' + d.addr + '</div>' +
+        distLine +
+        '</div>';
+    };
+    marker.bindPopup(makeContent);
 
     marker.on('click', function() {
       showDetail(d);
@@ -133,7 +191,6 @@ function initMap() {
 
     // Sidebar list
     var oc = d.out>100000?'#EA4335':d.out>10000?'#F9AB00':'#34A853';
-    var ds = d.main?'⭐ MAIN':(d.dist<1?(d.dist*1000).toFixed(0)+'m':d.dist.toFixed(2)+'km');
     var el = document.createElement('div');
     el.className = 'item ' + (d.main?'main':'near');
     el.innerHTML =
@@ -144,8 +201,12 @@ function initMap() {
       '</div>' +
       '<div style="flex-shrink:0;text-align:right;">' +
         '<div class="item-out" style="color:' + oc + '">₹' + d.out.toLocaleString() + '</div>' +
-        '<div class="item-dist">' + ds + '</div>' +
+        '<div class="item-dist"></div>' +
       '</div>';
+
+    var distEl = el.querySelector('.item-dist');
+    distEl.textContent = d.main ? '⭐ MAIN' : fmtDist(d.dist);
+    entries.push({ d: d, distEl: distEl });
 
     el.addEventListener('click', (function(d, marker) {
       return function() {
