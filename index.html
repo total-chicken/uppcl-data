@@ -722,6 +722,9 @@ function doSync(types, force, btn, logEl){
 // ─── GLOBALS ─────────────────────────────────────────────────────────────────
 let D = [], PAY_DATA = {}, FD = [], METER_DATA = {}; // acct_id -> meter_no
 let MASTER_MAP = {}; // acct_id -> {outstanding, lp_date, lp_amt}
+let GEO_MAP = {}; // acct_id -> [lat, lon], manually-verified Geo Mapping sheet
+let MASTER_LATLON = {}; // acct_id -> [lat, lon], from Master sheet LAT/LON cols
+let BILLED_LATLON = {}; // acct_id -> [lat, lon], from Billed sheet LATITUDE/LONGITUDE cols
 let MASTER_CUTOFF = null; // Date object for last day of master month
 let ATR_DATA = {};
 let DEF_DATA = [];
@@ -771,6 +774,16 @@ function pf(v){
 
 function ac(id){
   return String(id||'').replace(/^0+/,'').trim();
+}
+
+// Coordinate priority: Geo Mapping sheet (manually verified) -> Master sheet LAT/LON -> Billed sheet LATITUDE/LONGITUDE
+function resolveLatLon(acctId){
+  var key = ac(acctId);
+  var g = GEO_MAP[key];
+  if(g && g[0] && g[1] && g[0]!=='0' && g[1]!=='0') return [g[0], g[1]];
+  if(MASTER_LATLON[key]) return MASTER_LATLON[key];
+  if(BILLED_LATLON[key]) return BILLED_LATLON[key];
+  return null;
 }
 
 // Strips the leading apostrophe Excel adds to force text-formatted cells
@@ -2378,7 +2391,12 @@ function parseFileInto(text, type){
 
     var lat=(v[iLat]||''), lon=(v[iLon]||'');
     var fLat=parseFloat(lat); if(fLat>50){var t=lat;lat=lon;lon=t;}
-    
+
+    if(lat && lon && parseFloat(lat) && parseFloat(lon)){
+      if(type==='master') MASTER_LATLON[key] = [lat, lon];
+      else if(type==='billed') BILLED_LATLON[key] = [lat, lon];
+    }
+
     var row={
       ACCT_ID:     acct,
       SDO_CODE:    iSdo>=0     ? (v[iSdo]    ||'') : '',
@@ -2434,13 +2452,12 @@ function ia(){
   var subSet=new Set(),feedSet=new Set(),catSet=new Set();
   
   // Load Geo Mapping Overrides (division-scoped)
-  var geoMap = {};
   var _geoPath = (CURRENT_DISCOM && CURRENT_DIVISION)
     ? RAW_BASE + CURRENT_DISCOM + '/' + CURRENT_DIVISION + '/geo_mapping.json'
     : null;
   if(_geoPath){
     fetch(_geoPath+'?t='+Date.now()).then(r => r.ok ? r.json() : {}).then(map => {
-      geoMap = map;
+      GEO_MAP = map;
       applyGeoAndStats();
     }).catch(() => { applyGeoAndStats(); });
   } else {
@@ -2449,11 +2466,11 @@ function ia(){
 
   function applyGeoAndStats(){
     D.forEach(function(r){
-      var key = ac(r.ACCT_ID);
-      // Apply mapping overrides if they exist and record lacks lat/lon
-      if(geoMap[key] && (!r.LAT || r.LAT === '-' || r.LAT === '0')){
-        r.LAT = geoMap[key][0];
-        r.LON = geoMap[key][1];
+      // Geo Mapping sheet is authoritative; fall back to Master, then Billed, coordinates
+      var resolved = resolveLatLon(r.ACCT_ID);
+      if(resolved){
+        r.LAT = resolved[0];
+        r.LON = resolved[1];
       }
       if(r.SUBSTATION)subSet.add(r.SUBSTATION);
       if(r.FEEDER)feedSet.add(r.FEEDER);
@@ -2759,7 +2776,18 @@ function parseDefaulterText(text){
 // defaulter.csv has no SDO_CODE or SERIAL_NBR — join them from the master/billed
 // data in D (which carries SDO_CODE and SERIAL_NBR per account). Safe to call repeatedly.
 function enrichDefAllWithSdo(){
-  if(!DEF_ALL.length || !D.length) return;
+  if(!DEF_ALL.length) return;
+
+  // Coordinates: Geo Mapping sheet first, falling back to Master then Billed sheet lat/lon
+  var filledCoords = 0;
+  DEF_ALL.forEach(function(r){
+    var resolved = resolveLatLon(r.ACCT_ID);
+    if(resolved && (!r.LAT || !r.LON)) filledCoords++;
+    if(resolved){ r.LAT = resolved[0]; r.LON = resolved[1]; }
+  });
+  if(filledCoords) console.log('Coordinates resolved for', filledCoords, 'defaulters (geo mapping / master / billed)');
+
+  if(!D.length) return;
   var dIdx = {};
   D.forEach(function(r){
     if(r.SDO_CODE || r.SERIAL_NBR) dIdx[ac(r.ACCT_ID)] = r;
@@ -3254,9 +3282,19 @@ function openFromDefaulter(acctId){
 
 function openDefaulterMap(acctId){
   var r=DEF_ALL.find(function(x){return String(x.ACCT_ID)===String(acctId);});
-  if(!r||!r.LAT||!r.LON)return;
+  if(!r)return;
   var lat=parseFloat(r.LAT), lon=parseFloat(r.LON);
   if(lat>50){var t=lat;lat=lon;lon=t;}
+  if(!lat||!lon||isNaN(lat)||isNaN(lon)){
+    // Safety net: DEF_ALL should already carry resolved coords, but re-check
+    // Geo Mapping -> Master -> Billed in case this ran before that resolved.
+    var resolved = resolveLatLon(acctId);
+    if(resolved){
+      lat=parseFloat(resolved[0]); lon=parseFloat(resolved[1]);
+      if(lat>50){var t2=lat;lat=lon;lon=t2;}
+    }
+  }
+  if(!lat||!lon||isNaN(lat)||isNaN(lon)) return;
 
   // Find nearby defaulters within 2km
   var nearby=DEF_ALL.filter(function(x){
