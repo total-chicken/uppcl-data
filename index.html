@@ -652,6 +652,11 @@ function triggerFtpSync(){
   if(gel('sync-unbilled')&&gel('sync-unbilled').checked) types.push('unbilled');
   if(!types.length){alert('Select at least one data type.');return;}
 
+  if(gel('sync-force') && gel('sync-force').checked){
+    doSync(types, true, btn, logEl);
+    return;
+  }
+
   fetch(LOCAL_SYNC_URL+'/sync-status',{mode:'cors'})
     .then(function(r){return r.json();})
     .then(function(d){
