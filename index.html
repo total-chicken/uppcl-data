@@ -358,6 +358,7 @@ select option{background:#fff;color:#1E1B4B;}
     <div class="tab active" id="tab-lookup" onclick="st('lookup')" ontouchstart="st('lookup')">🔍 SEARCH</div>
     <div class="tab" id="tab-defaulter" onclick="st('defaulter')" ontouchstart="st('defaulter')">⚠️ DEFAULTERS</div>
     <div class="tab" id="tab-atrpages" onclick="st('atrpages')" ontouchstart="st('atrpages')">📋 ATR PAGES</div>
+    <div class="tab" id="tab-commercial" onclick="st('commercial')" ontouchstart="st('commercial')">📊 COMMERCIAL</div>
     <div class="tab" id="tab-settings" onclick="st('settings')" ontouchstart="st('settings')" style="display:none">⚙️ SETTINGS</div>
   </div>
 
@@ -557,6 +558,9 @@ select option{background:#fff;color:#1E1B4B;}
     <div id="atrpg-list"></div>
   </div>
 
+  <!-- COMMERCIAL PANEL -->
+  <div class="panel" id="panel-commercial"></div>
+
   <!-- SETTINGS PANEL -->
   <div class="panel" id="panel-settings"></div>
 
@@ -618,7 +622,6 @@ let FILES=[];
 let SUB_DIVISION_MAP={};
 const DEFAULTER_FILE = 'https://raw.githubusercontent.com/total-chicken/uppcl-data/main/defaulter.csv';
 const METERNO_FILE  = 'https://raw.githubusercontent.com/total-chicken/uppcl-data/main/METERNO.csv';
-const WORKER_URL = 'https://total-chicken.github.io/uppcl-data/worker.js';
 const LOCAL_SYNC_URL = 'http://localhost:7321';
 var _syncPollTimer = null;
 
@@ -755,6 +758,9 @@ let modalCurrentAcct = null, modalIsdc = false;
 let modalNearbyLat = null, modalNearbyLon = null;
 let _settingsBuilt = false;
 let _defBuilt = false;
+let _commercialBuilt = false;
+let COMMERCIAL_ENERGY = {}; // "<month>|<groupField>|<groupValue>" -> {mu, by, ts}
+let _commercialEnergyPending = {}; // keys edited locally, not yet uploaded
 let _searchTimer = null;
 let _defSortCol = 'OUTSTANDING', _defSortAsc = false;
 let CURRENT_DISCOM = null, CURRENT_DIVISION = null;
@@ -876,7 +882,7 @@ function _pgJump(el){
 }
 
 // ─── SETTINGS / GITHUB UPLOAD ─────────────────────────────────────────────────
-var CSV_COLS=['ACCT_ID','SDO_CODE','NAME','FATHER_NAME','ADDRESS','SUPPLY_TYPE','LOAD','LOAD_UNIT','CON_STATUS','CONNECTION_TYPE','BILL_CYC_CD','LAT','LON','SERIAL_NBR','METER_READ_REMARK','LAST_BILL_DATE','BILL_BASIS','PAY_AMT','PAY_DATE','TOTAL_OUTSTANDING','SUBSTATION','FEEDER','MOBILE_NO'];
+var CSV_COLS=['ACCT_ID','SDO_CODE','NAME','FATHER_NAME','ADDRESS','SUPPLY_TYPE','LOAD','LOAD_UNIT','CON_STATUS','CONNECTION_TYPE','BILL_CYC_CD','LAT','LON','SERIAL_NBR','METER_READ_REMARK','LAST_BILL_DATE','BILL_BASIS','PAY_AMT','PAY_DATE','TOTAL_OUTSTANDING','SUBSTATION','FEEDER','MOBILE_NO','CURRENT_ASSESSMENT','CROSS_SUBS','PTW_SUBS','TARIFF_SUBS','POWERLOOM_SUBS','WMCR_SUBS','CONSUMPTION_CURR_MNTH'];
 function getGhPat(){ return localStorage.getItem('gh_pat')||''; }
 
 function ghApi(path,opts){
@@ -1354,6 +1360,17 @@ function processAndUpload(){
       var iSub     = findCol(hdrs, ['SUBSTATION', 'SUB_STATION']);
       var iFeed    = findCol(hdrs, ['FEEDER']);
       var iMob     = findCol(hdrs, ['MOBILE_NO', 'MOBILE']);
+      var iCurAssess    = findCol(hdrs, ['CURRENT_ASSESSMENT', 'CUR_ASSESSMENT']);
+      var iCrossSub     = findCol(hdrs, ['CROSS_SUBS', 'CROSS_SUBSIDY']);
+      var iPtwSub       = findCol(hdrs, ['PTW_SUBS', 'PTW_SUBSIDY']);
+      var iTariffSub    = findCol(hdrs, ['TARIFF_SUBS', 'TARIFF_SUBSIDY']);
+      var iPowerloomSub = findCol(hdrs, ['POWERLOOM_SUBS', 'POWERLOOM_SUBSIDY']);
+      var iWmcrSub      = findCol(hdrs, ['WMCR_SUBS', 'WMCR_SUBSIDY']);
+      var iConsumption  = findCol(hdrs, ['CONSUMPTION_CURR_MNTH', 'CONSUMPTION_CURRENT_MONTH']);
+      var iEc           = findCol(hdrs, ['EC']);
+      var iFcCol        = findCol(hdrs, ['FC']);
+      var iDemandAmt    = findCol(hdrs, ['DEMAND_AMT']);
+      var iElecDuty     = findCol(hdrs, ['ELECTRICITY_DUTY']);
 
       settingsLog('✅ Parsed '+rawRows.length+' rows. Mapping columns…');
 
@@ -1365,6 +1382,13 @@ function processAndUpload(){
         var lat = iLat>=0 ? String(vals[iLat]||'').trim() : '';
         var lon = iLon>=0 ? String(vals[iLon]||'').trim() : '';
         if(parseFloat(lat)>50){var t=lat;lat=lon;lon=t;}
+
+        // Replicate FixNegativeCurrentAssessment: a negative CURRENT_ASSESSMENT is
+        // replaced by EC+FC+DEMAND_AMT+ELECTRICITY_DUTY (the workbook's own repair rule)
+        var curAssess = iCurAssess>=0 ? pf(vals[iCurAssess]) : 0;
+        if(curAssess < 0){
+          curAssess = pf(vals[iEc]) + pf(vals[iFcCol]) + pf(vals[iDemandAmt]) + pf(vals[iElecDuty]);
+        }
 
         groups[div].push({
           ACCT_ID:           iAcct>=0    ? String(vals[iAcct]   ||'').trim() : '',
@@ -1388,7 +1412,14 @@ function processAndUpload(){
           TOTAL_OUTSTANDING: iOut>=0    ? String(vals[iOut]   ||'').trim() : '',
           SUBSTATION: sub,
           FEEDER:            iFeed>=0 ? String(vals[iFeed]||'').trim() : '',
-          MOBILE_NO:         iMob>=0  ? String(vals[iMob] ||'').trim() : ''
+          MOBILE_NO:         iMob>=0  ? String(vals[iMob] ||'').trim() : '',
+          CURRENT_ASSESSMENT:    String(curAssess),
+          CROSS_SUBS:            iCrossSub>=0     ? String(vals[iCrossSub]    ||'0').trim() : '0',
+          PTW_SUBS:              iPtwSub>=0       ? String(vals[iPtwSub]      ||'0').trim() : '0',
+          TARIFF_SUBS:           iTariffSub>=0    ? String(vals[iTariffSub]   ||'0').trim() : '0',
+          POWERLOOM_SUBS:        iPowerloomSub>=0 ? String(vals[iPowerloomSub]||'0').trim() : '0',
+          WMCR_SUBS:             iWmcrSub>=0      ? String(vals[iWmcrSub]     ||'0').trim() : '0',
+          CONSUMPTION_CURR_MNTH: iConsumption>=0  ? String(vals[iConsumption] ||'0').trim() : '0'
         });
       });
 
@@ -1791,6 +1822,348 @@ function exitAtrPage(){
   var outOp=gel('def-out-op'), loadOp=gel('def-load-op');
   if(outOp){ outOp.value='any'; updateDefFilterUI('out'); }
   if(loadOp){ loadOp.value='any'; updateDefFilterUI('load'); }
+}
+
+// ─── COMMERCIAL TAB — division/SDO/substation/feeder-wise KPI rollup ─────────
+// Raw B/C/D/E/F/H/I/M columns mirror the workbook's ProcessAllSheetsCompleteOptimized
+// and CalculateSumProductResultsUsingHeadersOptimized macros (COM / SDO CD / SS CD / FEE CD
+// sheets). Derived G, N–T columns mirror CD.xlsx's "SDO CD" sheet formulas, with the
+// K (WMCR Energy) and L (Input Energy w/o WMCR) columns dropped — J (Total Input Energy MU,
+// typed in by hand each month) is used directly wherever L used to appear.
+var EXCLUDE_REMARKS = {ADF:1, IDF:1, RDF:1};
+var VALID_SUPPLY_TYPES = null; // set to an array of allowed SUPPLY_TYPE values to enable ST-sheet-style filtering
+var _comRows = [];
+var _comPage = 1;
+
+function commercialGroupOptions(){
+  return [
+    {value:'DIVISION',   label:'Division'},
+    {value:'SDO_CODE',   label:'SDO'},
+    {value:'SUBSTATION', label:'Substation'},
+    {value:'FEEDER',     label:'Feeder'}
+  ];
+}
+
+function commercialMonthRange(){
+  var el = gel('com-month');
+  var val = (el && el.value) || new Date().toISOString().slice(0,7);
+  var parts = val.split('-'), y = parseInt(parts[0]), m = parseInt(parts[1]);
+  var from = new Date(y, m-1, 1, 0,0,0,0);
+  var to   = new Date(y, m, 0, 23,59,59,999);
+  return {from:from, to:to, key:val};
+}
+
+function buildCommercialRows(groupField, from, to){
+  var groups = {};
+  function bucket(key){
+    if(!groups[key]) groups[key] = {group:key, B:0,C:0,D:0,E:0,F:0,H:0,I:0,M:0};
+    return groups[key];
+  }
+  D.forEach(function(row){
+    if(VALID_SUPPLY_TYPES && VALID_SUPPLY_TYPES.indexOf(row.SUPPLY_TYPE) < 0) return;
+    var groupVal = groupField==='DIVISION' ? (CURRENT_DIVISION||'') : (row[groupField]||'');
+    if(!groupVal) return;
+    var g = bucket(groupVal);
+
+    g.B += 1;
+    g.D += pf(row.LOAD);
+
+    var billDate = parseDate(row.LAST_BILL_DATE);
+    if(billDate && billDate>=from && billDate<=to) g.C += 1;
+
+    var excludeFromCalc = (String(row.BILL_BASIS||'').toUpperCase()==='CEIL')
+      || !!EXCLUDE_REMARKS[String(row.METER_READ_REMARK||'').toUpperCase()];
+    if(!excludeFromCalc){
+      g.E += pf(row.CURRENT_ASSESSMENT) / 100000;
+      g.M += pf(row.CONSUMPTION_CURR_MNTH) / 1000000;
+      g.F += (pf(row.CROSS_SUBS)+pf(row.PTW_SUBS)+pf(row.TARIFF_SUBS)+pf(row.POWERLOOM_SUBS)+pf(row.WMCR_SUBS)) / 100000;
+    }
+
+    var payDate = parseDate(row.PAY_DATE);
+    if(payDate && payDate>=from && payDate<=to){
+      g.I += 1;
+      g.H += pf(row.PAY_AMT) / 100000;
+    }
+  });
+  return Object.keys(groups).sort().map(function(k){ return groups[k]; });
+}
+
+// null denominator/result -> "no value yet" (rendered as "—"), never NaN/Infinity
+function safeDiv(a,b){ return (b!==null && b!==undefined && isFinite(b) && b!==0) ? (a/b) : null; }
+
+function attachCommercialKpis(row, monthKey, groupField){
+  var jKey = monthKey+'|'+groupField+'|'+row.group;
+  var jEntry = COMMERCIAL_ENERGY[jKey];
+  row.jKey = jKey;
+  row.J = (jEntry && typeof jEntry.mu==='number') ? jEntry.mu : null;
+
+  row.G = row.E - row.F;                                    // assessment without subsidy
+  row.N = safeDiv(row.M, row.J);  if(row.N!==null) row.N *= 100;   // billing efficiency %
+  row.O = safeDiv(row.H, row.G);  if(row.O!==null) row.O *= 100;   // collection efficiency %
+  row.P = (row.N!==null && row.O!==null) ? (1 - (row.N/100 * row.O/100)) * 100 : null; // AT&C loss %
+  row.Q = safeDiv(row.H*100000, row.J*1000000);              // through rate
+  row.R = safeDiv(row.I, row.C);  if(row.R!==null) row.R *= 100;   // turn-up ratio %
+  row.S = (row.N!==null) ? (1 - (row.N/100)) * 100 : null;   // line loss %
+  row.T = safeDiv(row.G*100000, row.M*1000000);              // ABR
+  return row;
+}
+
+function fmtInt(v){ return Math.round(v||0).toLocaleString(); }
+function fmtLacs(v){ return (v||0).toFixed(2); }
+function fmtKpi(v, suffix){ return (v===null||v===undefined||!isFinite(v)) ? '—' : (v.toFixed(2)+(suffix||'')); }
+
+function buildCommercialPanel(){
+  _commercialBuilt = true;
+  var opts = commercialGroupOptions().map(function(o){
+    return '<option value="'+o.value+'"'+(o.value==='SDO_CODE'?' selected':'')+'>'+o.label+'</option>';
+  }).join('');
+  gel('panel-commercial').innerHTML =
+    '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:15px;margin-bottom:20px;">'+
+      '<div>'+
+        '<div style="font-family:var(--fh);font-size:22px;font-weight:800;color:#0EA5E9;letter-spacing:0.5px;">📊 COMMERCIAL DATA</div>'+
+        '<div style="font-size:12px;color:var(--muted);font-weight:600;">Division / SDO / Substation / Feeder-wise commercial rollup</div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="fg" style="margin-bottom:20px;background:#fff;padding:16px;border-radius:16px;border:1px solid #C7D2FE;display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;">'+
+      '<div><div class="lbl">GROUP BY</div><div class="sw"><select id="com-groupby" onchange="renderCommercialTable(1)">'+opts+'</select></div></div>'+
+      '<div><div class="lbl">MONTH</div><input type="month" id="com-month" onchange="renderCommercialTable(1)" style="border:1.5px solid #C7D2FE;border-radius:10px;padding:9px 12px;font-family:var(--fh);font-size:13px;font-weight:600;outline:none;"/></div>'+
+      '<div style="flex:1;"></div>'+
+      '<button class="btn btn-acc" onclick="expCommercialX()" style="background:#1E293B;">⬇ EXPORT XLSX</button>'+
+      '<button class="btn" id="com-upload-btn" style="background:#059669;color:#fff;border:none;" onclick="uploadCommercialEnergyToGithub(false)">⬆ UPLOAD ENERGY</button>'+
+      '<button class="btn" style="background:#0EA5E9;color:#fff;border:none;" onclick="loadCommercialEnergyFromGithub(true)">🔄 REFRESH</button>'+
+    '</div>'+
+    '<div style="font-size:11px;color:var(--muted);background:#F8FAFF;border:1px solid #E2E8F0;border-radius:10px;padding:10px 14px;margin-bottom:14px;">'+
+      'TOTAL INPUT ENERGY (MU) is typed in by hand each month — everything else is computed from synced data. Divisions not yet re-synced after this update will show 0/— until their next FTP sync.'+
+    '</div>'+
+    '<div class="tw" style="overflow-x:auto;"><table style="table-layout:fixed;min-width:1900px;">'+
+      '<thead><tr>'+
+        '<th style="width:150px">GROUP</th>'+
+        '<th style="width:90px">BILLABLE</th>'+
+        '<th style="width:90px">BILLED</th>'+
+        '<th style="width:110px">LOAD (KW)</th>'+
+        '<th style="width:120px">ASSESS w/SUB (L)</th>'+
+        '<th style="width:100px">SUBSIDY (L)</th>'+
+        '<th style="width:120px">ASSESS w/o SUB (L)</th>'+
+        '<th style="width:110px">REALIZATION (L)</th>'+
+        '<th style="width:90px">TURN UP</th>'+
+        '<th style="width:130px">INPUT ENERGY (MU)</th>'+
+        '<th style="width:110px">BILLED ENERGY (MU)</th>'+
+        '<th style="width:90px">BILLING EFF %</th>'+
+        '<th style="width:100px">COLLECTION EFF %</th>'+
+        '<th style="width:90px">AT&amp;C LOSS %</th>'+
+        '<th style="width:90px">THROUGH RATE</th>'+
+        '<th style="width:100px">TURN UP RATIO %</th>'+
+        '<th style="width:90px">LINE LOSS %</th>'+
+        '<th style="width:80px">ABR</th>'+
+      '</tr></thead>'+
+      '<tbody id="com-tbody"></tbody>'+
+    '</table></div>'+
+    '<div class="pg" id="com-pg"></div>';
+
+  gel('com-month').value = new Date().toISOString().slice(0,7);
+  renderCommercialTable(1);
+}
+
+function renderCommercialTable(page){
+  if(!gel('com-tbody')) return;
+  page = page || _comPage || 1;
+  _comPage = page;
+  var groupField = gel('com-groupby').value;
+  var range = commercialMonthRange();
+  var rows = buildCommercialRows(groupField, range.from, range.to);
+  rows.forEach(function(r){ attachCommercialKpis(r, range.key, groupField); });
+  _comRows = rows;
+
+  var tot = Math.ceil(rows.length / PS) || 1;
+  if(page>tot) page=tot;
+  var start = (page-1)*PS;
+  var pageRows = rows.slice(start, start+PS);
+
+  var html = pageRows.map(function(r){
+    return '<tr>'+
+      '<td style="font-weight:700;">'+r.group+'</td>'+
+      '<td>'+fmtInt(r.B)+'</td>'+
+      '<td>'+fmtInt(r.C)+'</td>'+
+      '<td>'+fmtLacs(r.D)+'</td>'+
+      '<td>'+fmtLacs(r.E)+'</td>'+
+      '<td>'+fmtLacs(r.F)+'</td>'+
+      '<td>'+fmtLacs(r.G)+'</td>'+
+      '<td>'+fmtLacs(r.H)+'</td>'+
+      '<td>'+fmtInt(r.I)+'</td>'+
+      '<td><input type="number" step="0.01" class="com-j-input" data-key="'+r.jKey+'" value="'+(r.J===null?'':r.J)+'" onchange="onCommercialEnergyEdit(this)" style="width:95px;border:1.5px solid #C7D2FE;border-radius:6px;padding:4px 6px;font-size:12px;outline:none;"/></td>'+
+      '<td>'+fmtLacs(r.M)+'</td>'+
+      '<td>'+fmtKpi(r.N,'%')+'</td>'+
+      '<td>'+fmtKpi(r.O,'%')+'</td>'+
+      '<td>'+fmtKpi(r.P,'%')+'</td>'+
+      '<td>'+fmtKpi(r.Q)+'</td>'+
+      '<td>'+fmtKpi(r.R,'%')+'</td>'+
+      '<td>'+fmtKpi(r.S,'%')+'</td>'+
+      '<td>'+fmtKpi(r.T)+'</td>'+
+    '</tr>';
+  }).join('');
+  gel('com-tbody').innerHTML = html || '<tr><td colspan="18" style="text-align:center;padding:24px;color:var(--muted);">No data for this selection.</td></tr>';
+  rp('com-pg', page, tot, renderCommercialTable);
+}
+
+function onCommercialEnergyEdit(el){
+  var key = el.dataset.key;
+  var raw = el.value;
+  var local = getLocalCommercialEnergy();
+  if(raw===''){
+    delete local[key];
+  } else {
+    var val = parseFloat(raw);
+    if(isNaN(val)) return;
+    local[key] = {mu: val, by: (CURRENT_USER && CURRENT_USER.username) || 'app', ts: new Date().toISOString()};
+  }
+  setLocalCommercialEnergy(local);
+  COMMERCIAL_ENERGY = local;
+  var pending = getCommercialEnergyPending(); pending[key]=1; setCommercialEnergyPending(pending);
+  scheduleCommercialEnergyUpload();
+  renderCommercialTable(_comPage);
+}
+
+function expCommercialX(){
+  if(!_comRows.length) return alert('No data.');
+  var groupField = gel('com-groupby').value;
+  var groupLabel = commercialGroupOptions().filter(function(o){return o.value===groupField;})[0].label;
+  var data = _comRows.map(function(r){
+    var o = {}; o[groupLabel]=r.group;
+    o['BILLABLE CONSUMER']=r.B; o['BILLED CONSUMER']=r.C; o['CONTRACTED LOAD (KW)']=r.D.toFixed(2);
+    o['CURRENT ASSESSMENT WITH SUBSIDY (LACS)']=r.E.toFixed(2); o['SUBSIDY (LACS)']=r.F.toFixed(2);
+    o['CURRENT ASSESSMENT WITHOUT SUBSIDY (LACS)']=r.G.toFixed(2); o['REALIZATION (LACS)']=r.H.toFixed(2);
+    o['TURN UP NOS']=r.I; o['TOTAL INPUT ENERGY (MU)']=(r.J===null?'':r.J); o['BILLED ENERGY (MU)']=r.M.toFixed(2);
+    o['BILLING EFF %']=fmtKpi(r.N); o['COLLECTION EFFICIENCY %']=fmtKpi(r.O); o['AT&C LOSSES %']=fmtKpi(r.P);
+    o['THROUGH RATE']=fmtKpi(r.Q); o['TURN UP RATIO %']=fmtKpi(r.R); o['LINE LOSS %']=fmtKpi(r.S); o['ABR']=fmtKpi(r.T);
+    return o;
+  });
+  var ws=XLSX.utils.json_to_sheet(data);
+  var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Commercial');
+  XLSX.writeFile(wb,'Commercial_'+groupField+'_'+Date.now()+'.xlsx');
+}
+
+// ── Monthly input-energy (J) persistence — GitHub JSON, same pattern as ATR ──
+// <DISCOM>/<DIVISION>/commercial_energy.json
+//   { "updated":"ISO", "division":"…", "entries":{ "<month>|<groupField>|<groupValue>":{mu,by,ts} } }
+function commercialEnergyJsonPath(){
+  return (CURRENT_DISCOM && CURRENT_DIVISION)
+    ? CURRENT_DISCOM + '/' + CURRENT_DIVISION + '/commercial_energy.json'
+    : 'commercial_energy.json';
+}
+function getLocalCommercialEnergy(){ try{ return JSON.parse(localStorage.getItem('commercial_energy_data')||'{}'); }catch(e){ return {}; } }
+function setLocalCommercialEnergy(m){ localStorage.setItem('commercial_energy_data', JSON.stringify(m)); }
+function getCommercialEnergyPending(){ try{ return JSON.parse(localStorage.getItem('commercial_energy_pending')||'{}'); }catch(e){ return {}; } }
+function setCommercialEnergyPending(p){ localStorage.setItem('commercial_energy_pending', JSON.stringify(p)); updateCommercialEnergySyncUi(); }
+
+function commercialEnergyEntryTs(e){ return (e && typeof e==='object' && e.ts) ? (Date.parse(e.ts)||0) : 0; }
+
+function mergeCommercialEnergyMaps(base, incoming){
+  var out = {};
+  Object.keys(base||{}).forEach(function(k){ out[k]=base[k]; });
+  Object.keys(incoming||{}).forEach(function(k){
+    if(!out[k] || commercialEnergyEntryTs(incoming[k]) >= commercialEnergyEntryTs(out[k])) out[k]=incoming[k];
+  });
+  return out;
+}
+
+function fetchRemoteCommercialEnergy_(){
+  if(getGhPat()){
+    return ghApi(commercialEnergyJsonPath()).then(function(r){
+      if(r.status===404) return {entries:{}, sha:null};
+      if(!r.ok) throw new Error('GitHub HTTP '+r.status);
+      return r.json().then(function(f){
+        var obj = {};
+        try{ obj = JSON.parse(decodeURIComponent(escape(atob((f.content||'').replace(/\n/g,''))))); }catch(e){}
+        return {entries: obj.entries||{}, sha: f.sha||null};
+      });
+    });
+  }
+  return fetch(RAW_BASE + commercialEnergyJsonPath() + '?t=' + Date.now()).then(function(r){
+    if(r.status===404) return {entries:{}, sha:null};
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    return r.json().then(function(obj){ return {entries: obj.entries||{}, sha:null}; });
+  });
+}
+
+function loadCommercialEnergyFromGithub(manual){
+  fetchRemoteCommercialEnergy_().then(function(remote){
+    var merged = mergeCommercialEnergyMaps(getLocalCommercialEnergy(), remote.entries);
+    setLocalCommercialEnergy(merged);
+    COMMERCIAL_ENERGY = merged;
+    if(_commercialBuilt && _lastTab==='commercial') renderCommercialTable(_comPage);
+    var n = Object.keys(remote.entries).length;
+    console.log('Commercial energy loaded:', n, 'entries from', commercialEnergyJsonPath());
+    if(manual) alert('✅ Energy figures refreshed — '+n+' record(s) in '+commercialEnergyJsonPath());
+  }).catch(function(e){
+    console.log('Commercial energy load skipped:', e.message);
+    if(manual) alert('⚠ Refresh failed: '+e.message);
+  });
+}
+
+var _comEnergyUploadTimer = null, _comEnergyUploading = false;
+
+function scheduleCommercialEnergyUpload(){
+  clearTimeout(_comEnergyUploadTimer);
+  _comEnergyUploadTimer = setTimeout(function(){ uploadCommercialEnergyToGithub(true); }, 4000);
+}
+
+function pickPendingCommercialEnergyEntries_(){
+  var local = getLocalCommercialEnergy(), pending = getCommercialEnergyPending(), out = {};
+  Object.keys(pending).forEach(function(k){ if(local[k]) out[k] = local[k]; });
+  return out;
+}
+
+function uploadCommercialEnergyToGithub(silent, attempt){
+  attempt = attempt||0;
+  var mine = pickPendingCommercialEnergyEntries_();
+  var n = Object.keys(mine).length;
+  if(!n){ if(!silent) alert('✅ Nothing to upload — all energy figures are already synced.'); updateCommercialEnergySyncUi(); return; }
+  if(!getGhPat()){ if(!silent) alert('⚠ GitHub token missing. Log in again or set the PAT in SETTINGS, then retry.'); return; }
+  if(_comEnergyUploading){ scheduleCommercialEnergyUpload(); return; }
+  _comEnergyUploading = true;
+  var btn = gel('com-upload-btn');
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ UPLOADING…'; }
+
+  fetchRemoteCommercialEnergy_().then(function(remote){
+    var merged = mergeCommercialEnergyMaps(remote.entries, mine);
+    var payload = { updated: new Date().toISOString(), division: CURRENT_DIVISION||'', entries: merged };
+    var body = {
+      message: 'Commercial energy: '+n+' record(s) by '+((CURRENT_USER && CURRENT_USER.username)||'app'),
+      content: btoa(unescape(encodeURIComponent(JSON.stringify(payload)))),
+      branch: GH_BRANCH
+    };
+    if(remote.sha) body.sha = remote.sha;
+    return ghApi(commercialEnergyJsonPath(), {method:'PUT', body: JSON.stringify(body)});
+  }).then(function(r){
+    if(!r){ return; }
+    if(!r.ok){
+      if((r.status===409 || r.status===422) && attempt < 2){
+        _comEnergyUploading = false;
+        setTimeout(function(){ uploadCommercialEnergyToGithub(silent, attempt+1); }, 900);
+        return null;
+      }
+      return r.json().then(function(e){ throw new Error(e.message||('HTTP '+r.status)); });
+    }
+    var pending = getCommercialEnergyPending();
+    Object.keys(mine).forEach(function(k){ delete pending[k]; });
+    setCommercialEnergyPending(pending);
+    _comEnergyUploading = false;
+    console.log('Commercial energy uploaded:', n, 'entries →', commercialEnergyJsonPath());
+    if(!silent) alert('✅ '+n+' energy record(s) uploaded to '+commercialEnergyJsonPath());
+  }).catch(function(e){
+    _comEnergyUploading = false;
+    updateCommercialEnergySyncUi();
+    console.warn('Commercial energy upload failed:', e.message);
+    if(!silent) alert('❌ Upload failed: '+e.message+'\n\nYour entries are safe in this browser and will upload on the next try.');
+  });
+}
+
+function updateCommercialEnergySyncUi(){
+  var btn = gel('com-upload-btn'); if(!btn) return;
+  var n = Object.keys(getCommercialEnergyPending()).length;
+  btn.disabled = false;
+  btn.textContent = n ? ('⬆ UPLOAD ENERGY ('+n+')') : '⬆ UPLOAD ENERGY ✓';
+  btn.style.background = n ? '#F59E0B' : '#059669';
 }
 
 // ─── CRYPTO & PAT OBFUSCATION ────────────────────────────────────────────────
@@ -2244,12 +2617,13 @@ function st(name){
   document.querySelectorAll('.tab').forEach(function(tab){
     tab.classList.toggle('active', tab.getAttribute('onclick')&&tab.getAttribute('onclick').indexOf("'"+name+"'")>-1);
   });
-  ['lookup','defaulter','atrpages','settings'].forEach(function(n){
+  ['lookup','defaulter','atrpages','commercial','settings'].forEach(function(n){
     var p=gel('panel-'+n); if(p)p.classList.toggle('active',n===name);
   });
   requestAnimationFrame(function(){
     if(name==='defaulter') loadDefaulters();
     if(name==='atrpages') buildAtrPagesPanel();
+    if(name==='commercial') buildCommercialPanel();
     if(name==='settings') buildSettingsPanel();
   });
 }
@@ -2376,6 +2750,15 @@ function parseFileInto(text, type){
   var iFeed    = findCol(hdrs, ['FEEDER']);
   var iMob     = findCol(hdrs, ['MOBILE_NO', 'MOBILE']);
 
+  // Commercial tab rollup columns (division/SDO/substation/feeder summaries)
+  var iCurAssess    = findCol(hdrs, ['CURRENT_ASSESSMENT', 'CUR_ASSESSMENT']);
+  var iCrossSub     = findCol(hdrs, ['CROSS_SUBS', 'CROSS_SUBSIDY']);
+  var iPtwSub       = findCol(hdrs, ['PTW_SUBS', 'PTW_SUBSIDY']);
+  var iTariffSub    = findCol(hdrs, ['TARIFF_SUBS', 'TARIFF_SUBSIDY']);
+  var iPowerloomSub = findCol(hdrs, ['POWERLOOM_SUBS', 'POWERLOOM_SUBSIDY']);
+  var iWmcrSub      = findCol(hdrs, ['WMCR_SUBS', 'WMCR_SUBSIDY']);
+  var iConsumption  = findCol(hdrs, ['CONSUMPTION_CURR_MNTH', 'CONSUMPTION_CURRENT_MONTH']);
+
   var pos=nl+1,len=text.length;
   while(pos<len){
     var end=text.indexOf('\n',pos); if(end<0)end=len;
@@ -2458,6 +2841,13 @@ function parseFileInto(text, type){
       SUBSTATION:  (v[iSub] ||''),
       FEEDER:      (v[iFeed]||''),
       MOBILE_NO:   iMob>=0 ? (v[iMob]||'') : '',
+      CURRENT_ASSESSMENT:    iCurAssess>=0    ? (v[iCurAssess]   ||'0') : '0',
+      CROSS_SUBS:            iCrossSub>=0     ? (v[iCrossSub]    ||'0') : '0',
+      PTW_SUBS:              iPtwSub>=0       ? (v[iPtwSub]      ||'0') : '0',
+      TARIFF_SUBS:           iTariffSub>=0    ? (v[iTariffSub]   ||'0') : '0',
+      POWERLOOM_SUBS:        iPowerloomSub>=0 ? (v[iPowerloomSub]||'0') : '0',
+      WMCR_SUBS:             iWmcrSub>=0      ? (v[iWmcrSub]     ||'0') : '0',
+      CONSUMPTION_CURR_MNTH: iConsumption>=0  ? (v[iConsumption] ||'0') : '0',
       SOURCE: type,
       Google_Map_Link:(lat&&lon)?'https://www.google.com/maps?q='+lat+','+lon:''
     };
@@ -2530,6 +2920,9 @@ function ia(){
       loadAtrFromGithub(false);
       updateAtrSyncUi();
       if(Object.keys(getAtrPending()).length) scheduleAtrUpload();
+      loadCommercialEnergyFromGithub(false);
+      updateCommercialEnergySyncUi();
+      if(Object.keys(getCommercialEnergyPending()).length) scheduleCommercialEnergyUpload();
     }, 1500);
   }
 }
