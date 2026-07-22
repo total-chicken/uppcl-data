@@ -177,6 +177,7 @@ select option{background:#fff;color:#1E1B4B;}
 .source-opt{padding:8px 20px;font-family:var(--fh);font-size:12px;font-weight:800;letter-spacing:1px;border-radius:9px;cursor:pointer;color:#64748B;transition:all .2s;user-select:none;text-transform:uppercase;}
 .source-opt.active{background:#F43F5E;color:#fff;box-shadow:0 4px 12px rgba(244,63,94,0.3);}
 .source-opt.active.billed{background:#4F46E5;box-shadow:0 4px 12px rgba(79,70,229,0.3);}
+.source-opt.active.unbilled{background:#D97706;box-shadow:0 4px 12px rgba(217,119,6,0.3);}
 
 .cond-filter-group{display:flex;flex-direction:column;gap:4px;min-width:140px;}
 .cond-row{display:flex;gap:6px;align-items:center;}
@@ -393,6 +394,7 @@ select option{background:#fff;color:#1E1B4B;}
       <div class="source-switch">
         <div class="source-opt active" id="source-master" onclick="setDefSource('master')">Monthly Master</div>
         <div class="source-opt billed" id="source-billed" onclick="setDefSource('billed')">Live Billed</div>
+        <div class="source-opt unbilled" id="source-unbilled" onclick="setDefSource('unbilled')">Unbilled</div>
       </div>
     </div>
 
@@ -764,6 +766,7 @@ function doSync(types, force, btn, logEl){
 let D = [], PAY_DATA = {}, FD = [], METER_DATA = {}; // acct_id -> meter_no
 let MASTER_MAP = {}; // acct_id -> {outstanding, lp_date, lp_amt}
 let BILLED_MAP = {}; // acct_id -> {outstanding, lp_date, lp_amt}, from Billed CSVs only (PAY_DATA is shared/overwritten across all types, so it can't be trusted as "billed" data)
+let UNBILLED_MAP = {}; // acct_id -> {outstanding, lp_date, lp_amt}, from Unbilled CSVs only — same reasoning as BILLED_MAP
 let GEO_MAP = {}; // acct_id -> [lat, lon], manually-verified Geo Mapping sheet
 let MASTER_LATLON = {}; // acct_id -> [lat, lon], from Master sheet LAT/LON cols
 let BILLED_LATLON = {}; // acct_id -> [lat, lon], from Billed sheet LATITUDE/LONGITUDE cols
@@ -3192,6 +3195,11 @@ function parseFileInto(text, type){
       } else {
         outValue = '0';
       }
+      UNBILLED_MAP[key] = {
+        TOTAL_OUTSTANDING: outValue,
+        LP_DATE: rawDate,
+        LP_AMT: rawAmt
+      };
     }
 
     PAY_DATA[key]={
@@ -3599,17 +3607,19 @@ function enrichDefAllWithSdo(){
 
 var DEF_ALL = [];
 
-var _defSource = 'master'; // 'master' or 'billed'
+var _defSource = 'master'; // 'master', 'billed', or 'unbilled'
 
 function setDefSource(src){
   _defSource = src;
   gel('source-master').classList.toggle('active', src==='master');
   gel('source-billed').classList.toggle('active', src==='billed');
-  
+  gel('source-unbilled').classList.toggle('active', src==='unbilled');
+
   // Re-build DEF_ALL from source
   if(src==='master') buildDefAllFromMasterData();
-  else buildDefAllFromBilledData();
-  
+  else if(src==='billed') buildDefAllFromBilledData();
+  else buildDefAllFromUnbilledData();
+
   // Dynamically refresh filter options from Master Data
   _defSelSubs = []; _defSelSupplies = []; _defSelSdos = []; _defSelRemarks = []; _defBillBasisCeil = false;
   var ceilCb = gel('def-bbasis-ceil'); if(ceilCb) ceilCb.checked=false;
@@ -3694,11 +3704,38 @@ function buildDefAllFromBilledData(){
   enrichDefAllWithSdo();
 }
 
+function buildDefAllFromUnbilledData(){
+  DEF_ALL = [];
+  var dIdx = {}; D.forEach(function(r){ dIdx[ac(r.ACCT_ID)] = r; });
+
+  // Use UNBILLED_MAP (unbilled-CSV-only, outstanding already carried forward
+  // from Master minus any post-cutoff payment — see parseFileInto), not
+  // PAY_DATA — same overwrite risk as BILLED_MAP.
+  Object.keys(UNBILLED_MAP).forEach(function(key){
+    var u = UNBILLED_MAP[key];
+    var out = pf(u.TOTAL_OUTSTANDING);
+    var r = dIdx[key];
+    DEF_ALL.push({
+      ACCT_ID: key, NAME: r?r.NAME:'-', MOBILE: r?r.MOBILE_NO:'-',
+      ADDRESS: r?r.ADDRESS:'-', SUPPLY_TYPE: r?r.SUPPLY_TYPE:'-',
+      LOAD: r?pf(r.LOAD):0, OUTSTANDING: out,
+      PAY_AMT: pf(u.LP_AMT), PAY_DATE: u.LP_DATE,
+      SUBSTATION: r?r.SUBSTATION:'-', FEEDER: r?r.FEEDER:'-',
+      LAT: r?r.LAT:'', LON: r?r.LON:'',
+      SDO_CODE: r?(r.SDO_CODE||''):'', DIVISION: CURRENT_DIVISION||'',
+      METER_READ_REMARK: r?String(r.METER_READ_REMARK||'').trim():'',
+      BILL_BASIS: r?String(r.BILL_BASIS||'').trim():''
+    });
+  });
+  enrichDefAllWithSdo();
+}
+
 function runDefaulterFilter(){
   if(!gel('def-tbody')){buildDefaulterPanel();return;}
   if(!DEF_ALL.length) {
     if(_defSource==='master') buildDefAllFromMasterData();
-    else buildDefAllFromBilledData();
+    else if(_defSource==='billed') buildDefAllFromBilledData();
+    else buildDefAllFromUnbilledData();
   }
 
   var outOp = gel('def-out-op').value, outV1 = pf(gel('def-out-v1').value), outV2 = pf(gel('def-out-v2').value);
