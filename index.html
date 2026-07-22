@@ -611,6 +611,25 @@ select option{background:#fff;color:#1E1B4B;}
   </div>
 </div>
 
+<!-- COMMERCIAL HIERARCHY MANAGER MODAL -->
+<div class="modal-overlay" id="com-tree-modal" onclick="if(event.target===this)closeCommercialTree()">
+  <div class="modal-box" style="max-width:520px;">
+    <div class="modal-header">
+      <h3>SUBDIVISION / SUBSTATION / FEEDER</h3>
+      <button class="modal-close" onclick="closeCommercialTree()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">
+        Uncheck anything that isn't a real Subdivision/Substation/Feeder for this division (mistagged data). Unchecking a Subdivision hides everything under it. Changes sync to GitHub for every officer on this division.
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px;flex-wrap:wrap;">
+        <button class="btn" id="com-tags-upload-btn" style="background:#059669;color:#fff;border:none;font-size:11px;padding:8px 12px;" onclick="uploadCommercialTagsToGithub(false)">⬆ UPLOAD TAGS</button>
+        <button class="btn" style="background:#0EA5E9;color:#fff;border:none;font-size:11px;padding:8px 12px;" onclick="loadCommercialTagsFromGithub(true)">🔄 REFRESH TAGS</button>
+      </div>
+      <div id="com-tree-body" style="max-height:55vh;overflow-y:auto;"></div>
+    </div>
+  </div>
+</div>
 
 
 <script>
@@ -761,6 +780,7 @@ let _settingsBuilt = false;
 let _defBuilt = false;
 let _commercialBuilt = false;
 let COMMERCIAL_ENERGY = {}; // "<month>|<groupField>|<groupValue>" -> {mu, by, ts}
+let COMMERCIAL_TAGS = {}; // "<sdo>" / "<sdo>|<sub>" / "<sdo>|<sub>|<feeder>" -> {valid, by, ts} — manual curation of mistagged nodes
 let _commercialEnergyPending = {}; // keys edited locally, not yet uploaded
 let _searchTimer = null;
 let _defSortCol = 'OUTSTANDING', _defSortAsc = false;
@@ -1836,12 +1856,29 @@ var VALID_SUPPLY_TYPES = null; // set to an array of allowed SUPPLY_TYPE values 
 var _comRows = [];
 var _comPage = 1;
 var _comSdo = 'ALL', _comSub = 'ALL', _comFeed = 'ALL'; // cascading drill-down state: Subdivision -> Substation -> Feeder
+var _comHideLowData = true; // hide groups below COM_LOW_DATA_MIN consumers — noise/mistagged data
+var COM_LOW_DATA_MIN = 5;
+
+// A node (SDO, "SDO|Substation", or "SDO|Substation|Feeder") is valid unless
+// explicitly marked invalid via the hierarchy manager — absence means untouched/valid.
+function isCommercialNodeValid(key){
+  var e = COMMERCIAL_TAGS[key];
+  return !e || e.valid !== false;
+}
+function isCommercialRowValid(row){
+  var sdo = row.SDO_CODE||'', sub = row.SUBSTATION||'', feed = row.FEEDER||'';
+  if(sdo && !isCommercialNodeValid(sdo)) return false;
+  if(sdo && sub && !isCommercialNodeValid(sdo+'|'+sub)) return false;
+  if(sdo && sub && feed && !isCommercialNodeValid(sdo+'|'+sub+'|'+feed)) return false;
+  return true;
+}
 
 // Unique values of `field` among master rows matching `filters` (e.g. {SDO_CODE:'X'})
 function comLevelValues(field, filters){
   var set = {};
   D.forEach(function(row){
     if(row.SOURCE !== 'master') return;
+    if(!isCommercialRowValid(row)) return;
     for(var k in filters){ if((row[k]||'') !== filters[k]) return; }
     var v = row[field];
     if(v) set[v] = 1;
@@ -1896,6 +1933,10 @@ function onComFeedChange(v){
   _comFeed=v;
   renderCommercialTable(1);
 }
+function onComHideLowChange(checked){
+  _comHideLowData = checked;
+  renderCommercialTable(1);
+}
 
 function commercialGroupOptions(){
   return [
@@ -1932,6 +1973,7 @@ function buildCommercialRows(groupField, from, to, filters){
   }
   D.forEach(function(row){
     if(row.SOURCE !== 'master') return; // Commercial tab is master-only — billed/unbilled feeds don't belong here
+    if(!isCommercialRowValid(row)) return; // mistagged Subdivision/Substation/Feeder, unchecked in the hierarchy manager
     for(var k in filters){ if((row[k]||'') !== filters[k]) return; }
     if(VALID_SUPPLY_TYPES && VALID_SUPPLY_TYPES.indexOf(row.SUPPLY_TYPE) < 0) return;
     var groupVal = groupField==='DIVISION' ? (CURRENT_DIVISION||'') : (row[groupField]||'');
@@ -2007,6 +2049,12 @@ function buildCommercialPanel(){
       '<button class="btn" id="com-upload-btn" style="background:#059669;color:#fff;border:none;" onclick="uploadCommercialEnergyToGithub(false)">⬆ UPLOAD ENERGY</button>'+
       '<button class="btn" style="background:#0EA5E9;color:#fff;border:none;" onclick="loadCommercialEnergyFromGithub(true)">🔄 REFRESH</button>'+
     '</div>'+
+    '<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:14px;">'+
+      '<label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text);cursor:pointer;">'+
+        '<input type="checkbox" id="com-hide-low" '+(_comHideLowData?'checked':'')+' onchange="onComHideLowChange(this.checked)"/> Hide low-data rows (&lt;'+COM_LOW_DATA_MIN+' consumers)'+
+      '</label>'+
+      '<button class="btn" style="background:#7C3AED;color:#fff;border:none;font-size:12px;" onclick="openCommercialTree()">🌲 MANAGE SUBDIVISION/SUBSTATION/FEEDER</button>'+
+    '</div>'+
     '<div style="font-size:11px;color:var(--muted);background:#F8FAFF;border:1px solid #E2E8F0;border-radius:10px;padding:10px 14px;margin-bottom:14px;">'+
       'All columns are computed from master data only (billed/unbilled feeds are not used here). TOTAL INPUT ENERGY (MU) is typed in by hand each month. The month above is locked to whatever master data is currently FTP-synced for this division — re-sync to advance it. Pick a Subdivision to drill into its Substations, then a Substation to drill into its Feeders.'+
     '</div>'+
@@ -2047,6 +2095,7 @@ function renderCommercialTable(page){
   var groupField = drill.groupField;
   var range = commercialMonthRange();
   var rows = buildCommercialRows(groupField, range.from, range.to, drill.filters);
+  if(_comHideLowData) rows = rows.filter(function(r){ return r.B >= COM_LOW_DATA_MIN; });
   rows.forEach(function(r){ attachCommercialKpis(r, range.key, groupField); });
   _comRows = rows;
 
@@ -2122,6 +2171,202 @@ function expCommercialX(){
   var ws=XLSX.utils.json_to_sheet(data);
   var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Commercial');
   XLSX.writeFile(wb,'Commercial_'+groupField+'_'+Date.now()+'.xlsx');
+}
+
+// ── Hierarchy manager — check/uncheck mistagged Subdivision/Substation/Feeder ──
+function buildCommercialTreeData(){
+  var tree = {};
+  D.forEach(function(row){
+    if(row.SOURCE !== 'master') return;
+    var sdo=row.SDO_CODE||'', sub=row.SUBSTATION||'', feed=row.FEEDER||'';
+    if(!sdo) return;
+    if(!tree[sdo]) tree[sdo] = {count:0, subs:{}};
+    tree[sdo].count++;
+    if(!sub) return;
+    if(!tree[sdo].subs[sub]) tree[sdo].subs[sub] = {count:0, feeds:{}};
+    tree[sdo].subs[sub].count++;
+    if(!feed) return;
+    tree[sdo].subs[sub].feeds[feed] = (tree[sdo].subs[sub].feeds[feed]||0) + 1;
+  });
+  return tree;
+}
+
+function commercialTreeCheckbox(key, count){
+  var checked = isCommercialNodeValid(key) ? 'checked' : '';
+  return '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;">'+
+    '<input type="checkbox" '+checked+' onclick="event.stopPropagation()" onchange="toggleCommercialNode(\''+key.replace(/'/g,"\\'")+'\', this.checked)"/>'+
+    '<span>'+key.split('|').pop()+'</span>'+
+    '<span style="color:var(--muted);font-size:11px;">('+count+')</span>'+
+  '</label>';
+}
+
+function buildCommercialTreeHtml(){
+  var tree = buildCommercialTreeData();
+  var sdoKeys = Object.keys(tree).sort();
+  if(!sdoKeys.length) return '<div style="color:var(--muted);font-size:12px;">No master data loaded yet.</div>';
+  var html = sdoKeys.map(function(sdo){
+    var sNode = tree[sdo];
+    if(_comHideLowData && sNode.count < COM_LOW_DATA_MIN) return '';
+    var subsHtml = Object.keys(sNode.subs).sort().map(function(sub){
+      var subNode = sNode.subs[sub];
+      if(_comHideLowData && subNode.count < COM_LOW_DATA_MIN) return '';
+      var subKey = sdo+'|'+sub;
+      var feedsHtml = Object.keys(subNode.feeds).sort().map(function(feed){
+        var fCount = subNode.feeds[feed];
+        if(_comHideLowData && fCount < COM_LOW_DATA_MIN) return '';
+        return '<div style="padding:5px 0 5px 40px;border-bottom:1px solid #F1F5F9;font-size:12px;">'+commercialTreeCheckbox(subKey+'|'+feed, fCount)+'</div>';
+      }).join('');
+      return '<details style="margin-left:20px;border-bottom:1px solid #F1F5F9;">'+
+        '<summary style="padding:6px 0;cursor:pointer;font-size:12px;list-style:revert;">'+commercialTreeCheckbox(subKey, subNode.count)+'</summary>'+
+        feedsHtml+
+      '</details>';
+    }).join('');
+    return '<details open style="border-bottom:1px solid #E2E8F0;margin-bottom:4px;">'+
+      '<summary style="padding:8px 0;cursor:pointer;font-weight:700;list-style:revert;">'+commercialTreeCheckbox(sdo, sNode.count)+'</summary>'+
+      subsHtml+
+    '</details>';
+  }).join('');
+  return html || '<div style="color:var(--muted);font-size:12px;">Nothing above the low-data cutoff — uncheck "Hide low-data rows" to see everything.</div>';
+}
+
+function toggleCommercialNode(key, valid){
+  COMMERCIAL_TAGS[key] = {valid: valid, by: (CURRENT_USER && CURRENT_USER.username) || 'app', ts: new Date().toISOString()};
+  setLocalCommercialTags(COMMERCIAL_TAGS);
+  var pending = getCommercialTagsPending(); pending[key]=1; setCommercialTagsPending(pending);
+  scheduleCommercialTagsUpload();
+  renderComDropdowns();
+  renderCommercialTable(_comPage);
+}
+
+function openCommercialTree(){
+  gel('com-tree-body').innerHTML = buildCommercialTreeHtml();
+  gel('com-tree-modal').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeCommercialTree(){
+  gel('com-tree-modal').classList.remove('open');
+  document.body.style.overflow='';
+}
+
+// ── Hierarchy tags persistence — GitHub JSON, same pattern as commercial energy ──
+// <DISCOM>/<DIVISION>/commercial_tags.json
+//   { "updated":"ISO", "division":"…", "entries":{ "<sdo>[|<sub>[|<feeder>]]":{valid,by,ts} } }
+function commercialTagsJsonPath(){
+  return (CURRENT_DISCOM && CURRENT_DIVISION)
+    ? CURRENT_DISCOM + '/' + CURRENT_DIVISION + '/commercial_tags.json'
+    : 'commercial_tags.json';
+}
+function getLocalCommercialTags(){ try{ return JSON.parse(localStorage.getItem('commercial_tags_data')||'{}'); }catch(e){ return {}; } }
+function setLocalCommercialTags(m){ localStorage.setItem('commercial_tags_data', JSON.stringify(m)); }
+function getCommercialTagsPending(){ try{ return JSON.parse(localStorage.getItem('commercial_tags_pending')||'{}'); }catch(e){ return {}; } }
+function setCommercialTagsPending(p){ localStorage.setItem('commercial_tags_pending', JSON.stringify(p)); }
+
+function commercialTagEntryTs(e){ return (e && typeof e==='object' && e.ts) ? (Date.parse(e.ts)||0) : 0; }
+
+function mergeCommercialTagsMaps(base, incoming){
+  var out = {};
+  Object.keys(base||{}).forEach(function(k){ out[k]=base[k]; });
+  Object.keys(incoming||{}).forEach(function(k){
+    if(!out[k] || commercialTagEntryTs(incoming[k]) >= commercialTagEntryTs(out[k])) out[k]=incoming[k];
+  });
+  return out;
+}
+
+function fetchRemoteCommercialTags_(){
+  if(getGhPat()){
+    return ghApi(commercialTagsJsonPath()).then(function(r){
+      if(r.status===404) return {entries:{}, sha:null};
+      if(!r.ok) throw new Error('GitHub HTTP '+r.status);
+      return r.json().then(function(f){
+        var obj = {};
+        try{ obj = JSON.parse(decodeURIComponent(escape(atob((f.content||'').replace(/\n/g,''))))); }catch(e){}
+        return {entries: obj.entries||{}, sha: f.sha||null};
+      });
+    });
+  }
+  return fetch(RAW_BASE + commercialTagsJsonPath() + '?t=' + Date.now()).then(function(r){
+    if(r.status===404) return {entries:{}, sha:null};
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    return r.json().then(function(obj){ return {entries: obj.entries||{}, sha:null}; });
+  });
+}
+
+function loadCommercialTagsFromGithub(manual){
+  fetchRemoteCommercialTags_().then(function(remote){
+    var merged = mergeCommercialTagsMaps(getLocalCommercialTags(), remote.entries);
+    setLocalCommercialTags(merged);
+    COMMERCIAL_TAGS = merged;
+    if(_commercialBuilt && _lastTab==='commercial'){
+      renderComDropdowns();
+      renderCommercialTable(_comPage);
+      if(gel('com-tree-modal') && gel('com-tree-modal').classList.contains('open')) gel('com-tree-body').innerHTML = buildCommercialTreeHtml();
+    }
+    var n = Object.keys(remote.entries).length;
+    console.log('Commercial tags loaded:', n, 'entries from', commercialTagsJsonPath());
+    if(manual) alert('✅ Hierarchy tags refreshed — '+n+' record(s) in '+commercialTagsJsonPath());
+  }).catch(function(e){
+    console.log('Commercial tags load skipped:', e.message);
+    if(manual) alert('⚠ Refresh failed: '+e.message);
+  });
+}
+
+var _comTagsUploadTimer = null, _comTagsUploading = false;
+
+function scheduleCommercialTagsUpload(){
+  clearTimeout(_comTagsUploadTimer);
+  _comTagsUploadTimer = setTimeout(function(){ uploadCommercialTagsToGithub(true); }, 4000);
+}
+
+function pickPendingCommercialTagsEntries_(){
+  var local = getLocalCommercialTags(), pending = getCommercialTagsPending(), out = {};
+  Object.keys(pending).forEach(function(k){ if(local[k]) out[k] = local[k]; });
+  return out;
+}
+
+function uploadCommercialTagsToGithub(silent, attempt){
+  attempt = attempt||0;
+  var mine = pickPendingCommercialTagsEntries_();
+  var n = Object.keys(mine).length;
+  if(!n){ if(!silent) alert('✅ Nothing to upload — all hierarchy tags are already synced.'); return; }
+  if(!getGhPat()){ if(!silent) alert('⚠ GitHub token missing. Log in again or set the PAT in SETTINGS, then retry.'); return; }
+  if(_comTagsUploading){ scheduleCommercialTagsUpload(); return; }
+  _comTagsUploading = true;
+  var btn = gel('com-tags-upload-btn');
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ UPLOADING…'; }
+
+  fetchRemoteCommercialTags_().then(function(remote){
+    var merged = mergeCommercialTagsMaps(remote.entries, mine);
+    var payload = { updated: new Date().toISOString(), division: CURRENT_DIVISION||'', entries: merged };
+    var body = {
+      message: 'Commercial hierarchy tags: '+n+' record(s) by '+((CURRENT_USER && CURRENT_USER.username)||'app'),
+      content: btoa(unescape(encodeURIComponent(JSON.stringify(payload)))),
+      branch: GH_BRANCH
+    };
+    if(remote.sha) body.sha = remote.sha;
+    return ghApi(commercialTagsJsonPath(), {method:'PUT', body: JSON.stringify(body)});
+  }).then(function(r){
+    if(!r){ return; }
+    if(!r.ok){
+      if((r.status===409 || r.status===422) && attempt < 2){
+        _comTagsUploading = false;
+        setTimeout(function(){ uploadCommercialTagsToGithub(silent, attempt+1); }, 900);
+        return null;
+      }
+      return r.json().then(function(e){ throw new Error(e.message||('HTTP '+r.status)); });
+    }
+    var pending = getCommercialTagsPending();
+    Object.keys(mine).forEach(function(k){ delete pending[k]; });
+    setCommercialTagsPending(pending);
+    _comTagsUploading = false;
+    if(btn){ btn.disabled = false; btn.textContent = '⬆ UPLOAD TAGS'; }
+    console.log('Commercial tags uploaded:', n, 'entries →', commercialTagsJsonPath());
+    if(!silent) alert('✅ '+n+' tag(s) uploaded to '+commercialTagsJsonPath());
+  }).catch(function(e){
+    _comTagsUploading = false;
+    if(btn){ btn.disabled = false; btn.textContent = '⬆ UPLOAD TAGS'; }
+    console.warn('Commercial tags upload failed:', e.message);
+    if(!silent) alert('❌ Upload failed: '+e.message+'\n\nYour changes are safe in this browser and will upload on the next try.');
+  });
 }
 
 // ── Monthly input-energy (J) persistence — GitHub JSON, same pattern as ATR ──
@@ -3006,6 +3251,8 @@ function ia(){
       loadCommercialEnergyFromGithub(false);
       updateCommercialEnergySyncUi();
       if(Object.keys(getCommercialEnergyPending()).length) scheduleCommercialEnergyUpload();
+      loadCommercialTagsFromGithub(false);
+      if(Object.keys(getCommercialTagsPending()).length) scheduleCommercialTagsUpload();
     }, 1500);
   }
 }
