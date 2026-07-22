@@ -2838,6 +2838,8 @@ function parseFileInto(text, type){
       METER_READ_REMARK: iRemark>=0 ? String(v[iRemark]||'').trim() : '',
       LAST_BILL_DATE:    iLbill>=0  ? (v[iLbill] ||'') : '',
       BILL_BASIS:        iBbasis>=0 ? String(v[iBbasis]||'').trim() : '',
+      PAY_AMT:     rawAmt,
+      PAY_DATE:    rawDate,
       SUBSTATION:  (v[iSub] ||''),
       FEEDER:      (v[iFeed]||''),
       MOBILE_NO:   iMob>=0 ? (v[iMob]||'') : '',
