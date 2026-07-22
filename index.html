@@ -749,6 +749,7 @@ let GEO_MAP = {}; // acct_id -> [lat, lon], manually-verified Geo Mapping sheet
 let MASTER_LATLON = {}; // acct_id -> [lat, lon], from Master sheet LAT/LON cols
 let BILLED_LATLON = {}; // acct_id -> [lat, lon], from Billed sheet LATITUDE/LONGITUDE cols
 let MASTER_CUTOFF = null; // Date object for last day of master month
+let MASTER_SYNC_MONTH_KEY = null; // "YYYY-MM" for the current division's currently-synced master data
 let ATR_DATA = {};
 let DEF_DATA = [];
 const PS = 30;
@@ -1845,12 +1846,20 @@ function commercialGroupOptions(){
 }
 
 function commercialMonthRange(){
-  var el = gel('com-month');
-  var val = (el && el.value) || new Date().toISOString().slice(0,7);
+  // Locked to the current division's currently-synced master data month —
+  // master is refreshed once per FTP sync, so that's the only month this tab means.
+  var val = MASTER_SYNC_MONTH_KEY || new Date().toISOString().slice(0,7);
   var parts = val.split('-'), y = parseInt(parts[0]), m = parseInt(parts[1]);
   var from = new Date(y, m-1, 1, 0,0,0,0);
   var to   = new Date(y, m, 0, 23,59,59,999);
   return {from:from, to:to, key:val};
+}
+
+function commercialMonthLabel(){
+  if(!MASTER_SYNC_MONTH_KEY) return 'unknown — master not yet synced';
+  var parts = MASTER_SYNC_MONTH_KEY.split('-');
+  var names=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+  return names[parseInt(parts[1])-1]+' '+parts[0];
 }
 
 function buildCommercialRows(groupField, from, to){
@@ -1860,6 +1869,7 @@ function buildCommercialRows(groupField, from, to){
     return groups[key];
   }
   D.forEach(function(row){
+    if(row.SOURCE !== 'master') return; // Commercial tab is master-only — billed/unbilled feeds don't belong here
     if(VALID_SUPPLY_TYPES && VALID_SUPPLY_TYPES.indexOf(row.SUPPLY_TYPE) < 0) return;
     var groupVal = groupField==='DIVISION' ? (CURRENT_DIVISION||'') : (row[groupField]||'');
     if(!groupVal) return;
@@ -1926,14 +1936,14 @@ function buildCommercialPanel(){
     '</div>'+
     '<div class="fg" style="margin-bottom:20px;background:#fff;padding:16px;border-radius:16px;border:1px solid #C7D2FE;display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;">'+
       '<div><div class="lbl">GROUP BY</div><div class="sw"><select id="com-groupby" onchange="renderCommercialTable(1)">'+opts+'</select></div></div>'+
-      '<div><div class="lbl">MONTH</div><input type="month" id="com-month" onchange="renderCommercialTable(1)" style="border:1.5px solid #C7D2FE;border-radius:10px;padding:9px 12px;font-family:var(--fh);font-size:13px;font-weight:600;outline:none;"/></div>'+
+      '<div><div class="lbl">MASTER DATA MONTH</div><div style="border:1.5px solid #C7D2FE;border-radius:10px;padding:9px 12px;font-family:var(--fh);font-size:13px;font-weight:600;background:#F8FAFF;">'+commercialMonthLabel()+'</div></div>'+
       '<div style="flex:1;"></div>'+
       '<button class="btn btn-acc" onclick="expCommercialX()" style="background:#1E293B;">⬇ EXPORT XLSX</button>'+
       '<button class="btn" id="com-upload-btn" style="background:#059669;color:#fff;border:none;" onclick="uploadCommercialEnergyToGithub(false)">⬆ UPLOAD ENERGY</button>'+
       '<button class="btn" style="background:#0EA5E9;color:#fff;border:none;" onclick="loadCommercialEnergyFromGithub(true)">🔄 REFRESH</button>'+
     '</div>'+
     '<div style="font-size:11px;color:var(--muted);background:#F8FAFF;border:1px solid #E2E8F0;border-radius:10px;padding:10px 14px;margin-bottom:14px;">'+
-      'TOTAL INPUT ENERGY (MU) is typed in by hand each month — everything else is computed from synced data. Divisions not yet re-synced after this update will show 0/— until their next FTP sync.'+
+      'All columns are computed from master data only (billed/unbilled feeds are not used here). TOTAL INPUT ENERGY (MU) is typed in by hand each month. The month above is locked to whatever master data is currently FTP-synced for this division — re-sync to advance it.'+
     '</div>'+
     '<div class="tw" style="overflow-x:auto;"><table style="table-layout:fixed;min-width:1900px;">'+
       '<thead><tr>'+
@@ -1960,7 +1970,6 @@ function buildCommercialPanel(){
     '</table></div>'+
     '<div class="pg" id="com-pg"></div>';
 
-  gel('com-month').value = new Date().toISOString().slice(0,7);
   renderCommercialTable(1);
 }
 
@@ -2633,21 +2642,20 @@ function resolveFiles(){
   return fetch(MANIFEST_URL+'?t='+Date.now()).then(function(r){return r.ok?r.json():null;})
     .then(function(m){
       if(!m) return;
-      // Parse master cutoff from any division's sync_status
-      outer: for(var dc in m){
-        if(typeof m[dc]!=='object') continue;
-        for(var dv in m[dc]){
-          var ss=(m[dc][dv]||{}).sync_status;
-          if(ss&&ss.master_period){
-            var p=ss.master_period.split('_');
-            var mo={JAN:0,FEB:1,MAR:2,APR:3,MAY:4,JUN:5,JUL:6,AUG:7,SEP:8,OCT:9,NOV:10,DEC:11};
-            MASTER_CUTOFF=new Date(parseInt(p[1]),mo[p[0].toUpperCase()]+1,0);
-            break outer;
-          }
-        }
-      }
       FILES=[];
       var divEntry=((m[CURRENT_DISCOM]||{})[CURRENT_DIVISION])||{};
+
+      // Master period (e.g. "JUN_2026") for THIS division only, drives both the
+      // unbilled-outstanding cutoff and the Commercial tab's locked month.
+      var ss=divEntry.sync_status;
+      if(ss&&ss.master_period){
+        var p=ss.master_period.split('_');
+        var mo={JAN:0,FEB:1,MAR:2,APR:3,MAY:4,JUN:5,JUL:6,AUG:7,SEP:8,OCT:9,NOV:10,DEC:11};
+        var monthIdx=mo[p[0].toUpperCase()], year=parseInt(p[1]);
+        MASTER_CUTOFF=new Date(year,monthIdx+1,0);
+        MASTER_SYNC_MONTH_KEY=year+'-'+String(monthIdx+1).padStart(2,'0');
+      }
+
       (divEntry.master  ||[]).forEach(function(f){FILES.push({url:RAW_BASE+f,type:'master'});});
       (divEntry.billed  ||[]).forEach(function(f){FILES.push({url:RAW_BASE+f,type:'billed'});});
       (divEntry.unbilled||[]).forEach(function(f){FILES.push({url:RAW_BASE+f,type:'unbilled'});});
