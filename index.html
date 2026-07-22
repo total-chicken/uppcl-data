@@ -1835,11 +1835,72 @@ var EXCLUDE_REMARKS = {ADF:1, IDF:1, RDF:1};
 var VALID_SUPPLY_TYPES = null; // set to an array of allowed SUPPLY_TYPE values to enable ST-sheet-style filtering
 var _comRows = [];
 var _comPage = 1;
+var _comSdo = 'ALL', _comSub = 'ALL', _comFeed = 'ALL'; // cascading drill-down state: Subdivision -> Substation -> Feeder
+
+// Unique values of `field` among master rows matching `filters` (e.g. {SDO_CODE:'X'})
+function comLevelValues(field, filters){
+  var set = {};
+  D.forEach(function(row){
+    if(row.SOURCE !== 'master') return;
+    for(var k in filters){ if((row[k]||'') !== filters[k]) return; }
+    var v = row[field];
+    if(v) set[v] = 1;
+  });
+  return Object.keys(set).sort();
+}
+
+// The cascade auto-drills: group by the level right below the deepest concrete
+// pick, filtered by everything picked above it. Leaving a dropdown on "All"
+// stops the drill there.
+function commercialDrillState(){
+  if(_comSdo==='ALL')  return {groupField:'SDO_CODE',  filters:{}};
+  if(_comSub==='ALL')  return {groupField:'SUBSTATION', filters:{SDO_CODE:_comSdo}};
+  if(_comFeed==='ALL') return {groupField:'FEEDER',     filters:{SDO_CODE:_comSdo, SUBSTATION:_comSub}};
+  return {groupField:'FEEDER', filters:{SDO_CODE:_comSdo, SUBSTATION:_comSub, FEEDER:_comFeed}};
+}
+
+function comOptionsHtml(values, allLabel, selected){
+  var html = '<option value="ALL">'+allLabel+'</option>';
+  values.forEach(function(v){
+    html += '<option value="'+v+'"'+(v===selected?' selected':'')+'>'+v+'</option>';
+  });
+  return html;
+}
+
+function renderComDropdowns(){
+  var sdoSel=gel('com-sdo'), subSel=gel('com-sub'), feedSel=gel('com-feed');
+  if(!sdoSel) return;
+
+  sdoSel.innerHTML = comOptionsHtml(comLevelValues('SDO_CODE', {}), 'All Subdivisions', _comSdo);
+
+  var subVals = _comSdo==='ALL' ? [] : comLevelValues('SUBSTATION', {SDO_CODE:_comSdo});
+  subSel.innerHTML = comOptionsHtml(subVals, 'All Substations', _comSub);
+  subSel.disabled = (_comSdo==='ALL');
+
+  var feedVals = (_comSdo==='ALL'||_comSub==='ALL') ? [] : comLevelValues('FEEDER', {SDO_CODE:_comSdo, SUBSTATION:_comSub});
+  feedSel.innerHTML = comOptionsHtml(feedVals, 'All Feeders', _comFeed);
+  feedSel.disabled = (_comSdo==='ALL'||_comSub==='ALL');
+}
+
+function onComSdoChange(v){
+  _comSdo=v; _comSub='ALL'; _comFeed='ALL';
+  renderComDropdowns();
+  renderCommercialTable(1);
+}
+function onComSubChange(v){
+  _comSub=v; _comFeed='ALL';
+  renderComDropdowns();
+  renderCommercialTable(1);
+}
+function onComFeedChange(v){
+  _comFeed=v;
+  renderCommercialTable(1);
+}
 
 function commercialGroupOptions(){
   return [
     {value:'DIVISION',   label:'Division'},
-    {value:'SDO_CODE',   label:'SDO'},
+    {value:'SDO_CODE',   label:'Subdivision'},
     {value:'SUBSTATION', label:'Substation'},
     {value:'FEEDER',     label:'Feeder'}
   ];
@@ -1862,7 +1923,8 @@ function commercialMonthLabel(){
   return names[parseInt(parts[1])-1]+' '+parts[0];
 }
 
-function buildCommercialRows(groupField, from, to){
+function buildCommercialRows(groupField, from, to, filters){
+  filters = filters || {};
   var groups = {};
   function bucket(key){
     if(!groups[key]) groups[key] = {group:key, B:0,C:0,D:0,E:0,F:0,H:0,I:0,M:0};
@@ -1870,6 +1932,7 @@ function buildCommercialRows(groupField, from, to){
   }
   D.forEach(function(row){
     if(row.SOURCE !== 'master') return; // Commercial tab is master-only — billed/unbilled feeds don't belong here
+    for(var k in filters){ if((row[k]||'') !== filters[k]) return; }
     if(VALID_SUPPLY_TYPES && VALID_SUPPLY_TYPES.indexOf(row.SUPPLY_TYPE) < 0) return;
     var groupVal = groupField==='DIVISION' ? (CURRENT_DIVISION||'') : (row[groupField]||'');
     if(!groupVal) return;
@@ -1924,9 +1987,8 @@ function fmtKpi(v, suffix){ return (v===null||v===undefined||!isFinite(v)) ? '�
 
 function buildCommercialPanel(){
   _commercialBuilt = true;
-  var opts = commercialGroupOptions().map(function(o){
-    return '<option value="'+o.value+'"'+(o.value==='SDO_CODE'?' selected':'')+'>'+o.label+'</option>';
-  }).join('');
+  _comSdo='ALL'; _comSub='ALL'; _comFeed='ALL';
+  var selStyle='border:1.5px solid #C7D2FE;border-radius:10px;padding:9px 12px;font-family:var(--fh);font-size:13px;font-weight:600;outline:none;';
   gel('panel-commercial').innerHTML =
     '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:15px;margin-bottom:20px;">'+
       '<div>'+
@@ -1935,7 +1997,10 @@ function buildCommercialPanel(){
       '</div>'+
     '</div>'+
     '<div class="fg" style="margin-bottom:20px;background:#fff;padding:16px;border-radius:16px;border:1px solid #C7D2FE;display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;">'+
-      '<div><div class="lbl">GROUP BY</div><div class="sw"><select id="com-groupby" onchange="renderCommercialTable(1)">'+opts+'</select></div></div>'+
+      '<div><div class="lbl">DIVISION</div><div class="sw"><select disabled style="'+selStyle+'opacity:0.7;"><option>'+(CURRENT_DIVISION||'-')+'</option></select></div></div>'+
+      '<div><div class="lbl">SUBDIVISION</div><div class="sw"><select id="com-sdo" style="'+selStyle+'" onchange="onComSdoChange(this.value)"></select></div></div>'+
+      '<div><div class="lbl">SUBSTATION</div><div class="sw"><select id="com-sub" style="'+selStyle+'" onchange="onComSubChange(this.value)"></select></div></div>'+
+      '<div><div class="lbl">FEEDER</div><div class="sw"><select id="com-feed" style="'+selStyle+'" onchange="onComFeedChange(this.value)"></select></div></div>'+
       '<div><div class="lbl">MASTER DATA MONTH</div><div style="border:1.5px solid #C7D2FE;border-radius:10px;padding:9px 12px;font-family:var(--fh);font-size:13px;font-weight:600;background:#F8FAFF;">'+commercialMonthLabel()+'</div></div>'+
       '<div style="flex:1;"></div>'+
       '<button class="btn btn-acc" onclick="expCommercialX()" style="background:#1E293B;">⬇ EXPORT XLSX</button>'+
@@ -1943,11 +2008,11 @@ function buildCommercialPanel(){
       '<button class="btn" style="background:#0EA5E9;color:#fff;border:none;" onclick="loadCommercialEnergyFromGithub(true)">🔄 REFRESH</button>'+
     '</div>'+
     '<div style="font-size:11px;color:var(--muted);background:#F8FAFF;border:1px solid #E2E8F0;border-radius:10px;padding:10px 14px;margin-bottom:14px;">'+
-      'All columns are computed from master data only (billed/unbilled feeds are not used here). TOTAL INPUT ENERGY (MU) is typed in by hand each month. The month above is locked to whatever master data is currently FTP-synced for this division — re-sync to advance it.'+
+      'All columns are computed from master data only (billed/unbilled feeds are not used here). TOTAL INPUT ENERGY (MU) is typed in by hand each month. The month above is locked to whatever master data is currently FTP-synced for this division — re-sync to advance it. Pick a Subdivision to drill into its Substations, then a Substation to drill into its Feeders.'+
     '</div>'+
     '<div class="tw" style="overflow-x:auto;"><table style="table-layout:fixed;min-width:1900px;">'+
       '<thead><tr>'+
-        '<th style="width:150px">GROUP</th>'+
+        '<th style="width:150px" id="com-group-th">SUBDIVISION</th>'+
         '<th style="width:90px">BILLABLE</th>'+
         '<th style="width:90px">BILLED</th>'+
         '<th style="width:110px">LOAD (KW)</th>'+
@@ -1970,6 +2035,7 @@ function buildCommercialPanel(){
     '</table></div>'+
     '<div class="pg" id="com-pg"></div>';
 
+  renderComDropdowns();
   renderCommercialTable(1);
 }
 
@@ -1977,11 +2043,18 @@ function renderCommercialTable(page){
   if(!gel('com-tbody')) return;
   page = page || _comPage || 1;
   _comPage = page;
-  var groupField = gel('com-groupby').value;
+  var drill = commercialDrillState();
+  var groupField = drill.groupField;
   var range = commercialMonthRange();
-  var rows = buildCommercialRows(groupField, range.from, range.to);
+  var rows = buildCommercialRows(groupField, range.from, range.to, drill.filters);
   rows.forEach(function(r){ attachCommercialKpis(r, range.key, groupField); });
   _comRows = rows;
+
+  var th = gel('com-group-th');
+  if(th){
+    var lbl = commercialGroupOptions().filter(function(o){return o.value===groupField;})[0];
+    th.textContent = (lbl?lbl.label:groupField).toUpperCase();
+  }
 
   var tot = Math.ceil(rows.length / PS) || 1;
   if(page>tot) page=tot;
@@ -2034,7 +2107,7 @@ function onCommercialEnergyEdit(el){
 
 function expCommercialX(){
   if(!_comRows.length) return alert('No data.');
-  var groupField = gel('com-groupby').value;
+  var groupField = commercialDrillState().groupField;
   var groupLabel = commercialGroupOptions().filter(function(o){return o.value===groupField;})[0].label;
   var data = _comRows.map(function(r){
     var o = {}; o[groupLabel]=r.group;
