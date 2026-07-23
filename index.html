@@ -253,6 +253,14 @@ select option{background:#fff;color:#1E1B4B;}
 .ms-option input[type=checkbox]{accent-color:#4F46E5;width:14px;height:14px;}
 .ms-clear{padding:6px 12px;border-top:1px solid #EEF2FF;font-size:11px;color:#4F46E5;cursor:pointer;font-weight:600;text-align:center;}
 .ms-clear:hover{background:#EEF2FF;}
+#def-supply-dd{max-height:360px;}
+.ms-cat{border-bottom:1px solid #F1F5F9;}
+.ms-cat-label{background:#F8FAFF;font-weight:700;}
+.ms-cat-label:hover{background:#EEF2FF;}
+.ms-cat-name{color:#1E1B4B;}
+.ms-cat-count{color:var(--muted);font-weight:500;margin-left:2px;}
+.ms-cat-children{padding-left:20px;}
+.ms-child{padding-top:5px;padding-bottom:5px;}
 
 /* ── MOBILE TABLE ── */
 @media(max-width:768px){
@@ -3514,15 +3522,54 @@ document.addEventListener('click', function(e){
 });
 
 function filterMsOptions(ddId, q){
+  if(ddId==='def-supply-dd'){ filterSupplyTree(q); return; }
   var opts = gel(ddId) ? gel(ddId).querySelectorAll('.ms-option') : [];
   q = q.toLowerCase();
   opts.forEach(function(o){ o.style.display = (!q || o.textContent.toLowerCase().includes(q)) ? '' : 'none'; });
 }
 
+function filterSupplyTree(q){
+  q = (q||'').toLowerCase().trim();
+  document.querySelectorAll('#def-supply-opts .ms-cat').forEach(function(wrap){
+    var catLbl = wrap.querySelector('.ms-cat-label');
+    var catMatch = !q || catLbl.textContent.toLowerCase().includes(q);
+    var anyChildMatch = false;
+    wrap.querySelectorAll('.ms-child').forEach(function(child){
+      var match = !q || catMatch || child.textContent.toLowerCase().includes(q);
+      child.style.display = match ? '' : 'none';
+      if(match) anyChildMatch = true;
+    });
+    catLbl.style.display = '';
+    wrap.style.display = (catMatch || anyChildMatch) ? '' : 'none';
+  });
+}
+
+// Groups the current SUPPLY_TYPE values by their tariff category (LMV-1..HV-4),
+// per SUPPLY_TYPE_MAP; codes with no known tariff land in an UNCATEGORIZED bucket.
+function buildSupplyCategoryTree(values){
+  var tariffOrder=['LMV-1','LMV-2','LMV-3','LMV-4','LMV-5','LMV-6','LMV-7','LMV-8','LMV-9','LMV-10','LMV-11','HV-1','HV-2','HV-3','HV-4'];
+  var byTariff={}, uncategorized=[];
+  values.forEach(function(v){
+    var meta=SUPPLY_TYPE_MAP[String(v).trim().toUpperCase()];
+    if(meta && meta.tariff){
+      if(!byTariff[meta.tariff]) byTariff[meta.tariff]={name:meta.tariffName||meta.tariff,codes:[]};
+      byTariff[meta.tariff].codes.push(v);
+    } else {
+      uncategorized.push(v);
+    }
+  });
+  var tree=tariffOrder.filter(function(t){return byTariff[t];}).map(function(t){
+    return {tariff:t,name:byTariff[t].name,codes:byTariff[t].codes};
+  });
+  if(uncategorized.length) tree.push({tariff:'UNCATEGORIZED',name:'Not yet categorized — tell me which category these belong to',codes:uncategorized});
+  return tree;
+}
+
 function buildMsOptions(type, values){
+  if(type==='supply'){ buildSupplyTree(values); return; }
   var optsEl = gel('def-'+type+'-opts');
   if(!optsEl) return;
-  var sel = type==='sub' ? _defSelSubs : type==='feed' ? _defSelFeeds : type==='sdo' ? _defSelSdos : type==='remark' ? _defSelRemarks : _defSelSupplies;
+  var sel = type==='sub' ? _defSelSubs : type==='feed' ? _defSelFeeds : type==='sdo' ? _defSelSdos : _defSelRemarks;
   optsEl.innerHTML = '';
   var t = type;
   values.forEach(function(v){
@@ -3533,14 +3580,87 @@ function buildMsOptions(type, values){
     cb.checked = sel.indexOf(v) >= 0;
     cb.addEventListener('change', (function(tp){ return function(){ onMsChange(tp, this); }; })(t));
     lbl.appendChild(cb);
-    var text = ' ' + v;
-    if(type==='supply'){
-      var meta = SUPPLY_TYPE_MAP[String(v).trim().toUpperCase()];
-      if(meta) text += '  —  ' + (meta.tariff ? meta.tariff+' ' : '') + (meta.group||'OTHER').replace(/_/g,' ');
-    }
-    lbl.appendChild(document.createTextNode(text));
+    lbl.appendChild(document.createTextNode(' ' + v));
     optsEl.appendChild(lbl);
   });
+}
+
+// Nested Category -> Supply Type tree for the ST filter. Checking a category
+// checkbox selects/deselects every ST code under it; checking individual ST
+// codes partially fills the category checkbox (indeterminate state).
+function buildSupplyTree(values){
+  var optsEl = gel('def-supply-opts');
+  if(!optsEl) return;
+  optsEl.innerHTML = '';
+  var tree = buildSupplyCategoryTree(values);
+  tree.forEach(function(node){
+    var wrap = document.createElement('div');
+    wrap.className = 'ms-cat';
+
+    var catLbl = document.createElement('label');
+    catLbl.className = 'ms-option ms-cat-label';
+    var catCb = document.createElement('input');
+    catCb.type = 'checkbox';
+    catCb.dataset.tariff = node.tariff;
+    var allSel = node.codes.every(function(c){ return _defSelSupplies.indexOf(c)>=0; });
+    var noneSel = node.codes.every(function(c){ return _defSelSupplies.indexOf(c)<0; });
+    catCb.checked = allSel;
+    catCb.indeterminate = !allSel && !noneSel;
+    catCb.addEventListener('change', function(){ onSupplyCatChange(this, node.codes); });
+    catLbl.appendChild(catCb);
+    var nameSpan = document.createElement('span');
+    nameSpan.className = 'ms-cat-name';
+    nameSpan.textContent = ' ' + node.tariff + (node.name ? (' · '+node.name) : '');
+    catLbl.appendChild(nameSpan);
+    var countSpan = document.createElement('span');
+    countSpan.className = 'ms-cat-count';
+    countSpan.textContent = ' (' + node.codes.length + ')';
+    catLbl.appendChild(countSpan);
+    wrap.appendChild(catLbl);
+
+    var childWrap = document.createElement('div');
+    childWrap.className = 'ms-cat-children';
+    node.codes.forEach(function(v){
+      var lbl = document.createElement('label');
+      lbl.className = 'ms-option ms-child';
+      var cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.value = v;
+      cb.checked = _defSelSupplies.indexOf(v) >= 0;
+      cb.addEventListener('change', function(){ onMsChange('supply', this); refreshSupplyCatState(node.tariff); });
+      lbl.appendChild(cb);
+      var meta = SUPPLY_TYPE_MAP[String(v).trim().toUpperCase()];
+      var text = ' ' + v + (meta && meta.group ? '  —  ' + meta.group.replace(/_/g,' ') : '');
+      lbl.appendChild(document.createTextNode(text));
+      childWrap.appendChild(lbl);
+    });
+    wrap.appendChild(childWrap);
+    optsEl.appendChild(wrap);
+  });
+}
+
+function onSupplyCatChange(catCb, codes){
+  var checked = catCb.checked;
+  codes.forEach(function(c){
+    var i = _defSelSupplies.indexOf(c);
+    if(checked){ if(i<0) _defSelSupplies.push(c); }
+    else if(i>=0) _defSelSupplies.splice(i,1);
+  });
+  catCb.indeterminate = false;
+  var wrap = catCb.closest('.ms-cat');
+  if(wrap) wrap.querySelectorAll('.ms-child input[type=checkbox]').forEach(function(cb){ cb.checked = checked; });
+  updateMsBtn('supply');
+  runDefaulterFilter();
+}
+
+function refreshSupplyCatState(tariff){
+  var catCb = document.querySelector('#def-supply-opts input[data-tariff="'+tariff+'"]');
+  if(!catCb) return;
+  var wrap = catCb.closest('.ms-cat');
+  var codes = Array.prototype.map.call(wrap.querySelectorAll('.ms-child input[type=checkbox]'), function(cb){ return cb.value; });
+  var allSel = codes.every(function(c){ return _defSelSupplies.indexOf(c)>=0; });
+  var noneSel = codes.every(function(c){ return _defSelSupplies.indexOf(c)<0; });
+  catCb.checked = allSel;
+  catCb.indeterminate = !allSel && !noneSel;
 }
 
 function onMsChange(type, cb){
