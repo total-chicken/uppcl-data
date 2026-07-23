@@ -51,6 +51,7 @@
   "34":    { "tariff": "LMV-3", "tariffName": "Public Lamps", "group": "PUBLIC_LAMPS", "billingBasis": "KWH",  "description": "Metered Public Lamps, load <10 kW, Nagar Panchayat & Nagar Palika" },
   "35":    { "tariff": "LMV-3", "tariffName": "Public Lamps", "group": "PUBLIC_LAMPS", "billingBasis": "KWH",  "description": "Metered Public Lamps, load <10 kW, Nagar Nigam" },
   "36A":   { "tariff": "LMV-3", "tariffName": "Public Lamps", "group": "PUBLIC_LAMPS", "billingBasis": "KVAH", "description": "Metered Public Lamps, load >=10 kW, Gram Panchayat" },
+  "37":    { "tariff": "LMV-3", "tariffName": "Public Lamps", "group": "PUBLIC_LAMPS", "confirmedBy": "user, 2026-07-23", "description": "Not in source PDF; user-confirmed as LMV-3" },
   "37A":   { "tariff": "LMV-3", "tariffName": "Public Lamps", "group": "PUBLIC_LAMPS", "billingBasis": "KVAH", "description": "Metered Public Lamps, load >=10 kW, Nagar Panchayat & Nagar Palika" },
   "38A":   { "tariff": "LMV-3", "tariffName": "Public Lamps", "group": "PUBLIC_LAMPS", "billingBasis": "KVAH", "description": "Metered Public Lamps, load >=10 kW, Nagar Nigam" },
 
@@ -62,6 +63,7 @@
   "42A":   { "tariff": "LMV-4", "tariffName": "Light, Fan and Power for Public/Private Institutions", "group": "INSTITUTION", "billingBasis": "KVAH", "description": "Central Govt./aided institute (excl. guest house/hostel), load 10 kW to <75 kW" },
   "43":    { "tariff": "LMV-4", "tariffName": "Light, Fan and Power for Public/Private Institutions", "group": "INSTITUTION", "billingBasis": "KWH",  "description": "Guest House/Hostel of Govt/Semi-Govt/PSU, load <10 kW" },
   "44":    { "tariff": "LMV-4", "tariffName": "Light, Fan and Power for Public/Private Institutions", "group": "INSTITUTION", "billingBasis": "KVAH", "description": "Guest House/Hostel of Govt/Semi-Govt/PSU, load 10 kW to <75 kW" },
+  "45":    { "tariff": "LMV-4", "tariffName": "Light, Fan and Power for Public/Private Institutions", "group": "INSTITUTION", "confirmedBy": "user, 2026-07-23", "description": "Not in source PDF; user-confirmed as LMV-4" },
   "46":    { "tariff": "LMV-4", "tariffName": "Light, Fan and Power for Public/Private Institutions", "group": "INSTITUTION", "billingBasis": "KWH",  "description": "Private institute (not under LMV4A), load <10 kW" },
   "47":    { "tariff": "LMV-4", "tariffName": "Light, Fan and Power for Public/Private Institutions", "group": "INSTITUTION", "billingBasis": "KVAH", "description": "Private institute (not under LMV4A), load 10 kW to <75 kW" },
   "48":    { "tariff": "LMV-4", "tariffName": "Light, Fan and Power for Public/Private Institutions", "group": "INSTITUTION", "confirmedBy": "user, 2026-07-23", "description": "Not in source PDF; user-confirmed as LMV-4" },
@@ -84,11 +86,13 @@
   "60":    { "tariff": "LMV-6", "tariffName": "Small and Medium Power (Industries)", "group": "INDUSTRIAL", "billingBasis": "KWH",  "description": "Small/Medium Power (excl. power looms), load <10 kW, Urban Schedule" },
   "60TA":  { "tariff": "LMV-6", "tariffName": "Small and Medium Power (Industries)", "group": "INDUSTRIAL", "billingBasis": "KVAH", "description": "Small/Medium Power (excl. power looms), load 10 kW to <75 kW, Urban Schedule, 4-TOD meter" },
   "61":    { "tariff": "LMV-6", "tariffName": "Small and Medium Power (Industries)", "group": "INDUSTRIAL", "billingBasis": "KWH",  "description": "Small/Medium Power (excl. power looms), load <10 kW, Rural Schedule" },
+  "62TA":  { "tariff": "LMV-6", "tariffName": "Small and Medium Power (Industries)", "group": "INDUSTRIAL", "confirmedBy": "user, 2026-07-23", "description": "Not in source PDF; user-confirmed as LMV-6" },
   "63":    { "tariff": "LMV-6", "tariffName": "Small and Medium Power (Industries)", "group": "INDUSTRIAL", "billingBasis": "KVAH", "description": "Small/Medium Power (excl. power looms), load 10 kW to <75 kW, Rural Schedule" },
   "65":    { "tariff": "LMV-6", "tariffName": "Small and Medium Power (Industries)", "group": "INDUSTRIAL", "billingBasis": "KWH",  "description": "Power Looms, load >4 kW to <10 kW, Rural Schedule" },
   "66":    { "tariff": "LMV-6", "tariffName": "Small and Medium Power (Industries)", "group": "INDUSTRIAL", "billingBasis": "KVAH", "description": "Power Looms, load 10 kW to <75 kW, Rural Schedule" },
   "67":    { "tariff": "LMV-6", "tariffName": "Small and Medium Power (Industries)", "group": "INDUSTRIAL", "billingBasis": "KWH",  "description": "Power Looms, load >4 kW to <10 kW, Urban Schedule" },
   "68T":   { "tariff": "LMV-6", "tariffName": "Small and Medium Power (Industries)", "group": "INDUSTRIAL", "billingBasis": "KVAH", "description": "Power Looms, load 10 kW to <75 kW, Urban Schedule, 4-TOD meter" },
+  "68":    { "tariff": "LMV-6", "tariffName": "Small and Medium Power (Industries)", "group": "INDUSTRIAL", "confirmedBy": "user, 2026-07-23", "description": "Not in source PDF; user-confirmed as LMV-6" },
   "64":    { "tariff": "LMV-6", "tariffName": "Small and Medium Power (Industries)", "group": "INDUSTRIAL", "confirmedBy": "user, 2026-07-23", "description": "Not in source PDF; user-confirmed as LMV-6" },
 
   "72":    { "tariff": "LMV-7", "tariffName": "Public Water Works and Sewage Plants", "group": "PUBLIC_UTILITY", "billingBasis": "KWH",  "description": "Public Water Works, load <10 kW, Urban Schedule" },
@@ -96,6 +100,8 @@
   "74":    { "tariff": "LMV-7", "tariffName": "Public Water Works and Sewage Plants", "group": "PUBLIC_UTILITY", "billingBasis": "KVAH", "description": "Public Water Works, load >=10 kW, Urban Schedule" },
   "75":    { "tariff": "LMV-7", "tariffName": "Public Water Works and Sewage Plants", "group": "PUBLIC_UTILITY", "billingBasis": "KVAH", "description": "Public Water Works, load >=10 kW, Rural Schedule" },
 
+  "80":    { "tariff": "LMV-8", "tariffName": "State Tube Wells, Panchayati Raj Tube Well and Pumped Canals", "group": "PUBLIC_UTILITY", "confirmedBy": "user, 2026-07-23", "description": "Not in source PDF; user-confirmed as LMV-8" },
+  "80B":   { "tariff": "LMV-8", "tariffName": "State Tube Wells, Panchayati Raj Tube Well and Pumped Canals", "group": "PUBLIC_UTILITY", "confirmedBy": "user, 2026-07-23", "description": "Not in source PDF; user-confirmed as LMV-8" },
   "80U":   { "tariff": "LMV-8", "tariffName": "State Tube Wells, Panchayati Raj Tube Well and Pumped Canals", "group": "PUBLIC_UTILITY", "billingBasis": "KWH",  "description": "State/Panchayati Raj tube wells & pumped canal, load <10 kW, Urban Schedule" },
   "80R":   { "tariff": "LMV-8", "tariffName": "State Tube Wells, Panchayati Raj Tube Well and Pumped Canals", "group": "PUBLIC_UTILITY", "billingBasis": "KWH",  "description": "State/Panchayati Raj tube wells & pumped canal, load <10 kW, Rural Schedule" },
   "81U":   { "tariff": "LMV-8", "tariffName": "State Tube Wells, Panchayati Raj Tube Well and Pumped Canals", "group": "PUBLIC_UTILITY", "billingBasis": "KVAH", "description": "State/Panchayati Raj tube wells & pumped canal, load >=10 kW, Urban Schedule" },
@@ -143,6 +149,7 @@
 
   "H21A":  { "tariff": "HV-2", "tariffName": "Large and Heavy Power (Industries)", "group": "HV_INDUSTRIAL", "billingBasis": "KVAH", "description": "Large & Heavy Power, load >50 kW, supply up to 11 kV, Urban Schedule, 4-TOD meter" },
   "H22A":  { "tariff": "HV-2", "tariffName": "Large and Heavy Power (Industries)", "group": "HV_INDUSTRIAL", "billingBasis": "KVAH", "description": "Large & Heavy Power, load >50 kW, supply above 11 kV up to 66 kV, 4-TOD meter" },
+  "H22T":  { "tariff": "HV-2", "tariffName": "Large and Heavy Power (Industries)", "group": "HV_INDUSTRIAL", "confirmedBy": "user gave \"HV-\" (truncated), 2026-07-23", "description": "Not in source PDF; inferred as HV-2 (TOD variant of H22A, mirrors H21T->HV-2) -- confirm if this guess is wrong" },
   "H23A":  { "tariff": "HV-2", "tariffName": "Large and Heavy Power (Industries)", "group": "HV_INDUSTRIAL", "billingBasis": "KVAH", "description": "Large & Heavy Power, load >50 kW, supply above 66 kV up to 132 kV, 4-TOD meter" },
   "H24A":  { "tariff": "HV-2", "tariffName": "Large and Heavy Power (Industries)", "group": "HV_INDUSTRIAL", "billingBasis": "KVAH", "description": "Large & Heavy Power, load >50 kW, supply above 132 kV, 4-TOD meter" },
   "H26":   { "tariff": "HV-2", "tariffName": "Large and Heavy Power (Industries)", "group": "HV_INDUSTRIAL", "billingBasis": "KVAH", "description": "Large & Heavy Power, load >50 kW, supply up to 11 kV, Rural Schedule" },

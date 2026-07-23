@@ -980,6 +980,14 @@ var SUPPLY_TYPE_MAP={
 "15":{tariff:"LMV-1",tariffName:"Domestic Light, Fan and Power",group:"DOMESTIC"},
 "48":{tariff:"LMV-4",tariffName:"Light, Fan and Power for Institutions",group:"INSTITUTION"},
 "64":{tariff:"LMV-6",tariffName:"Small and Medium Power (Industries)",group:"INDUSTRIAL"},
+"37":{tariff:"LMV-3",tariffName:"Public Lamps",group:"PUBLIC_LAMPS"},
+"45":{tariff:"LMV-4",tariffName:"Light, Fan and Power for Institutions",group:"INSTITUTION"},
+"62TA":{tariff:"LMV-6",tariffName:"Small and Medium Power (Industries)",group:"INDUSTRIAL"},
+"68":{tariff:"LMV-6",tariffName:"Small and Medium Power (Industries)",group:"INDUSTRIAL"},
+"80":{tariff:"LMV-8",tariffName:"State Tube Wells / Pumped Canals",group:"PUBLIC_UTILITY"},
+"80B":{tariff:"LMV-8",tariffName:"State Tube Wells / Pumped Canals",group:"PUBLIC_UTILITY"},
+// User gave "HV-" (truncated) for H22T; inferred HV-2 by pattern match with H22A/H21T -- confirm if wrong
+"H22T":{tariff:"HV-2",tariffName:"Large and Heavy Power (Industries)",group:"HV_INDUSTRIAL"},
 // Observed in live data but absent from the source tariff PDF; best-effort guesses, unconfirmed
 "11G":{tariff:"LMV-11",group:"EV_CHARGING",tariffName:"Electrical Vehicle Charging (legacy code, likely 11GA)"},
 "11H":{tariff:"LMV-11",group:"EV_CHARGING",tariffName:"Electrical Vehicle Charging (legacy code, likely 11HA)"},
