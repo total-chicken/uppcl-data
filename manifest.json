@@ -234,10 +234,10 @@
       ],
       "sync_status": {
         "master_period": "JUN_2026",
-        "billed_date": "22072026",
-        "unbilled_date": "22072026"
+        "billed_date": "23072026",
+        "unbilled_date": "23072026"
       },
-      "updated": "2026-07-22T19:21:10.880541Z"
+      "updated": "2026-07-23T06:53:00.132727Z"
     },
     "DIV233633": {
       "master": [],
@@ -3011,5 +3011,5 @@
       "unbilled": []
     }
   },
-  "updated": "2026-07-22T19:21:11.023542Z"
+  "updated": "2026-07-23T06:53:00.181430Z"
 }
