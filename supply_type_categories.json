@@ -23,6 +23,9 @@
   },
 
   "10":    { "tariff": "LMV-1",  "tariffName": "Domestic Light, Fan and Power", "group": "DOMESTIC", "billingBasis": "KWH",  "description": "Metered domestic consumers, Urban Schedule" },
+  "12":    { "tariff": "LMV-1",  "tariffName": "Domestic Light, Fan and Power", "group": "DOMESTIC", "confirmedBy": "user, 2026-07-23", "description": "Not in source PDF; user-confirmed as LMV-1" },
+  "14":    { "tariff": "LMV-1",  "tariffName": "Domestic Light, Fan and Power", "group": "DOMESTIC", "confirmedBy": "user, 2026-07-23", "description": "Not in source PDF; user-confirmed as LMV-1" },
+  "15":    { "tariff": "LMV-1",  "tariffName": "Domestic Light, Fan and Power", "group": "DOMESTIC", "confirmedBy": "user, 2026-07-23", "description": "Not in source PDF; user-confirmed as LMV-1" },
   "10A":   { "tariff": "LMV-1",  "tariffName": "Domestic Light, Fan and Power", "group": "DOMESTIC", "billingBasis": "KWH",  "description": "Domestic Lifeline consumer, load up to 1 kW, Urban Schedule" },
   "11":    { "tariff": "LMV-1",  "tariffName": "Domestic Light, Fan and Power", "group": "DOMESTIC", "billingBasis": "KVAH", "description": "Domestic consumer, load 10 kW or more, Urban Schedule" },
   "17":    { "tariff": "LMV-1",  "tariffName": "Domestic Light, Fan and Power", "group": "DOMESTIC", "billingBasis": "KWH",  "description": "Domestic consumer, load less than 10 kW, Rural Schedule" },
@@ -61,6 +64,7 @@
   "44":    { "tariff": "LMV-4", "tariffName": "Light, Fan and Power for Public/Private Institutions", "group": "INSTITUTION", "billingBasis": "KVAH", "description": "Guest House/Hostel of Govt/Semi-Govt/PSU, load 10 kW to <75 kW" },
   "46":    { "tariff": "LMV-4", "tariffName": "Light, Fan and Power for Public/Private Institutions", "group": "INSTITUTION", "billingBasis": "KWH",  "description": "Private institute (not under LMV4A), load <10 kW" },
   "47":    { "tariff": "LMV-4", "tariffName": "Light, Fan and Power for Public/Private Institutions", "group": "INSTITUTION", "billingBasis": "KVAH", "description": "Private institute (not under LMV4A), load 10 kW to <75 kW" },
+  "48":    { "tariff": "LMV-4", "tariffName": "Light, Fan and Power for Public/Private Institutions", "group": "INSTITUTION", "confirmedBy": "user, 2026-07-23", "description": "Not in source PDF; user-confirmed as LMV-4" },
 
   "50":    { "tariff": "LMV-5", "tariffName": "Small Power for Private Tube Wells (Irrigation)", "group": "AGRICULTURE", "billingBasis": "BHP",  "description": "Un-Metered Non-Bundelkhand PTW, load up to 25 BHP, Rural Schedule" },
   "51":    { "tariff": "LMV-5", "tariffName": "Small Power for Private Tube Wells (Irrigation)", "group": "AGRICULTURE", "billingBasis": "KWH",  "description": "Metered Non-Bundelkhand PTW, load <10 kW, Rural Schedule" },
@@ -85,6 +89,7 @@
   "66":    { "tariff": "LMV-6", "tariffName": "Small and Medium Power (Industries)", "group": "INDUSTRIAL", "billingBasis": "KVAH", "description": "Power Looms, load 10 kW to <75 kW, Rural Schedule" },
   "67":    { "tariff": "LMV-6", "tariffName": "Small and Medium Power (Industries)", "group": "INDUSTRIAL", "billingBasis": "KWH",  "description": "Power Looms, load >4 kW to <10 kW, Urban Schedule" },
   "68T":   { "tariff": "LMV-6", "tariffName": "Small and Medium Power (Industries)", "group": "INDUSTRIAL", "billingBasis": "KVAH", "description": "Power Looms, load 10 kW to <75 kW, Urban Schedule, 4-TOD meter" },
+  "64":    { "tariff": "LMV-6", "tariffName": "Small and Medium Power (Industries)", "group": "INDUSTRIAL", "confirmedBy": "user, 2026-07-23", "description": "Not in source PDF; user-confirmed as LMV-6" },
 
   "72":    { "tariff": "LMV-7", "tariffName": "Public Water Works and Sewage Plants", "group": "PUBLIC_UTILITY", "billingBasis": "KWH",  "description": "Public Water Works, load <10 kW, Urban Schedule" },
   "73":    { "tariff": "LMV-7", "tariffName": "Public Water Works and Sewage Plants", "group": "PUBLIC_UTILITY", "billingBasis": "KWH",  "description": "Public Water Works, load <10 kW, Rural Schedule" },
@@ -113,6 +118,7 @@
   "105":   { "tariff": "LMV-10", "tariffName": "Departmental Employees and Pensioners", "group": "DEPARTMENTAL", "billingBasis": "KWH", "description": "Executive Engineers and equivalent" },
   "106":   { "tariff": "LMV-10", "tariffName": "Departmental Employees and Pensioners", "group": "DEPARTMENTAL", "billingBasis": "KWH", "description": "Dy. General Managers and equivalent (SE)" },
   "107":   { "tariff": "LMV-10", "tariffName": "Departmental Employees and Pensioners", "group": "DEPARTMENTAL", "billingBasis": "KWH", "description": "Chief General Managers and General Managers and above (C.E. I & II)" },
+  "100":   { "tariff": "LMV-10", "tariffName": "Departmental Employees and Pensioners", "group": "DEPARTMENTAL", "confirmedBy": "user, 2026-07-23", "description": "Not in source PDF; user-confirmed as LMV-10" },
 
   "11A":   { "tariff": "LMV-11", "tariffName": "Electrical Vehicle Charging", "group": "EV_CHARGING", "billingBasis": "KWH",  "description": "EV charging, Multistoried Building (LMV-1b), load <10 kW" },
   "11B":   { "tariff": "LMV-11", "tariffName": "Electrical Vehicle Charging", "group": "EV_CHARGING", "billingBasis": "KVAH", "description": "EV charging, Multistoried Building (LMV-1b), load >=10 kW" },
@@ -153,13 +159,7 @@
   "H43":   { "tariff": "HV-4", "tariffName": "Lift Irrigation Works", "group": "HV_IRRIGATION", "billingBasis": "KVAH", "description": "Medium/Large Pumped Canals, load >=100 BHP, supply above 66 kV up to 132 kV" },
 
   "_unmapped": {
-    "_note": "Codes observed in uppcl-data/master, billed/ and unbilled/ CSVs that do not appear in the source tariff PDF. Best-effort guesses only — verify against the current DVVNL/UPPCL tariff order before relying on these.",
-    "100": { "group": "OTHER", "guess": "Adjacent to LMV-10 (101-107) departmental range but not itself listed — possibly a legacy departmental code" },
-    "12":  { "group": "OTHER", "guess": "Not identified" },
-    "14":  { "group": "OTHER", "guess": "Not identified" },
-    "15":  { "group": "OTHER", "guess": "Not identified" },
-    "48":  { "group": "OTHER", "guess": "Adjacent to LMV-4 range (40-47) — possibly a retired private-institution sub-code" },
-    "64":  { "group": "OTHER", "guess": "Adjacent to LMV-6 range (60-68T) — possibly a retired small/medium power sub-code" },
+    "_note": "Codes observed in uppcl-data/master, billed/ and unbilled/ CSVs that do not appear in the source tariff PDF and remain unconfirmed. Best-effort guesses only — verify against the current DVVNL/UPPCL tariff order before relying on these. (100, 12, 14, 15, 48, 64 were previously listed here but are now confirmed and moved into the main mapping above.)",
     "11G": { "group": "EV_CHARGING", "guess": "Legacy short form of 11GA (LMV-11 Public Charging Station, LT)" },
     "11H": { "group": "EV_CHARGING", "guess": "Legacy short form of 11HA (LMV-11 Public Charging Station, HT)" },
     "38":  { "group": "PUBLIC_LAMPS", "guess": "Legacy short form of 38A (LMV-3 Nagar Nigam, metered, >=10 kW)" },

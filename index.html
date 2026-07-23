@@ -254,6 +254,8 @@ select option{background:#fff;color:#1E1B4B;}
 .ms-clear{padding:6px 12px;border-top:1px solid #EEF2FF;font-size:11px;color:#4F46E5;cursor:pointer;font-weight:600;text-align:center;}
 .ms-clear:hover{background:#EEF2FF;}
 #def-supply-dd{max-height:360px;}
+.com-total-row td{background:#EEF2FF;color:#1E1B4B;font-weight:800;border-top:2px solid #4F46E5;position:sticky;bottom:0;}
+.com-total-row td:first-child{white-space:normal;word-break:break-word;}
 .ms-cat{border-bottom:1px solid #F1F5F9;}
 .ms-cat-label{background:#F8FAFF;font-weight:700;}
 .ms-cat-label:hover{background:#EEF2FF;}
@@ -971,13 +973,14 @@ var SUPPLY_TYPE_MAP={
 "H41":{tariff:"HV-4",tariffName:"Lift Irrigation Works",group:"HV_IRRIGATION"},
 "H42":{tariff:"HV-4",tariffName:"Lift Irrigation Works",group:"HV_IRRIGATION"},
 "H43":{tariff:"HV-4",tariffName:"Lift Irrigation Works",group:"HV_IRRIGATION"},
+// Absent from the source tariff PDF; user-confirmed 2026-07-23
+"100":{tariff:"LMV-10",tariffName:"Departmental Employees and Pensioners",group:"DEPARTMENTAL"},
+"12":{tariff:"LMV-1",tariffName:"Domestic Light, Fan and Power",group:"DOMESTIC"},
+"14":{tariff:"LMV-1",tariffName:"Domestic Light, Fan and Power",group:"DOMESTIC"},
+"15":{tariff:"LMV-1",tariffName:"Domestic Light, Fan and Power",group:"DOMESTIC"},
+"48":{tariff:"LMV-4",tariffName:"Light, Fan and Power for Institutions",group:"INSTITUTION"},
+"64":{tariff:"LMV-6",tariffName:"Small and Medium Power (Industries)",group:"INDUSTRIAL"},
 // Observed in live data but absent from the source tariff PDF; best-effort guesses, unconfirmed
-"100":{group:"OTHER",tariffName:"Unmapped (near LMV-10 departmental range)"},
-"12":{group:"OTHER",tariffName:"Unmapped"},
-"14":{group:"OTHER",tariffName:"Unmapped"},
-"15":{group:"OTHER",tariffName:"Unmapped"},
-"48":{group:"OTHER",tariffName:"Unmapped (near LMV-4 institution range)"},
-"64":{group:"OTHER",tariffName:"Unmapped (near LMV-6 industry range)"},
 "11G":{tariff:"LMV-11",group:"EV_CHARGING",tariffName:"Electrical Vehicle Charging (legacy code, likely 11GA)"},
 "11H":{tariff:"LMV-11",group:"EV_CHARGING",tariffName:"Electrical Vehicle Charging (legacy code, likely 11HA)"},
 "38":{tariff:"LMV-3",group:"PUBLIC_LAMPS",tariffName:"Public Lamps (legacy code, likely 38A)"},
@@ -2167,12 +2170,9 @@ function buildCommercialRows(groupField, from, to, filters){
 // null denominator/result -> "no value yet" (rendered as "—"), never NaN/Infinity
 function safeDiv(a,b){ return (b!==null && b!==undefined && isFinite(b) && b!==0) ? (a/b) : null; }
 
-function attachCommercialKpis(row, monthKey, groupField){
-  var jKey = monthKey+'|'+groupField+'|'+row.group;
-  var jEntry = COMMERCIAL_ENERGY[jKey];
-  row.jKey = jKey;
-  row.J = (jEntry && typeof jEntry.mu==='number') ? jEntry.mu : null;
-
+// Shared by every row AND the consolidated totals row (renderCommercialTotalsRow) —
+// so the total is a real recompute from summed B..M/J, never a naive sum/average of %.
+function computeCommercialKpis(row){
   row.G = row.E - row.F;                                    // assessment without subsidy
   row.N = safeDiv(row.M, row.J);  if(row.N!==null) row.N *= 100;   // billing efficiency %
   row.O = safeDiv(row.H, row.G);  if(row.O!==null) row.O *= 100;   // collection efficiency %
@@ -2182,6 +2182,28 @@ function attachCommercialKpis(row, monthKey, groupField){
   row.S = (row.N!==null) ? (1 - (row.N/100)) * 100 : null;   // line loss %
   row.T = safeDiv(row.G*100000, row.M*1000000);              // ABR
   return row;
+}
+
+function attachCommercialKpis(row, monthKey, groupField){
+  var jKey = monthKey+'|'+groupField+'|'+row.group;
+  var jEntry = COMMERCIAL_ENERGY[jKey];
+  row.jKey = jKey;
+  row.J = (jEntry && typeof jEntry.mu==='number') ? jEntry.mu : null;
+  return computeCommercialKpis(row);
+}
+
+// Consolidated row: sums raw B..M across every currently-filtered group (not just
+// the visible page) and re-derives the KPI columns with the exact same formula
+// used per-row above — never averages/sums the percentage columns directly.
+function buildCommercialTotalsRow(rows){
+  var t = {group:'TOTAL', B:0,C:0,D:0,E:0,F:0,H:0,I:0,M:0};
+  var jSum=0, jHasAny=false;
+  rows.forEach(function(r){
+    t.B+=r.B; t.C+=r.C; t.D+=r.D; t.E+=r.E; t.F+=r.F; t.H+=r.H; t.I+=r.I; t.M+=r.M;
+    if(r.J!==null && r.J!==undefined && isFinite(r.J)){ jSum+=r.J; jHasAny=true; }
+  });
+  t.J = jHasAny ? jSum : null;
+  return computeCommercialKpis(t);
 }
 
 function fmtInt(v){ return Math.round(v||0).toLocaleString(); }
@@ -2241,6 +2263,7 @@ function buildCommercialPanel(){
         '<th style="width:80px">ABR</th>'+
       '</tr></thead>'+
       '<tbody id="com-tbody"></tbody>'+
+      '<tfoot id="com-tfoot"></tfoot>'+
     '</table></div>'+
     '<div class="pg" id="com-pg"></div>';
 
@@ -2295,6 +2318,36 @@ function renderCommercialTable(page){
   }).join('');
   gel('com-tbody').innerHTML = html || '<tr><td colspan="18" style="text-align:center;padding:24px;color:var(--muted);">No data for this selection.</td></tr>';
   rp('com-pg', page, tot, renderCommercialTable);
+  renderCommercialTotalsRow(rows, th ? th.textContent : groupField);
+}
+
+// Consolidated totals row, pinned at the bottom of the table — reflects every
+// filtered row across all pages, not just the current page.
+function renderCommercialTotalsRow(rows, groupLabel){
+  var tf = gel('com-tfoot');
+  if(!tf) return;
+  if(!rows.length){ tf.innerHTML=''; return; }
+  var t = buildCommercialTotalsRow(rows);
+  tf.innerHTML = '<tr class="com-total-row">'+
+    '<td>TOTAL — '+rows.length+' '+(groupLabel||'')+'</td>'+
+    '<td>'+fmtInt(t.B)+'</td>'+
+    '<td>'+fmtInt(t.C)+'</td>'+
+    '<td>'+fmtLacs(t.D)+'</td>'+
+    '<td>'+fmtLacs(t.E)+'</td>'+
+    '<td>'+fmtLacs(t.F)+'</td>'+
+    '<td>'+fmtLacs(t.G)+'</td>'+
+    '<td>'+fmtLacs(t.H)+'</td>'+
+    '<td>'+fmtInt(t.I)+'</td>'+
+    '<td>'+(t.J===null?'—':t.J.toFixed(2))+'</td>'+
+    '<td>'+fmtLacs(t.M)+'</td>'+
+    '<td>'+fmtKpi(t.N,'%')+'</td>'+
+    '<td>'+fmtKpi(t.O,'%')+'</td>'+
+    '<td>'+fmtKpi(t.P,'%')+'</td>'+
+    '<td>'+fmtKpi(t.Q)+'</td>'+
+    '<td>'+fmtKpi(t.R,'%')+'</td>'+
+    '<td>'+fmtKpi(t.S,'%')+'</td>'+
+    '<td>'+fmtKpi(t.T)+'</td>'+
+  '</tr>';
 }
 
 function onCommercialEnergyEdit(el){
