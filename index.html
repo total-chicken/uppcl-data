@@ -989,7 +989,8 @@ function catBadge(cat){
   var meta=SUPPLY_TYPE_MAP[c];
   if(meta){
     var cls=SUPPLY_GROUP_CLASS[meta.group]||'b-oth';
-    var label=meta.tariff||c;
+    var groupLabel=(meta.group||'OTHER').replace(/_/g,' ');
+    var label=meta.tariff ? (meta.tariff+' · '+groupLabel) : (c+' · '+groupLabel);
     var tip=(meta.tariffName||'').replace(/"/g,'&quot;');
     return '<span class="'+cls+'" title="'+tip+'">'+label+'</span>';
   }
@@ -3532,7 +3533,12 @@ function buildMsOptions(type, values){
     cb.checked = sel.indexOf(v) >= 0;
     cb.addEventListener('change', (function(tp){ return function(){ onMsChange(tp, this); }; })(t));
     lbl.appendChild(cb);
-    lbl.appendChild(document.createTextNode(' ' + v));
+    var text = ' ' + v;
+    if(type==='supply'){
+      var meta = SUPPLY_TYPE_MAP[String(v).trim().toUpperCase()];
+      if(meta) text += '  —  ' + (meta.tariff ? meta.tariff+' ' : '') + (meta.group||'OTHER').replace(/_/g,' ');
+    }
+    lbl.appendChild(document.createTextNode(text));
     optsEl.appendChild(lbl);
   });
 }
