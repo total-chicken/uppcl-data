@@ -216,6 +216,9 @@ select option{background:#fff;color:#1E1B4B;}
 .b-com{background:#FEF3C7;color:#92400E;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;display:inline-block;}
 .b-ind{background:#EDE9FE;color:#4C1D95;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;display:inline-block;}
 .b-gov{background:#DBEAFE;color:#1E40AF;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;display:inline-block;}
+.b-agri{background:#CCFBF1;color:#0F766E;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;display:inline-block;}
+.b-temp{background:#F1F5F9;color:#475569;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;display:inline-block;}
+.b-ev{background:#CFFAFE;color:#155E75;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;display:inline-block;}
 .b-oth{background:#FFE4E6;color:#9F1239;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;display:inline-block;}
 
 /* ── ATR BADGES ── */
@@ -842,8 +845,154 @@ function cleanMeter(v){
   return String(v||'').replace(/"/g,'').trim().replace(/^'+/,'').trim();
 }
 
+// SUPPLY_TYPE code -> Tariff Category, per supply_type_categories.json
+// (mirrored here so catBadge() resolves synchronously with no fetch race)
+var SUPPLY_TYPE_MAP={
+"10":{tariff:"LMV-1",tariffName:"Domestic Light, Fan and Power",group:"DOMESTIC"},
+"10A":{tariff:"LMV-1",tariffName:"Domestic Light, Fan and Power",group:"DOMESTIC"},
+"11":{tariff:"LMV-1",tariffName:"Domestic Light, Fan and Power",group:"DOMESTIC"},
+"17":{tariff:"LMV-1",tariffName:"Domestic Light, Fan and Power",group:"DOMESTIC"},
+"17A":{tariff:"LMV-1",tariffName:"Domestic Light, Fan and Power",group:"DOMESTIC"},
+"18":{tariff:"LMV-1",tariffName:"Domestic Light, Fan and Power",group:"DOMESTIC"},
+"19":{tariff:"LMV-1",tariffName:"Domestic Light, Fan and Power",group:"DOMESTIC"},
+"20":{tariff:"LMV-2",tariffName:"Non-Domestic Light, Fan and Power",group:"COMMERCIAL"},
+"22":{tariff:"LMV-2",tariffName:"Non-Domestic Light, Fan and Power",group:"COMMERCIAL"},
+"24":{tariff:"LMV-2",tariffName:"Non-Domestic Light, Fan and Power",group:"COMMERCIAL"},
+"24B":{tariff:"LMV-2",tariffName:"Non-Domestic Light, Fan and Power",group:"COMMERCIAL"},
+"24C":{tariff:"LMV-2",tariffName:"Non-Domestic Light, Fan and Power",group:"COMMERCIAL"},
+"24D":{tariff:"LMV-2",tariffName:"Non-Domestic Light, Fan and Power",group:"COMMERCIAL"},
+"25":{tariff:"LMV-2",tariffName:"Non-Domestic Light, Fan and Power",group:"COMMERCIAL"},
+"26":{tariff:"LMV-2",tariffName:"Non-Domestic Light, Fan and Power",group:"COMMERCIAL"},
+"27":{tariff:"LMV-2",tariffName:"Non-Domestic Light, Fan and Power",group:"COMMERCIAL"},
+"28":{tariff:"LMV-2",tariffName:"Non-Domestic Light, Fan and Power",group:"COMMERCIAL"},
+"30":{tariff:"LMV-3",tariffName:"Public Lamps",group:"PUBLIC_LAMPS"},
+"31":{tariff:"LMV-3",tariffName:"Public Lamps",group:"PUBLIC_LAMPS"},
+"32":{tariff:"LMV-3",tariffName:"Public Lamps",group:"PUBLIC_LAMPS"},
+"33":{tariff:"LMV-3",tariffName:"Public Lamps",group:"PUBLIC_LAMPS"},
+"34":{tariff:"LMV-3",tariffName:"Public Lamps",group:"PUBLIC_LAMPS"},
+"35":{tariff:"LMV-3",tariffName:"Public Lamps",group:"PUBLIC_LAMPS"},
+"36A":{tariff:"LMV-3",tariffName:"Public Lamps",group:"PUBLIC_LAMPS"},
+"37A":{tariff:"LMV-3",tariffName:"Public Lamps",group:"PUBLIC_LAMPS"},
+"38A":{tariff:"LMV-3",tariffName:"Public Lamps",group:"PUBLIC_LAMPS"},
+"40":{tariff:"LMV-4",tariffName:"Light, Fan and Power for Institutions",group:"INSTITUTION"},
+"40A":{tariff:"LMV-4",tariffName:"Light, Fan and Power for Institutions",group:"INSTITUTION"},
+"41":{tariff:"LMV-4",tariffName:"Light, Fan and Power for Institutions",group:"INSTITUTION"},
+"41A":{tariff:"LMV-4",tariffName:"Light, Fan and Power for Institutions",group:"INSTITUTION"},
+"42":{tariff:"LMV-4",tariffName:"Light, Fan and Power for Institutions",group:"INSTITUTION"},
+"42A":{tariff:"LMV-4",tariffName:"Light, Fan and Power for Institutions",group:"INSTITUTION"},
+"43":{tariff:"LMV-4",tariffName:"Light, Fan and Power for Institutions",group:"INSTITUTION"},
+"44":{tariff:"LMV-4",tariffName:"Light, Fan and Power for Institutions",group:"INSTITUTION"},
+"46":{tariff:"LMV-4",tariffName:"Light, Fan and Power for Institutions",group:"INSTITUTION"},
+"47":{tariff:"LMV-4",tariffName:"Light, Fan and Power for Institutions",group:"INSTITUTION"},
+"50":{tariff:"LMV-5",tariffName:"Private Tube Wells (Irrigation)",group:"AGRICULTURE"},
+"51":{tariff:"LMV-5",tariffName:"Private Tube Wells (Irrigation)",group:"AGRICULTURE"},
+"52":{tariff:"LMV-5",tariffName:"Private Tube Wells (Irrigation)",group:"AGRICULTURE"},
+"53":{tariff:"LMV-5",tariffName:"Private Tube Wells (Irrigation)",group:"AGRICULTURE"},
+"54":{tariff:"LMV-5",tariffName:"Private Tube Wells (Irrigation)",group:"AGRICULTURE"},
+"55":{tariff:"LMV-5",tariffName:"Private Tube Wells (Irrigation)",group:"AGRICULTURE"},
+"56":{tariff:"LMV-5",tariffName:"Private Tube Wells (Irrigation)",group:"AGRICULTURE"},
+"57A":{tariff:"LMV-5",tariffName:"Private Tube Wells (Irrigation)",group:"AGRICULTURE"},
+"57":{tariff:"LMV-5",tariffName:"Private Tube Wells (Irrigation)",group:"AGRICULTURE"},
+"58U":{tariff:"LMV-5",tariffName:"Private Tube Wells (Irrigation)",group:"AGRICULTURE"},
+"58":{tariff:"LMV-5",tariffName:"Private Tube Wells (Irrigation)",group:"AGRICULTURE"},
+"58UA":{tariff:"LMV-5",tariffName:"Private Tube Wells (Irrigation)",group:"AGRICULTURE"},
+"59R":{tariff:"LMV-5",tariffName:"Private Tube Wells (Irrigation)",group:"AGRICULTURE"},
+"59RA":{tariff:"LMV-5",tariffName:"Private Tube Wells (Irrigation)",group:"AGRICULTURE"},
+"60":{tariff:"LMV-6",tariffName:"Small and Medium Power (Industries)",group:"INDUSTRIAL"},
+"60TA":{tariff:"LMV-6",tariffName:"Small and Medium Power (Industries)",group:"INDUSTRIAL"},
+"61":{tariff:"LMV-6",tariffName:"Small and Medium Power (Industries)",group:"INDUSTRIAL"},
+"63":{tariff:"LMV-6",tariffName:"Small and Medium Power (Industries)",group:"INDUSTRIAL"},
+"65":{tariff:"LMV-6",tariffName:"Small and Medium Power (Industries)",group:"INDUSTRIAL"},
+"66":{tariff:"LMV-6",tariffName:"Small and Medium Power (Industries)",group:"INDUSTRIAL"},
+"67":{tariff:"LMV-6",tariffName:"Small and Medium Power (Industries)",group:"INDUSTRIAL"},
+"68T":{tariff:"LMV-6",tariffName:"Small and Medium Power (Industries)",group:"INDUSTRIAL"},
+"72":{tariff:"LMV-7",tariffName:"Public Water Works and Sewage Plants",group:"PUBLIC_UTILITY"},
+"73":{tariff:"LMV-7",tariffName:"Public Water Works and Sewage Plants",group:"PUBLIC_UTILITY"},
+"74":{tariff:"LMV-7",tariffName:"Public Water Works and Sewage Plants",group:"PUBLIC_UTILITY"},
+"75":{tariff:"LMV-7",tariffName:"Public Water Works and Sewage Plants",group:"PUBLIC_UTILITY"},
+"80U":{tariff:"LMV-8",tariffName:"State Tube Wells / Pumped Canals",group:"PUBLIC_UTILITY"},
+"80R":{tariff:"LMV-8",tariffName:"State Tube Wells / Pumped Canals",group:"PUBLIC_UTILITY"},
+"81U":{tariff:"LMV-8",tariffName:"State Tube Wells / Pumped Canals",group:"PUBLIC_UTILITY"},
+"81R":{tariff:"LMV-8",tariffName:"State Tube Wells / Pumped Canals",group:"PUBLIC_UTILITY"},
+"82U":{tariff:"LMV-8",tariffName:"State Tube Wells / Pumped Canals",group:"PUBLIC_UTILITY"},
+"82R":{tariff:"LMV-8",tariffName:"State Tube Wells / Pumped Canals",group:"PUBLIC_UTILITY"},
+"90":{tariff:"LMV-9",tariffName:"Temporary Supply",group:"TEMPORARY"},
+"91":{tariff:"LMV-9",tariffName:"Temporary Supply",group:"TEMPORARY"},
+"92":{tariff:"LMV-9",tariffName:"Temporary Supply",group:"TEMPORARY"},
+"93":{tariff:"LMV-9",tariffName:"Temporary Supply",group:"TEMPORARY"},
+"94":{tariff:"LMV-9",tariffName:"Temporary Supply",group:"TEMPORARY"},
+"95":{tariff:"LMV-9",tariffName:"Temporary Supply",group:"TEMPORARY"},
+"99":{tariff:"LMV-9",tariffName:"Temporary Supply",group:"TEMPORARY"},
+"101":{tariff:"LMV-10",tariffName:"Departmental Employees and Pensioners",group:"DEPARTMENTAL"},
+"102":{tariff:"LMV-10",tariffName:"Departmental Employees and Pensioners",group:"DEPARTMENTAL"},
+"103":{tariff:"LMV-10",tariffName:"Departmental Employees and Pensioners",group:"DEPARTMENTAL"},
+"104":{tariff:"LMV-10",tariffName:"Departmental Employees and Pensioners",group:"DEPARTMENTAL"},
+"105":{tariff:"LMV-10",tariffName:"Departmental Employees and Pensioners",group:"DEPARTMENTAL"},
+"106":{tariff:"LMV-10",tariffName:"Departmental Employees and Pensioners",group:"DEPARTMENTAL"},
+"107":{tariff:"LMV-10",tariffName:"Departmental Employees and Pensioners",group:"DEPARTMENTAL"},
+"11A":{tariff:"LMV-11",tariffName:"Electrical Vehicle Charging",group:"EV_CHARGING"},
+"11B":{tariff:"LMV-11",tariffName:"Electrical Vehicle Charging",group:"EV_CHARGING"},
+"11C":{tariff:"LMV-11",tariffName:"Electrical Vehicle Charging",group:"EV_CHARGING"},
+"11D":{tariff:"LMV-11",tariffName:"Electrical Vehicle Charging",group:"EV_CHARGING"},
+"11FA":{tariff:"LMV-11",tariffName:"Electrical Vehicle Charging",group:"EV_CHARGING"},
+"11GA":{tariff:"LMV-11",tariffName:"Electrical Vehicle Charging",group:"EV_CHARGING"},
+"11HA":{tariff:"LMV-11",tariffName:"Electrical Vehicle Charging",group:"EV_CHARGING"},
+"H11":{tariff:"HV-1",tariffName:"Non-Industrial Bulk Loads",group:"HV_BULK"},
+"H12":{tariff:"HV-1",tariffName:"Non-Industrial Bulk Loads",group:"HV_BULK"},
+"H13":{tariff:"HV-1",tariffName:"Non-Industrial Bulk Loads",group:"HV_BULK"},
+"H14":{tariff:"HV-1",tariffName:"Non-Industrial Bulk Loads",group:"HV_BULK"},
+"H15":{tariff:"HV-1",tariffName:"Non-Industrial Bulk Loads",group:"HV_BULK"},
+"H15A":{tariff:"HV-1",tariffName:"Non-Industrial Bulk Loads",group:"HV_BULK"},
+"H16":{tariff:"HV-1",tariffName:"Non-Industrial Bulk Loads",group:"HV_BULK"},
+"H16A":{tariff:"HV-1",tariffName:"Non-Industrial Bulk Loads",group:"HV_BULK"},
+"H17":{tariff:"HV-1",tariffName:"Non-Industrial Bulk Loads",group:"HV_BULK"},
+"H17A":{tariff:"HV-1",tariffName:"Non-Industrial Bulk Loads",group:"HV_BULK"},
+"H18":{tariff:"HV-1",tariffName:"Non-Industrial Bulk Loads",group:"HV_BULK"},
+"H18A":{tariff:"HV-1",tariffName:"Non-Industrial Bulk Loads",group:"HV_BULK"},
+"H21A":{tariff:"HV-2",tariffName:"Large and Heavy Power (Industries)",group:"HV_INDUSTRIAL"},
+"H22A":{tariff:"HV-2",tariffName:"Large and Heavy Power (Industries)",group:"HV_INDUSTRIAL"},
+"H23A":{tariff:"HV-2",tariffName:"Large and Heavy Power (Industries)",group:"HV_INDUSTRIAL"},
+"H24A":{tariff:"HV-2",tariffName:"Large and Heavy Power (Industries)",group:"HV_INDUSTRIAL"},
+"H26":{tariff:"HV-2",tariffName:"Large and Heavy Power (Industries)",group:"HV_INDUSTRIAL"},
+"H31":{tariff:"HV-3",tariffName:"Railway Traction, Metro Rail and RRTS",group:"HV_TRANSIT"},
+"H32":{tariff:"HV-3",tariffName:"Railway Traction, Metro Rail and RRTS",group:"HV_TRANSIT"},
+"H33":{tariff:"HV-3",tariffName:"Railway Traction, Metro Rail and RRTS",group:"HV_TRANSIT"},
+"H34":{tariff:"HV-3",tariffName:"Railway Traction, Metro Rail and RRTS",group:"HV_TRANSIT"},
+"H35":{tariff:"HV-3",tariffName:"Railway Traction, Metro Rail and RRTS",group:"HV_TRANSIT"},
+"H36":{tariff:"HV-3",tariffName:"Railway Traction, Metro Rail and RRTS",group:"HV_TRANSIT"},
+"H41":{tariff:"HV-4",tariffName:"Lift Irrigation Works",group:"HV_IRRIGATION"},
+"H42":{tariff:"HV-4",tariffName:"Lift Irrigation Works",group:"HV_IRRIGATION"},
+"H43":{tariff:"HV-4",tariffName:"Lift Irrigation Works",group:"HV_IRRIGATION"},
+// Observed in live data but absent from the source tariff PDF; best-effort guesses, unconfirmed
+"100":{group:"OTHER",tariffName:"Unmapped (near LMV-10 departmental range)"},
+"12":{group:"OTHER",tariffName:"Unmapped"},
+"14":{group:"OTHER",tariffName:"Unmapped"},
+"15":{group:"OTHER",tariffName:"Unmapped"},
+"48":{group:"OTHER",tariffName:"Unmapped (near LMV-4 institution range)"},
+"64":{group:"OTHER",tariffName:"Unmapped (near LMV-6 industry range)"},
+"11G":{tariff:"LMV-11",group:"EV_CHARGING",tariffName:"Electrical Vehicle Charging (legacy code, likely 11GA)"},
+"11H":{tariff:"LMV-11",group:"EV_CHARGING",tariffName:"Electrical Vehicle Charging (legacy code, likely 11HA)"},
+"38":{tariff:"LMV-3",group:"PUBLIC_LAMPS",tariffName:"Public Lamps (legacy code, likely 38A)"},
+"H21T":{tariff:"HV-2",group:"HV_INDUSTRIAL",tariffName:"Large and Heavy Power (legacy/TOD code, likely H21A)"}
+};
+// group -> badge CSS class; source of truth for codes is supply_type_categories.json
+var SUPPLY_GROUP_CLASS={
+  DOMESTIC:'b-dom', COMMERCIAL:'b-com', INDUSTRIAL:'b-ind', HV_INDUSTRIAL:'b-ind',
+  PUBLIC_LAMPS:'b-gov', INSTITUTION:'b-gov', PUBLIC_UTILITY:'b-gov', DEPARTMENTAL:'b-gov',
+  HV_BULK:'b-gov', HV_TRANSIT:'b-gov', HV_IRRIGATION:'b-gov',
+  AGRICULTURE:'b-agri', TEMPORARY:'b-temp', EV_CHARGING:'b-ev', OTHER:'b-oth'
+};
+
 function catBadge(cat){
-  var c=(cat||'').toUpperCase().trim();
+  var raw=(cat||'').trim();
+  var c=raw.toUpperCase();
+  var meta=SUPPLY_TYPE_MAP[c];
+  if(meta){
+    var cls=SUPPLY_GROUP_CLASS[meta.group]||'b-oth';
+    var label=meta.tariff||c;
+    var tip=(meta.tariffName||'').replace(/"/g,'&quot;');
+    return '<span class="'+cls+'" title="'+tip+'">'+label+'</span>';
+  }
   var cls='b-oth';
   if(c.includes('DOM')) cls='b-dom';
   else if(c.includes('COM')) cls='b-com';
