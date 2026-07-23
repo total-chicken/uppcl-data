@@ -739,19 +739,43 @@ function triggerFtpSync(){
     .catch(function(){ doSync(types, false, btn, logEl); });
 }
 
+// A user can be assigned more than one division (e.g. divisions:["DIV233632","DIV233633"]).
+// The sync server only accepts one `division` per /sync call, so we queue one call per
+// assigned division instead of always syncing just CURRENT_DIVISION (the first one).
+// divisions:["ALL"] maps to a single call with division=null, which tells the server to
+// sync every division it knows about for the discom.
+function getSyncDivisionsForCurrentUser(){
+  var divs=(CURRENT_USER&&CURRENT_USER.divisions)||[];
+  if(divs.includes('ALL')) return [null];
+  return divs.length?divs.slice():[CURRENT_DIVISION];
+}
+
 function doSync(types, force, btn, logEl){
-  if(logEl){logEl.style.display='block';logEl.innerHTML='Starting…\n';}
-  if(btn){btn.textContent='⏳ SYNCING…';btn.disabled=true;}
+  var queue=getSyncDivisionsForCurrentUser();
+  if(logEl){logEl.style.display='block';logEl.innerHTML='Starting… ('+queue.length+' division'+(queue.length>1?'s':'')+' to sync)\n';}
+  runSyncQueue(queue, 0, types, force, btn, logEl);
+}
+
+function runSyncQueue(queue, idx, types, force, btn, logEl){
+  if(idx>=queue.length){
+    if(btn){btn.disabled=false;btn.textContent='🔄 SYNC FROM FTP';}
+    loadSyncedInfo();
+    alert('✅ Sync complete'+(queue.length>1?' for all '+queue.length+' assigned divisions!':'!'));
+    return;
+  }
+  var division=queue[idx];
+  if(logEl)logEl.innerHTML+='\n=== ['+(idx+1)+'/'+queue.length+'] '+(division||'ALL DIVISIONS')+' ===\n';
+  if(btn){btn.textContent='⏳ SYNCING '+(idx+1)+'/'+queue.length+'…';btn.disabled=true;}
   fetch(LOCAL_SYNC_URL+'/sync',{
     method:'POST',mode:'cors',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({types:types,force:force,pat:getGhPat(),discom:CURRENT_DISCOM,division:CURRENT_DIVISION})
+    body:JSON.stringify({types:types,force:force,pat:getGhPat(),discom:CURRENT_DISCOM,division:division})
   })
   .then(function(r){return r.json();})
   .then(function(d){
     if(!d.ok){
-      if(logEl)logEl.innerHTML+='❌ '+d.message;
-      if(btn){btn.disabled=false;btn.textContent='🔄 SYNC FROM FTP';}
+      if(logEl)logEl.innerHTML+='❌ '+d.message+'\n';
+      runSyncQueue(queue, idx+1, types, force, btn, logEl);
       return;
     }
     clearInterval(_syncPollTimer);
@@ -762,15 +786,13 @@ function doSync(types, force, btn, logEl){
           if(logEl){logEl.innerHTML=s.log.join('\n');logEl.scrollTop=logEl.scrollHeight;}
           if(!s.running){
             clearInterval(_syncPollTimer);
-            if(btn){btn.disabled=false;btn.textContent='🔄 SYNC FROM FTP';}
-            var last=s.log[s.log.length-1]||'';
-            if(last.includes('DONE')){loadSyncedInfo();alert('✅ Sync complete!');}
+            runSyncQueue(queue, idx+1, types, force, btn, logEl);
           }
         }).catch(function(){clearInterval(_syncPollTimer);});
     },1500);
   })
   .catch(function(){
-    if(logEl)logEl.innerHTML+='❌ Server not reachable.';
+    if(logEl)logEl.innerHTML+='❌ Server not reachable.\n';
     if(btn){btn.disabled=false;btn.textContent='🔄 SYNC FROM FTP';}
   });
 }
@@ -1215,7 +1237,7 @@ function buildSettingsPanel(){
   var ftpSyncCard=
     '<div class="settings-card" style="background:#FFF7ED;border-color:#FED7AA;">'+
       '<div style="font-family:var(--fh);font-size:16px;font-weight:700;margin-bottom:12px;color:#9A3412;display:flex;align-items:center;gap:8px;">📡 FTP DATA SYNC</div>'+
-      '<div style="font-size:12px;color:var(--muted);margin-bottom:12px;">Syncing for: <b>'+(CURRENT_DISCOM&&CURRENT_DIVISION?CURRENT_DISCOM+' / '+CURRENT_DIVISION:'not selected')+'</b></div>'+
+      '<div style="font-size:12px;color:var(--muted);margin-bottom:12px;">Syncing for: <b>'+(CURRENT_DISCOM?CURRENT_DISCOM+' / '+getSyncDivisionsForCurrentUser().map(function(d){return d||'ALL';}).join(', '):'not selected')+'</b></div>'+
       '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;background:#fff;border:1px solid #FED7AA;margin-bottom:12px;">'+
         '<span id="ftp-dot" style="width:10px;height:10px;border-radius:50%;background:#9CA3AF;flex-shrink:0;"></span>'+
         '<span id="ftp-status-text" style="font-family:var(--fh);font-size:12px;font-weight:600;flex:1;color:#4B5563;">Checking…</span>'+
