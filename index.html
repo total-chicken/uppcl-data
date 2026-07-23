@@ -2942,8 +2942,28 @@ async function saveUserDatabase() {
   const pat = localStorage.getItem('gh_pat') || '';
   if (pat) {
     try {
+      // Re-fetch the latest remote copy right before writing and merge in any
+      // users that exist there but not in our in-memory copy. Without this,
+      // pushing our (possibly stale) in-memory USERS_DB clobbers accounts
+      // created/edited on other devices since we last loaded the page.
+      try {
+        const res = await fetch(RAW_BASE + 'users.json?t=' + Date.now());
+        if (res.ok) {
+          const remote = await res.json();
+          if (remote && Array.isArray(remote.users)) {
+            remote.users.forEach(function(ru){
+              if (!USERS_DB.users.find(function(lu){ return lu.username === ru.username; })) {
+                USERS_DB.users.push(ru);
+                console.log("Merged remote-only user before save:", ru.username);
+              }
+            });
+          }
+        }
+      } catch (e) { console.warn("Could not fetch latest users.json before save; proceeding with local copy", e); }
+
       USERS_DB.shared_gh_pat = obfuscatePat(pat);
       await ghPutFile('users.json', JSON.stringify(USERS_DB, null, 2), 'Update users database');
+      localStorage.setItem('uppcl_users_db', JSON.stringify(USERS_DB));
       console.log("Users database synced to GitHub successfully.");
     } catch (e) {
       console.error("Failed to sync users database to GitHub:", e);
