@@ -33,6 +33,12 @@
         "DIV233632",
         "DIV233633"
       ]
+    },
+    {
+      "username": "sumit",
+      "password": "fb536856ed44bfbb3dd412d15c944de329227a5e8c80e189b424d59df0478c1079f2",
+      "role": "admin",
+      "createdBy": "superadmin"
     }
   ],
   "shared_gh_pat": "[#]ghp_[#]J811eOkl8fZ0ZryU[#]qKdToFfOxR8iDb3N9YfF[#]"
