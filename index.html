@@ -585,7 +585,10 @@ select option{background:#fff;color:#1E1B4B;}
 <div class="modal-overlay" id="detail-modal" onclick="if(event.target===this)closeModal()">
   <div class="modal-box">
     <div class="modal-header">
-      <h3 id="modal-title">CONSUMER DETAILS</h3>
+      <div>
+        <h3 id="modal-title">CONSUMER DETAILS</h3>
+        <div id="modal-subtitle" style="font-family:var(--fh);font-size:11px;font-weight:600;color:#E0E7FF;letter-spacing:0.5px;margin-top:2px;"></div>
+      </div>
       <button class="modal-close" onclick="closeModal()">✕</button>
     </div>
     <div class="modal-body">
@@ -1024,14 +1027,17 @@ var SUPPLY_GROUP_CLASS={
   AGRICULTURE:'b-agri', TEMPORARY:'b-temp', EV_CHARGING:'b-ev', OTHER:'b-oth'
 };
 
+function titleCaseGroup(g){
+  return (g||'OTHER').replace(/_/g,' ').toLowerCase().replace(/\b\w/g,function(ch){return ch.toUpperCase();});
+}
 function catBadge(cat){
   var raw=(cat||'').trim();
   var c=raw.toUpperCase();
   var meta=SUPPLY_TYPE_MAP[c];
   if(meta){
     var cls=SUPPLY_GROUP_CLASS[meta.group]||'b-oth';
-    var groupLabel=(meta.group||'OTHER').replace(/_/g,' ');
-    var label=meta.tariff ? (meta.tariff+' · '+groupLabel) : (c+' · '+groupLabel);
+    var groupLabel=titleCaseGroup(meta.group);
+    var label=(meta.tariff ? (meta.tariff+' '+groupLabel) : groupLabel)+' ('+c+')';
     var tip=(meta.tariffName||'').replace(/"/g,'&quot;');
     return '<span class="'+cls+'" title="'+tip+'">'+label+'</span>';
   }
@@ -4256,6 +4262,7 @@ function openDefaulterModal(acctId){
   var meterNo = defRec.SERIAL_NBR || (r?r.SERIAL_NBR:'') || METER_DATA[String(acctId)] || defRec.METER_NO || '-';
 
   gel('modal-title').textContent = defRec.NAME || 'Consumer Details';
+  gel('modal-subtitle').textContent = 'ACCT ID: '+(defRec.ACCT_ID||acctId);
   gel('modal-grid').innerHTML =
     '<div class="modal-field"><div class="lbl">MOBILE</div><div class="val">'+(defRec.MOBILE||defRec.MOBILE_NO||'-')+'</div></div>'+
     '<div class="modal-field"><div class="lbl">METER NO</div><div class="val" style="font-family:var(--fh);color:#1D4ED8;font-weight:700;">'+meterNo+'</div></div>'+
@@ -4414,6 +4421,7 @@ function openDefaulterModalDirect(d){
   if(lat>50){var t=lat;lat=lon;lon=t;}
 
   gel('modal-title').textContent = d.NAME || 'Consumer Details';
+  gel('modal-subtitle').textContent = 'ACCT ID: '+(d.ACCT_ID||'-');
   gel('modal-grid').innerHTML =
     '<div class="modal-field"><div class="lbl">MOBILE</div><div class="val">'+(d.MOBILE||'-')+'</div></div>'+
     '<div class="modal-field"><div class="lbl">METER NO</div><div class="val" style="font-family:var(--fh);color:#1D4ED8;font-weight:700;">'+(d.METER_NO||'-')+'</div></div>'+
@@ -4567,6 +4575,7 @@ function openMainDetail(acctId){
   var meterNo = r.SERIAL_NBR || METER_DATA[String(acctId)] || '-';
 
   gel('modal-title').textContent = r.NAME || 'Consumer Details';
+  gel('modal-subtitle').textContent = 'ACCT ID: '+(r.ACCT_ID||acctId);
   gel('modal-grid').innerHTML =
     '<div class="modal-field"><div class="lbl">MOBILE</div><div class="val">'+(r.MOBILE_NO||'-')+'</div></div>'+
     '<div class="modal-field"><div class="lbl">METER NO</div><div class="val" style="font-family:var(--fh);color:#1D4ED8;font-weight:700;">'+meterNo+'</div></div>'+
