@@ -732,9 +732,9 @@ function triggerFtpSync(){
         if(types.includes('master')&&s.master_period&&s.master_period===currentPeriod) alreadySynced.push('DIV'+div+' Master ('+s.master_period+')');
       });
       if(alreadySynced.length){
-        var msg='⚠ Already synced:\n'+alreadySynced.join('\n')+'\n\nRefetch anyway?';
+        var msg='⚠ Already synced:\n'+alreadySynced.join('\n')+'\n\nSync anyway? (won\'t force a re-download unless the FORCE box is ticked)';
         if(!confirm(msg)) return;
-        doSync(types, true, btn, logEl);
+        doSync(types, false, btn, logEl);
       } else {
         doSync(types, false, btn, logEl);
       }
