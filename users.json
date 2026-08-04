@@ -80,7 +80,13 @@
       "username": "rakesh",
       "password": "feb14fe70474670a228c38b407a149f75bad6c11c0f9d08db2a617525c00e72aa8ff46c368371f",
       "role": "user",
-      "createdBy": "superadmin"
+      "createdBy": "superadmin",
+      "discoms": [
+        "MV"
+      ],
+      "divisions": [
+        "DIV381811"
+      ]
     }
   ],
   "shared_gh_pat": "[#]ghp_[#]J811eOkl8fZ0ZryU[#]qKdToFfOxR8iDb3N9YfF[#]"
