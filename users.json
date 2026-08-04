@@ -128,7 +128,13 @@
       "username": "anil",
       "password": "e05e8fa9294c179aeaeeeda1e8dc256dcaa49d0a0f1b012daeee98acbd323e0a5922c2ba",
       "role": "user",
-      "createdBy": "superadmin"
+      "createdBy": "superadmin",
+      "discoms": [
+        "MV"
+      ],
+      "divisions": [
+        "DIV381811"
+      ]
     }
   ],
   "shared_gh_pat": "[#]ghp_[#]J811eOkl8fZ0ZryU[#]qKdToFfOxR8iDb3N9YfF[#]"
