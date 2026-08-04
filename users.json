@@ -116,7 +116,13 @@
       "username": "rupendra",
       "password": "0ce39e917cfc3720400b3ef912e1e5a90673423b3126b9a2a1d70b5fb8770a4dac9d5c67b26b05b7",
       "role": "user",
-      "createdBy": "superadmin"
+      "createdBy": "superadmin",
+      "discoms": [
+        "MV"
+      ],
+      "divisions": [
+        "DIV381811"
+      ]
     }
   ],
   "shared_gh_pat": "[#]ghp_[#]J811eOkl8fZ0ZryU[#]qKdToFfOxR8iDb3N9YfF[#]"
