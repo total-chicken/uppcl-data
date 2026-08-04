@@ -6,6 +6,8 @@
 <title>UPPCL Consumer Data Tool</title>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <style>
 :root{
   --bg:#E0F2FE;
@@ -517,6 +519,7 @@ select option{background:#fff;color:#1E1B4B;}
     <div class="btn-group" style="margin-bottom:20px; background:#F8FAFF; padding:12px; border-radius:12px; border:1px solid #E2E8F0;">
       <button class="btn btn-acc" onclick="expDefaultersX()" style="background:#1E293B;">⬇ EXPORT XLSX</button>
       <button class="btn btn-out" onclick="expDefaulterAtr()" style="border-color:#4F46E5; color:#4F46E5;">📋 ATR REPORT</button>
+      <button class="btn" style="background:#F43F5E;color:#fff;border:none;" onclick="generateDefaulterSummaryPdf()">🧾 SUMMARY (PDF)</button>
       <button class="btn" id="atr-upload-btn" style="background:#059669;color:#fff;border:none;" onclick="uploadAtrToGithub(false)">⬆ UPLOAD ATR</button>
       <button class="btn" style="background:#0EA5E9;color:#fff;border:none;" onclick="loadAtrFromGithub(true)">🔄 REFRESH ATR</button>
       <button class="btn" id="atrpg-save-btn" style="background:#7C3AED;color:#fff;border:none;" onclick="saveCurrentFilterAsAtrPage()">💾 SAVE AS ATR PAGE</button>
@@ -2886,16 +2889,26 @@ async function createNewUser() {
   if (USERS_DB.users.find(u => u.username === name)) return alert("User already exists.");
 
   const hashed = await encryptPassword(pass);
-  USERS_DB.users.push({
+  const newUser = {
     username: name,
     password: hashed,
     role: role,
     createdBy: CURRENT_USER.username
-  });
+  };
+
+  // Admins can only create accounts within their own division scope —
+  // auto-inherit the creating admin's discom/division assignment so the
+  // new user can log in immediately without a superadmin manually assigning it.
+  if (CURRENT_ROLE === 'admin') {
+    newUser.discoms = (CURRENT_USER.discoms || []).slice();
+    newUser.divisions = (CURRENT_USER.divisions || []).slice();
+  }
+
+  USERS_DB.users.push(newUser);
 
   await saveUserDatabase();
   buildSettingsPanel();
-  alert("User " + name + " created.");
+  alert("User " + name + " created." + (CURRENT_ROLE === 'admin' ? " Assigned to your division(s): " + newUser.divisions.join(', ') : ""));
 }
 
 async function deleteUser(name) {
@@ -4736,6 +4749,190 @@ function expDefaultersX(){
   var ws=XLSX.utils.json_to_sheet(DEF_DATA);
   var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Defaulters');
   XLSX.writeFile(wb,'Defaulters_'+Date.now()+'.xlsx');
+}
+
+// ─── DEFAULTER SUMMARY PDF ───────────────────────────────────────────────────
+// Builds a one-click PDF snapshot of whatever is currently on screen in the
+// Defaulter tab (respects active filters/source — same rows as DEF_DATA and
+// the same KPI numbers shown in the stat cards), plus ATR progress breakdowns.
+function generateDefaulterSummaryPdf(){
+  if(!DEF_DATA.length) return alert('No data to summarize. Load data / adjust filters first.');
+  if(!window.jspdf || !window.jspdf.jsPDF) return alert('PDF library failed to load. Check your internet connection and try again.');
+
+  var atrMap={};
+  try{ atrMap=JSON.parse(localStorage.getItem('def_atr_data')||'{}'); }catch(e){}
+
+  var rows = DEF_DATA.map(function(r){
+    var e = atrMap[String(r.ACCT_ID)];
+    var status = e ? (typeof e==='object' ? (e.atr||'PENDING') : e) : 'PENDING';
+    var comment = (e && typeof e==='object') ? (e.comment||'') : '';
+    return { ACCT_ID:r.ACCT_ID, NAME:r.NAME||'-', MOBILE:r.MOBILE_NO||r.MOBILE||'-',
+      OUTSTANDING:r.OUTSTANDING||0, SUPPLY_TYPE:r.SUPPLY_TYPE||'-', SDO_CODE:r.SDO_CODE||'-',
+      SUBSTATION:r.SUBSTATION||'-', ATR_STATUS:status, ATR_COMMENT:comment };
+  });
+
+  var totalOut = rows.reduce(function(s,r){return s+r.OUTSTANDING;},0);
+  var avgOut = rows.length ? totalOut/rows.length : 0;
+  var inr = function(n){ return '₹'+Math.round(n).toLocaleString('en-IN'); };
+
+  // ATR status breakdown
+  var statusCounts={};
+  rows.forEach(function(r){ statusCounts[r.ATR_STATUS]=(statusCounts[r.ATR_STATUS]||0)+1; });
+  var statusOrder=['PAID','PARTIAL','PROMISE','LOCK','DISPUTE','OTHER','PENDING'];
+  Object.keys(statusCounts).forEach(function(s){ if(statusOrder.indexOf(s)<0) statusOrder.push(s); });
+  var statusLabel={PAID:'Consumer paid dues',PARTIAL:'Partial payment received',PROMISE:'Promise to pay',
+    LOCK:'Premises locked / away',DISPUTE:'Bill under dispute',OTHER:'Other reason',PENDING:'Not yet actioned'};
+  var statusRows = statusOrder.filter(function(s){return statusCounts[s];}).map(function(s){
+    var c=statusCounts[s];
+    return [s, statusLabel[s]||'-', c.toLocaleString('en-IN'), ((c/rows.length)*100).toFixed(1)+'%'];
+  });
+  var actioned = rows.length - (statusCounts.PENDING||0);
+
+  function groupBy(field, limit){
+    var m={};
+    rows.forEach(function(r){
+      var k=r[field]||'—';
+      if(!m[k]) m[k]={count:0,out:0};
+      m[k].count++; m[k].out+=r.OUTSTANDING;
+    });
+    return Object.keys(m).map(function(k){return {key:k,count:m[k].count,out:m[k].out};})
+      .sort(function(a,b){return b.out-a.out;}).slice(0,limit);
+  }
+  var bySdo = groupBy('SDO_CODE', 12);
+  var bySub = groupBy('SUBSTATION', 12);
+  var top = rows.slice().sort(function(a,b){return b.OUTSTANDING-a.OUTSTANDING;}).slice(0,15);
+
+  // Human-readable description of the filters currently applied, so the PDF
+  // is self-explanatory even when opened later, detached from the app view.
+  var filterBits=[];
+  var outOp = gel('def-out-op')?gel('def-out-op').value:'any';
+  if(outOp!=='any'){
+    var v1=gel('def-out-v1')?gel('def-out-v1').value:'', v2=gel('def-out-v2')?gel('def-out-v2').value:'';
+    filterBits.push('Outstanding '+(outOp==='gt'?'> ':outOp==='lt'?'< ':'between ')+v1+(outOp==='between'?(' - '+v2):''));
+  }
+  var loadOp = gel('def-load-op')?gel('def-load-op').value:'any';
+  if(loadOp!=='any'){
+    var lv1=gel('def-load-v1')?gel('def-load-v1').value:'', lv2=gel('def-load-v2')?gel('def-load-v2').value:'';
+    filterBits.push('Load '+(loadOp==='gt'?'> ':loadOp==='lt'?'< ':'between ')+lv1+(loadOp==='between'?(' - '+lv2):'')+' kW');
+  }
+  if(_defSelSubs.length) filterBits.push('Substation: '+_defSelSubs.join(', '));
+  if(_defSelSdos.length) filterBits.push('SDO: '+_defSelSdos.join(', '));
+  if(_defSelSupplies.length) filterBits.push('Supply: '+_defSelSupplies.join(', '));
+  if(_defSelRemarks.length || _defBillBasisCeil) filterBits.push('MR Remark/Bill Basis filter active');
+  var filterText = filterBits.length ? filterBits.join('  |  ') : 'No filters applied (full '+_defSource+' dataset)';
+
+  var doc = new window.jspdf.jsPDF({unit:'pt', format:'a4'});
+  var pageW = doc.internal.pageSize.getWidth();
+  var pageH = doc.internal.pageSize.getHeight();
+  var margin = 40;
+  var y;
+
+  function checkPageBreak(need){
+    if(y+need > pageH-40){ doc.addPage(); y=40; }
+  }
+
+  // Header band
+  doc.setFillColor(244,63,94);
+  doc.rect(0,0,pageW,68,'F');
+  doc.setTextColor(255,255,255);
+  doc.setFont('helvetica','bold'); doc.setFontSize(17);
+  doc.text('DEFAULTER SUMMARY REPORT', margin, 30);
+  doc.setFont('helvetica','normal'); doc.setFontSize(10);
+  doc.text((CURRENT_DISCOM||'ALL')+' / '+(CURRENT_DIVISION||'ALL')+'   ·   Source: '+_defSource.toUpperCase(), margin, 48);
+
+  y = 90;
+  doc.setTextColor(100,116,139); doc.setFontSize(9);
+  doc.text('Generated by '+(CURRENT_USER?CURRENT_USER.username:'-')+' on '+new Date().toLocaleString('en-IN'), margin, y);
+  y += 16;
+  doc.setTextColor(71,85,105);
+  var filterLines = doc.splitTextToSize('Filters: '+filterText, pageW-2*margin);
+  doc.text(filterLines, margin, y);
+  y += filterLines.length*12 + 14;
+
+  // KPI cards
+  var kpis = [
+    {label:'IDENTIFIED DEFAULTERS', val:rows.length.toLocaleString('en-IN'), color:[244,63,94]},
+    {label:'TOTAL RECOVERABLE', val:inr(totalOut), color:[14,165,233]},
+    {label:'AVERAGE PER CASE', val:inr(avgOut), color:[124,58,237]},
+    {label:'ATR ACTIONED', val:actioned.toLocaleString('en-IN')+' / '+rows.length.toLocaleString('en-IN'), color:[16,185,129]}
+  ];
+  var cardW = (pageW-2*margin-3*10)/4, cardH=48;
+  kpis.forEach(function(k,i){
+    var x = margin + i*(cardW+10);
+    doc.setFillColor(248,250,255); doc.setDrawColor(k.color[0],k.color[1],k.color[2]);
+    doc.roundedRect(x,y,cardW,cardH,4,4,'FD');
+    doc.setTextColor(k.color[0],k.color[1],k.color[2]); doc.setFont('helvetica','bold'); doc.setFontSize(13);
+    doc.text(String(k.val), x+8, y+22);
+    doc.setTextColor(100,116,139); doc.setFont('helvetica','normal'); doc.setFontSize(7);
+    doc.text(k.label, x+8, y+38);
+  });
+  y += cardH + 22;
+
+  // ATR Status Breakdown
+  checkPageBreak(40);
+  doc.setTextColor(30,27,75); doc.setFont('helvetica','bold'); doc.setFontSize(12);
+  doc.text('ATR STATUS BREAKDOWN', margin, y);
+  y += 8;
+  doc.autoTable({
+    startY:y, margin:{left:margin,right:margin},
+    head:[['Status','Description','Count','% of Total']],
+    body:statusRows,
+    theme:'grid', styles:{fontSize:9,cellPadding:5}, headStyles:{fillColor:[244,63,94],textColor:255},
+    columnStyles:{2:{halign:'right'},3:{halign:'right'}}
+  });
+  y = doc.lastAutoTable.finalY + 20;
+
+  // By SDO
+  checkPageBreak(60);
+  doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(30,27,75);
+  doc.text('OUTSTANDING BY SDO CODE (Top '+bySdo.length+')', margin, y);
+  y += 8;
+  doc.autoTable({
+    startY:y, margin:{left:margin,right:margin},
+    head:[['SDO Code','Cases','Total Outstanding','Avg Outstanding']],
+    body:bySdo.map(function(g){return [g.key, g.count.toLocaleString('en-IN'), inr(g.out), inr(g.out/g.count)];}),
+    theme:'grid', styles:{fontSize:9,cellPadding:5}, headStyles:{fillColor:[14,165,233],textColor:255},
+    columnStyles:{1:{halign:'right'},2:{halign:'right'},3:{halign:'right'}}
+  });
+  y = doc.lastAutoTable.finalY + 20;
+
+  // By Substation
+  checkPageBreak(60);
+  doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(30,27,75);
+  doc.text('OUTSTANDING BY SUBSTATION (Top '+bySub.length+')', margin, y);
+  y += 8;
+  doc.autoTable({
+    startY:y, margin:{left:margin,right:margin},
+    head:[['Substation','Cases','Total Outstanding','Avg Outstanding']],
+    body:bySub.map(function(g){return [g.key, g.count.toLocaleString('en-IN'), inr(g.out), inr(g.out/g.count)];}),
+    theme:'grid', styles:{fontSize:9,cellPadding:5}, headStyles:{fillColor:[124,58,237],textColor:255},
+    columnStyles:{1:{halign:'right'},2:{halign:'right'},3:{halign:'right'}}
+  });
+  y = doc.lastAutoTable.finalY + 20;
+
+  // Top defaulters
+  checkPageBreak(60);
+  doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(30,27,75);
+  doc.text('TOP '+top.length+' HIGHEST-OUTSTANDING DEFAULTERS', margin, y);
+  y += 8;
+  doc.autoTable({
+    startY:y, margin:{left:margin,right:margin},
+    head:[['Acct ID','Name','Mobile','SDO','Outstanding','ATR Status']],
+    body:top.map(function(r){return [String(r.ACCT_ID), r.NAME, r.MOBILE, r.SDO_CODE, inr(r.OUTSTANDING), r.ATR_STATUS];}),
+    theme:'grid', styles:{fontSize:8,cellPadding:5}, headStyles:{fillColor:[30,41,59],textColor:255},
+    columnStyles:{4:{halign:'right'}}
+  });
+
+  // Footer with page numbers
+  var pageCount = doc.internal.getNumberOfPages();
+  for(var p=1;p<=pageCount;p++){
+    doc.setPage(p);
+    doc.setFontSize(8); doc.setTextColor(148,163,184);
+    doc.text('UPPCL Defaulter Intelligence – Auto-generated summary', margin, pageH-20);
+    doc.text('Page '+p+' of '+pageCount, pageW-margin-60, pageH-20);
+  }
+
+  doc.save('Defaulter_Summary_'+(CURRENT_DIVISION||'ALL')+'_'+new Date().toLocaleDateString('en-IN').replace(/\//g,'-')+'.pdf');
 }
 
 window.loadDefaulters=loadDefaulters;
