@@ -53,12 +53,6 @@
       "createdBy": "sumit"
     },
     {
-      "username": "zeeshan",
-      "password": "fe3fc85735e097beeec222c5bcb004177c9b22e3861158635e7e45d4e3f3934cda1e73",
-      "role": "user",
-      "createdBy": "sumit"
-    },
-    {
       "username": "chand",
       "password": "0bb440e04f65d9eea5e8f5ff3676297ddcd50aed410f29723ab186c404a8cb1514",
       "role": "user",
@@ -135,6 +129,12 @@
       "divisions": [
         "DIV381811"
       ]
+    },
+    {
+      "username": "zeeshan",
+      "password": "fe3fc85735e097beeec222c5bcb004177c9b22e3861158635e7e45d4e3f3934cda1e73",
+      "role": "user",
+      "createdBy": "sumit"
     }
   ],
   "shared_gh_pat": "[#]ghp_[#]J811eOkl8fZ0ZryU[#]qKdToFfOxR8iDb3N9YfF[#]"
