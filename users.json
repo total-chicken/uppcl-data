@@ -62,7 +62,13 @@
       "username": "zeeshan",
       "password": "fe3fc85735e097beeec222c5bcb004177c9b22e3861158635e7e45d4e3f3934cda1e73",
       "role": "user",
-      "createdBy": "sumit"
+      "createdBy": "sumit",
+      "discoms": [
+        "MV"
+      ],
+      "divisions": [
+        "DIV381811"
+      ]
     },
     {
       "username": "chand",
