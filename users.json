@@ -51,6 +51,12 @@
       "password": "fe3fc85735e097beeec222c5bcb004177c9b22e3861158635e7e45d4e3f3934cda1e73",
       "role": "user",
       "createdBy": "sumit"
+    },
+    {
+      "username": "zee",
+      "password": "6d5a130abea506f9cd00737f8e4dc85316b93f61b1a056184af353caf1d249",
+      "role": "user",
+      "createdBy": "sumit"
     }
   ],
   "shared_gh_pat": "[#]ghp_[#]J811eOkl8fZ0ZryU[#]qKdToFfOxR8iDb3N9YfF[#]"
