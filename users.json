@@ -99,6 +99,12 @@
       "divisions": [
         "DIV381811"
       ]
+    },
+    {
+      "username": "yash",
+      "password": "33f60caec918778dc056587340d26f9a07bda0527af5d1dd10b0bfcc843eb911b6a78e05",
+      "role": "user",
+      "createdBy": "superadmin"
     }
   ],
   "shared_gh_pat": "[#]ghp_[#]J811eOkl8fZ0ZryU[#]qKdToFfOxR8iDb3N9YfF[#]"
