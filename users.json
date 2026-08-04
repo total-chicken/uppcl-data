@@ -50,37 +50,25 @@
       "username": "zee",
       "password": "e72ebcf64e862a7c176f5b2357e26d66ee20c1760852c007402ee91f5daad9d794720501ceea",
       "role": "user",
-      "createdBy": "sumit",
-      "discoms": [
-        "MV"
-      ],
-      "divisions": [
-        "DIV381811"
-      ]
+      "createdBy": "sumit"
     },
     {
       "username": "zeeshan",
       "password": "fe3fc85735e097beeec222c5bcb004177c9b22e3861158635e7e45d4e3f3934cda1e73",
       "role": "user",
-      "createdBy": "sumit",
-      "discoms": [
-        "MV"
-      ],
-      "divisions": [
-        "DIV381811"
-      ]
+      "createdBy": "sumit"
     },
     {
       "username": "chand",
       "password": "0bb440e04f65d9eea5e8f5ff3676297ddcd50aed410f29723ab186c404a8cb1514",
       "role": "user",
-      "createdBy": "sumit",
-      "discoms": [
-        "MV"
-      ],
-      "divisions": [
-        "DIV381811"
-      ]
+      "createdBy": "sumit"
+    },
+    {
+      "username": "surya",
+      "password": "13b25902b58b3d9101ed4a0b77115cb553acfae2dba8d39e3b28a6b46dbd5fb262a7898acc",
+      "role": "user",
+      "createdBy": "superadmin"
     }
   ],
   "shared_gh_pat": "[#]ghp_[#]J811eOkl8fZ0ZryU[#]qKdToFfOxR8iDb3N9YfF[#]"
