@@ -68,7 +68,13 @@
       "username": "surya",
       "password": "13b25902b58b3d9101ed4a0b77115cb553acfae2dba8d39e3b28a6b46dbd5fb262a7898acc",
       "role": "user",
-      "createdBy": "superadmin"
+      "createdBy": "superadmin",
+      "discoms": [
+        "MV"
+      ],
+      "divisions": [
+        "DIV381811"
+      ]
     }
   ],
   "shared_gh_pat": "[#]ghp_[#]J811eOkl8fZ0ZryU[#]qKdToFfOxR8iDb3N9YfF[#]"
