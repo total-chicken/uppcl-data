@@ -87,6 +87,12 @@
       "divisions": [
         "DIV381811"
       ]
+    },
+    {
+      "username": "dileep",
+      "password": "44f1fa6d1a0025467466b1b3697ff64463bf464ffde4eecd54f4907fde1e2b69e808b8cdf37f",
+      "role": "user",
+      "createdBy": "superadmin"
     }
   ],
   "shared_gh_pat": "[#]ghp_[#]J811eOkl8fZ0ZryU[#]qKdToFfOxR8iDb3N9YfF[#]"
