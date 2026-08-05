@@ -128,7 +128,13 @@
       "username": "zee",
       "password": "e72ebcf64e862a7c176f5b2357e26d66ee20c1760852c007402ee91f5daad9d794720501ceea",
       "role": "user",
-      "createdBy": "sumit"
+      "createdBy": "sumit",
+      "discoms": [
+        "MV"
+      ],
+      "divisions": [
+        "DIV381811"
+      ]
     },
     {
       "username": "zeeshan",
