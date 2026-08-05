@@ -134,7 +134,13 @@
       "username": "zeeshan",
       "password": "284f36be4202c3d94f5b7b55e5e6316c1c2c2f4c66f6b38ba0789ca982292f9cbcd82a4fe736",
       "role": "user",
-      "createdBy": "sumit"
+      "createdBy": "sumit",
+      "discoms": [
+        "MV"
+      ],
+      "divisions": [
+        "DIV381811"
+      ]
     }
   ],
   "shared_gh_pat": "[#]ghp_[#]J811eOkl8fZ0ZryU[#]qKdToFfOxR8iDb3N9YfF[#]"
