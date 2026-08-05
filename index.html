@@ -4754,7 +4754,15 @@ function expDefaultersX(){
 // ─── DEFAULTER SUMMARY PDF ───────────────────────────────────────────────────
 // Builds a one-click PDF snapshot of whatever is currently on screen in the
 // Defaulter tab (respects active filters/source — same rows as DEF_DATA and
-// the same KPI numbers shown in the stat cards), plus ATR progress breakdowns.
+// the same KPI numbers shown in the stat cards). Mirrors the load-category
+// pivot layout of the legacy PIVOT34/PIVOT59/PIVOT10ABV/PIVOTCOM/LCOM Excel
+// macros: each load band (3-4.9KW, 5-9KW, 10KW&ABOVE) plus COMMERCIAL (by
+// SUPPLY_TYPE group, overlapping the load bands, same as the old workbook)
+// gets a Recovery Status pivot, a Bill Basis pivot, and a Total Outstanding
+// breakdown, each cross-tabbed by SDO / Substation like the original pivots.
+// REMARKS (old sheets' PAID/UNPAID column) is represented here by ATR Status,
+// this app's live per-account recovery tracking, since that's the closest
+// and most meaningful equivalent available in the current data model.
 function generateDefaulterSummaryPdf(){
   if(!DEF_DATA.length) return alert('No data to summarize. Load data / adjust filters first.');
   if(!window.jspdf || !window.jspdf.jsPDF) return alert('PDF library failed to load. Check your internet connection and try again.');
@@ -4767,15 +4775,16 @@ function generateDefaulterSummaryPdf(){
     var status = e ? (typeof e==='object' ? (e.atr||'PENDING') : e) : 'PENDING';
     var comment = (e && typeof e==='object') ? (e.comment||'') : '';
     return { ACCT_ID:r.ACCT_ID, NAME:r.NAME||'-', MOBILE:r.MOBILE_NO||r.MOBILE||'-',
-      OUTSTANDING:r.OUTSTANDING||0, SUPPLY_TYPE:r.SUPPLY_TYPE||'-', SDO_CODE:r.SDO_CODE||'-',
-      SUBSTATION:r.SUBSTATION||'-', ATR_STATUS:status, ATR_COMMENT:comment };
+      OUTSTANDING:r.OUTSTANDING||0, LOAD:r.LOAD, SUPPLY_TYPE:r.SUPPLY_TYPE||'-', SDO_CODE:r.SDO_CODE||'-',
+      SUBSTATION:r.SUBSTATION||'-', BILL_BASIS:String(r.BILL_BASIS||'').trim()||'—',
+      ATR_STATUS:status, ATR_COMMENT:comment };
   });
 
   var totalOut = rows.reduce(function(s,r){return s+r.OUTSTANDING;},0);
   var avgOut = rows.length ? totalOut/rows.length : 0;
   var inr = function(n){ return '₹'+Math.round(n).toLocaleString('en-IN'); };
 
-  // ATR status breakdown
+  // ATR status breakdown (overall)
   var statusCounts={};
   rows.forEach(function(r){ statusCounts[r.ATR_STATUS]=(statusCounts[r.ATR_STATUS]||0)+1; });
   var statusOrder=['PAID','PARTIAL','PROMISE','LOCK','DISPUTE','OTHER','PENDING'];
@@ -4788,19 +4797,26 @@ function generateDefaulterSummaryPdf(){
   });
   var actioned = rows.length - (statusCounts.PENDING||0);
 
-  function groupBy(field, limit){
-    var m={};
-    rows.forEach(function(r){
-      var k=r[field]||'—';
-      if(!m[k]) m[k]={count:0,out:0};
-      m[k].count++; m[k].out+=r.OUTSTANDING;
-    });
-    return Object.keys(m).map(function(k){return {key:k,count:m[k].count,out:m[k].out};})
-      .sort(function(a,b){return b.out-a.out;}).slice(0,limit);
+  // Load-category buckets — mirrors the old per-sheet macros. COMMERCIAL is
+  // driven by SUPPLY_TYPE_MAP's group classification and overlaps the load
+  // bands (a commercial account is counted in both), matching the original
+  // workbook where COM was built as its own extract alongside the KW sheets.
+  var CATEGORY_ORDER = ['3-4.9 KW','5-9 KW','10 KW & ABOVE','COMMERCIAL','OTHER / BELOW 3KW'];
+  var CATEGORY_COLOR = { '3-4.9 KW':[234,88,12], '5-9 KW':[244,63,94], '10 KW & ABOVE':[124,58,237],
+    'COMMERCIAL':[13,148,136], 'OTHER / BELOW 3KW':[100,116,139] };
+  function loadBandFor(load){
+    if(load>=3 && load<5) return '3-4.9 KW';
+    if(load>=5 && load<10) return '5-9 KW';
+    if(load>=10) return '10 KW & ABOVE';
+    return 'OTHER / BELOW 3KW';
   }
-  var bySdo = groupBy('SDO_CODE', 12);
-  var bySub = groupBy('SUBSTATION', 12);
-  var top = rows.slice().sort(function(a,b){return b.OUTSTANDING-a.OUTSTANDING;}).slice(0,15);
+  var byCategory={}; CATEGORY_ORDER.forEach(function(c){byCategory[c]=[];});
+  rows.forEach(function(r){
+    var cats=[loadBandFor(pf(r.LOAD))];
+    var meta=SUPPLY_TYPE_MAP[String(r.SUPPLY_TYPE||'').trim().toUpperCase()];
+    if(meta && meta.group==='COMMERCIAL') cats.push('COMMERCIAL');
+    cats.forEach(function(c){ byCategory[c].push(r); });
+  });
 
   // Human-readable description of the filters currently applied, so the PDF
   // is self-explanatory even when opened later, detached from the app view.
@@ -4821,17 +4837,106 @@ function generateDefaulterSummaryPdf(){
   if(_defSelRemarks.length || _defBillBasisCeil) filterBits.push('MR Remark/Bill Basis filter active');
   var filterText = filterBits.length ? filterBits.join('  |  ') : 'No filters applied (full '+_defSource+' dataset)';
 
-  var doc = new window.jspdf.jsPDF({unit:'pt', format:'a4'});
+  var doc = new window.jspdf.jsPDF({unit:'pt', format:'a4', orientation:'landscape'});
   var pageW = doc.internal.pageSize.getWidth();
   var pageH = doc.internal.pageSize.getHeight();
-  var margin = 40;
+  var margin = 36;
   var y;
 
   function checkPageBreak(need){
     if(y+need > pageH-40){ doc.addPage(); y=40; }
   }
 
-  // Header band
+  // Builds a cross-tab: rows keyed by rowFields (1 or 2 columns), pivoted
+  // columns from the distinct values of colField (capped to maxCols, extras
+  // lumped into an OTHER column), values = count (or sum of valueField).
+  function buildPivot(data, rowFields, colField, valueField, maxCols, colOrder){
+    var colTotals={};
+    data.forEach(function(r){
+      var cv=String(r[colField]||'—').trim()||'—';
+      colTotals[cv]=(colTotals[cv]||0)+(valueField?(r[valueField]||0):1);
+    });
+    var allCols=Object.keys(colTotals).sort(function(a,b){return colTotals[b]-colTotals[a];});
+    var cols=allCols, lumpOther=false;
+    if(maxCols && allCols.length>maxCols){ cols=allCols.slice(0,maxCols-1); lumpOther=true; }
+    cols.sort(function(a,b){
+      if(!colOrder) return a.localeCompare(b);
+      var ia=colOrder.indexOf(a), ib=colOrder.indexOf(b);
+      if(ia<0) ia=999; if(ib<0) ib=999;
+      return ia!==ib ? ia-ib : a.localeCompare(b);
+    });
+    if(lumpOther) cols.push('OTHER');
+    var rowMap={};
+    data.forEach(function(r){
+      var parts=rowFields.map(function(f){return r[f]||'—';});
+      var rkey=parts.join('|||');
+      if(!rowMap[rkey]) rowMap[rkey]={parts:parts, cols:{}, total:0};
+      var cv=String(r[colField]||'—').trim()||'—';
+      if(lumpOther && cols.indexOf(cv)<0) cv='OTHER';
+      var amt=valueField?(r[valueField]||0):1;
+      rowMap[rkey].cols[cv]=(rowMap[rkey].cols[cv]||0)+amt;
+      rowMap[rkey].total+=amt;
+    });
+    var pivotRows=Object.keys(rowMap).map(function(k){return rowMap[k];})
+      .sort(function(a,b){return b.total-a.total;});
+    var colTotalsOut={}; cols.forEach(function(c){colTotalsOut[c]=0;});
+    var grandTotal=0;
+    pivotRows.forEach(function(pr){ cols.forEach(function(c){colTotalsOut[c]+=(pr.cols[c]||0);}); grandTotal+=pr.total; });
+    return {cols:cols, rows:pivotRows, colTotals:colTotalsOut, grandTotal:grandTotal};
+  }
+
+  function renderPivotTable(opts){
+    var head=opts.rowLabels.concat(opts.pivot.cols).concat(['TOTAL']);
+    var body=opts.pivot.rows.map(function(pr){
+      return pr.parts.concat(opts.pivot.cols.map(function(c){return (pr.cols[c]||0).toLocaleString('en-IN');}))
+        .concat([pr.total.toLocaleString('en-IN')]);
+    });
+    var footRow=opts.rowLabels.map(function(_,i){return i===0?'TOTAL':'';})
+      .concat(opts.pivot.cols.map(function(c){return (opts.pivot.colTotals[c]||0).toLocaleString('en-IN');}))
+      .concat([opts.pivot.grandTotal.toLocaleString('en-IN')]);
+    var columnStyles={}; for(var i=opts.rowLabels.length;i<head.length;i++) columnStyles[i]={halign:'right'};
+    doc.autoTable({
+      startY:y, margin:{left:margin,right:margin},
+      head:[head], body:body, foot:[footRow],
+      theme:'grid', styles:{fontSize:8,cellPadding:4}, headStyles:{fillColor:opts.headColor,textColor:255,fontSize:8},
+      footStyles:{fillColor:[241,245,249],textColor:[15,23,42],fontStyle:'bold',fontSize:8},
+      columnStyles:columnStyles
+    });
+    y = doc.lastAutoTable.finalY + 18;
+  }
+
+  function buildGroupTotals(data, rowFields){
+    var m={};
+    data.forEach(function(r){
+      var parts=rowFields.map(function(f){return r[f]||'—';});
+      var k=parts.join('|||');
+      if(!m[k]) m[k]={parts:parts, count:0, out:0};
+      m[k].count++; m[k].out+=r.OUTSTANDING;
+    });
+    return Object.keys(m).map(function(k){return m[k];}).sort(function(a,b){return b.out-a.out;});
+  }
+
+  function renderGroupTotalsTable(opts){
+    var head=opts.rowLabels.concat(['Cases','Total Outstanding','Avg Outstanding']);
+    var body=opts.groups.map(function(g){
+      return g.parts.concat([g.count.toLocaleString('en-IN'), inr(g.out), inr(g.out/g.count)]);
+    });
+    var totalCount=opts.groups.reduce(function(s,g){return s+g.count;},0);
+    var totalOut2=opts.groups.reduce(function(s,g){return s+g.out;},0);
+    var footRow=opts.rowLabels.map(function(_,i){return i===0?'TOTAL':'';})
+      .concat([totalCount.toLocaleString('en-IN'), inr(totalOut2), inr(totalCount?totalOut2/totalCount:0)]);
+    var columnStyles={}; for(var i=opts.rowLabels.length;i<head.length;i++) columnStyles[i]={halign:'right'};
+    doc.autoTable({
+      startY:y, margin:{left:margin,right:margin},
+      head:[head], body:body, foot:[footRow],
+      theme:'grid', styles:{fontSize:8,cellPadding:4}, headStyles:{fillColor:opts.headColor,textColor:255,fontSize:8},
+      footStyles:{fillColor:[241,245,249],textColor:[15,23,42],fontStyle:'bold',fontSize:8},
+      columnStyles:columnStyles
+    });
+    y = doc.lastAutoTable.finalY + 18;
+  }
+
+  // ── Page 1: Overview ──
   doc.setFillColor(244,63,94);
   doc.rect(0,0,pageW,68,'F');
   doc.setTextColor(255,255,255);
@@ -4868,10 +4973,10 @@ function generateDefaulterSummaryPdf(){
   });
   y += cardH + 22;
 
-  // ATR Status Breakdown
+  // ATR Status Breakdown (overall)
   checkPageBreak(40);
   doc.setTextColor(30,27,75); doc.setFont('helvetica','bold'); doc.setFontSize(12);
-  doc.text('ATR STATUS BREAKDOWN', margin, y);
+  doc.text('ATR STATUS BREAKDOWN (ALL DEFAULTERS)', margin, y);
   y += 8;
   doc.autoTable({
     startY:y, margin:{left:margin,right:margin},
@@ -4882,39 +4987,65 @@ function generateDefaulterSummaryPdf(){
   });
   y = doc.lastAutoTable.finalY + 20;
 
-  // By SDO
+  // Load-category breakdown
   checkPageBreak(60);
   doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(30,27,75);
-  doc.text('OUTSTANDING BY SDO CODE (Top '+bySdo.length+')', margin, y);
+  doc.text('LOAD-CATEGORY BREAKDOWN', margin, y);
   y += 8;
+  var catBody = CATEGORY_ORDER.filter(function(c){return byCategory[c].length;}).map(function(c){
+    var d=byCategory[c], out=d.reduce(function(s,r){return s+r.OUTSTANDING;},0);
+    return [c, d.length.toLocaleString('en-IN'), inr(out), inr(d.length?out/d.length:0)];
+  });
   doc.autoTable({
     startY:y, margin:{left:margin,right:margin},
-    head:[['SDO Code','Cases','Total Outstanding','Avg Outstanding']],
-    body:bySdo.map(function(g){return [g.key, g.count.toLocaleString('en-IN'), inr(g.out), inr(g.out/g.count)];}),
-    theme:'grid', styles:{fontSize:9,cellPadding:5}, headStyles:{fillColor:[14,165,233],textColor:255},
+    head:[['Category','Defaulters','Total Outstanding','Avg Outstanding']],
+    body:catBody,
+    theme:'grid', styles:{fontSize:9,cellPadding:5}, headStyles:{fillColor:[30,41,59],textColor:255},
     columnStyles:{1:{halign:'right'},2:{halign:'right'},3:{halign:'right'}}
   });
-  y = doc.lastAutoTable.finalY + 20;
+  y = doc.lastAutoTable.finalY + 10;
+  doc.setFont('helvetica','italic'); doc.setFontSize(7.5); doc.setTextColor(148,163,184);
+  doc.text(doc.splitTextToSize('Note: COMMERCIAL is a supply-type category that overlaps the load bands (a commercial account is counted in both its load band and COMMERCIAL), so category totals may exceed the overall defaulter count.', pageW-2*margin), margin, y);
 
-  // By Substation
-  checkPageBreak(60);
-  doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(30,27,75);
-  doc.text('OUTSTANDING BY SUBSTATION (Top '+bySub.length+')', margin, y);
-  y += 8;
-  doc.autoTable({
-    startY:y, margin:{left:margin,right:margin},
-    head:[['Substation','Cases','Total Outstanding','Avg Outstanding']],
-    body:bySub.map(function(g){return [g.key, g.count.toLocaleString('en-IN'), inr(g.out), inr(g.out/g.count)];}),
-    theme:'grid', styles:{fontSize:9,cellPadding:5}, headStyles:{fillColor:[124,58,237],textColor:255},
-    columnStyles:{1:{halign:'right'},2:{halign:'right'},3:{halign:'right'}}
+  // ── One page-set per load category, mirroring the PIVOT34/59/10ABV/COM macros ──
+  CATEGORY_ORDER.forEach(function(cat){
+    var data = byCategory[cat];
+    if(!data.length) return;
+    doc.addPage(); y=40;
+    var catOut = data.reduce(function(s,r){return s+r.OUTSTANDING;},0);
+    var col = CATEGORY_COLOR[cat];
+    doc.setFillColor(col[0],col[1],col[2]);
+    doc.rect(0,0,pageW,46,'F');
+    doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(15);
+    doc.text(cat+' — DEFAULTER SUMMARY', margin, 28);
+    doc.setFont('helvetica','normal'); doc.setFontSize(9);
+    doc.text(data.length.toLocaleString('en-IN')+' defaulters   ·   '+inr(catOut)+' outstanding', margin, 40);
+    y = 66;
+
+    doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(30,27,75);
+    doc.text('RECOVERY STATUS SUMMARY  (SDO × Substation, by ATR Status)', margin, y); y+=8;
+    var statusPivot = buildPivot(data, ['SDO_CODE','SUBSTATION'], 'ATR_STATUS', null, 8, statusOrder);
+    renderPivotTable({rowLabels:['SDO','Substation'], pivot:statusPivot, headColor:col});
+
+    checkPageBreak(70);
+    doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(30,27,75);
+    doc.text('BILL BASIS SUMMARY  (SDO, by Bill Basis)', margin, y); y+=8;
+    var bbPivot = buildPivot(data, ['SDO_CODE'], 'BILL_BASIS', null, 8);
+    renderPivotTable({rowLabels:['SDO'], pivot:bbPivot, headColor:col});
+
+    checkPageBreak(70);
+    doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(30,27,75);
+    doc.text('TOTAL OUTSTANDING  (SDO × Substation)', margin, y); y+=8;
+    var totals = buildGroupTotals(data, ['SDO_CODE','SUBSTATION']);
+    renderGroupTotalsTable({rowLabels:['SDO','Substation'], groups:totals, headColor:col});
   });
-  y = doc.lastAutoTable.finalY + 20;
 
-  // Top defaulters
-  checkPageBreak(60);
-  doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(30,27,75);
-  doc.text('TOP '+top.length+' HIGHEST-OUTSTANDING DEFAULTERS', margin, y);
-  y += 8;
+  // ── Appendix: top defaulters overall ──
+  var top = rows.slice().sort(function(a,b){return b.OUTSTANDING-a.OUTSTANDING;}).slice(0,20);
+  doc.addPage(); y=40;
+  doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(30,27,75);
+  doc.text('TOP '+top.length+' HIGHEST-OUTSTANDING DEFAULTERS (ALL CATEGORIES)', margin, y);
+  y += 12;
   doc.autoTable({
     startY:y, margin:{left:margin,right:margin},
     head:[['Acct ID','Name','Mobile','SDO','Outstanding','ATR Status']],
@@ -4932,7 +5063,17 @@ function generateDefaulterSummaryPdf(){
     doc.text('Page '+p+' of '+pageCount, pageW-margin-60, pageH-20);
   }
 
-  doc.save('Defaulter_Summary_'+(CURRENT_DIVISION||'ALL')+'_'+new Date().toLocaleDateString('en-IN').replace(/\//g,'-')+'.pdf');
+  // Open in the browser's native PDF viewer first (with its own print/download
+  // controls) instead of forcing an immediate download; only fall back to a
+  // direct download if the popup is blocked.
+  var fileName = 'Defaulter_Summary_'+(CURRENT_DIVISION||'ALL')+'_'+new Date().toLocaleDateString('en-IN').replace(/\//g,'-')+'.pdf';
+  doc.setProperties({ title: fileName.replace(/\.pdf$/,'') });
+  var blobUrl = doc.output('bloburl');
+  var viewer = window.open(blobUrl, '_blank');
+  if(!viewer){
+    alert('Popup blocked — allow popups for this site to preview the PDF. Downloading instead.');
+    doc.save(fileName);
+  }
 }
 
 window.loadDefaulters=loadDefaulters;
