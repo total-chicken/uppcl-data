@@ -4782,7 +4782,11 @@ function generateDefaulterSummaryPdf(){
 
   var totalOut = rows.reduce(function(s,r){return s+r.OUTSTANDING;},0);
   var avgOut = rows.length ? totalOut/rows.length : 0;
-  var inr = function(n){ return '₹'+Math.round(n).toLocaleString('en-IN'); };
+  // jsPDF's built-in Helvetica font has no ₹ glyph (WinAnsi-encoded) — it
+  // falls back to a garbled substitute whose wrong width estimate is also
+  // what pushes right-aligned amounts past the cell border. Use "Rs." here,
+  // same as the XLSX export, and keep ₹ only in on-screen HTML.
+  var inr = function(n){ return 'Rs.'+Math.round(n).toLocaleString('en-IN'); };
 
   // ATR status breakdown (overall)
   var statusCounts={};
