@@ -244,7 +244,8 @@
         "DV/DIV233633/master/chunk_e.csv"
       ],
       "billed": [
-        "DV/DIV233633/billed/chunk_a.csv"
+        "DV/DIV233633/billed/chunk_a.csv",
+        "DV/DIV233633/billed/chunk_b.csv"
       ],
       "unbilled": [
         "DV/DIV233633/unbilled/chunk_a.csv",
@@ -252,15 +253,14 @@
         "DV/DIV233633/unbilled/chunk_c.csv",
         "DV/DIV233633/unbilled/chunk_d.csv",
         "DV/DIV233633/unbilled/chunk_e.csv",
-        "DV/DIV233633/unbilled/chunk_f.csv",
-        "DV/DIV233633/unbilled/chunk_g.csv"
+        "DV/DIV233633/unbilled/chunk_f.csv"
       ],
       "sync_status": {
         "master_period": "JUL_2026",
-        "billed_date": "04082026",
-        "unbilled_date": "04082026"
+        "billed_date": "06082026",
+        "unbilled_date": "06082026"
       },
-      "updated": "2026-08-05T05:05:37.998952Z"
+      "updated": "2026-08-06T10:34:37.127515Z"
     },
     "DIV233641": {
       "master": [],
@@ -3050,5 +3050,5 @@
       "unbilled": []
     }
   },
-  "updated": "2026-08-06T10:29:51.334357Z"
+  "updated": "2026-08-06T10:34:38.680493Z"
 }
