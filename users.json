@@ -153,6 +153,12 @@
       "divisions": [
         "DIV381811"
       ]
+    },
+    {
+      "username": "ee_dib",
+      "password": "1b2a004a56c6855bb02f665269cb1dd23d5115d28e39d03cdc3c7b95712891d7ed63e3",
+      "role": "admin",
+      "createdBy": "superadmin"
     }
   ],
   "shared_gh_pat": "[#]ghp_[#]J811eOkl8fZ0ZryU[#]qKdToFfOxR8iDb3N9YfF[#]"
