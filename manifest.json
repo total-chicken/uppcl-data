@@ -141,9 +141,42 @@
       "unbilled": []
     },
     "DIV223052": {
-      "master": [],
-      "billed": [],
-      "unbilled": []
+      "master": [
+        "DV/DIV223052/master/chunk_a.csv",
+        "DV/DIV223052/master/chunk_b.csv",
+        "DV/DIV223052/master/chunk_c.csv",
+        "DV/DIV223052/master/chunk_d.csv",
+        "DV/DIV223052/master/chunk_e.csv",
+        "DV/DIV223052/master/chunk_f.csv",
+        "DV/DIV223052/master/chunk_g.csv"
+      ],
+      "billed": [
+        "DV/DIV223052/billed/chunk_a.csv",
+        "DV/DIV223052/billed/chunk_b.csv",
+        "DV/DIV223052/billed/chunk_c.csv",
+        "DV/DIV223052/billed/chunk_d.csv",
+        "DV/DIV223052/billed/chunk_e.csv",
+        "DV/DIV223052/billed/chunk_f.csv",
+        "DV/DIV223052/billed/chunk_g.csv",
+        "DV/DIV223052/billed/chunk_h.csv",
+        "DV/DIV223052/billed/chunk_i.csv",
+        "DV/DIV223052/billed/chunk_j.csv",
+        "DV/DIV223052/billed/chunk_k.csv",
+        "DV/DIV223052/billed/chunk_l.csv",
+        "DV/DIV223052/billed/chunk_m.csv",
+        "DV/DIV223052/billed/chunk_n.csv",
+        "DV/DIV223052/billed/chunk_o.csv",
+        "DV/DIV223052/billed/chunk_p.csv"
+      ],
+      "unbilled": [
+        "DV/DIV223052/unbilled/chunk_a.csv"
+      ],
+      "sync_status": {
+        "master_period": "JUL_2026",
+        "billed_date": "29082026",
+        "unbilled_date": "29082026"
+      },
+      "updated": "2026-08-29T11:20:14.287986Z"
     },
     "DIV223311": {
       "master": [],
@@ -3058,5 +3091,5 @@
       "unbilled": []
     }
   },
-  "updated": "2026-08-29T07:44:12.679624Z"
+  "updated": "2026-08-29T11:20:15.549736Z"
 }
