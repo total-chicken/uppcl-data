@@ -516,6 +516,12 @@ select option{background:#fff;color:#1E1B4B;}
       </div>
     </div>
 
+    <!-- Billed / Unbilled rollup for the currently-filtered defaulter view. Same
+         intent as the VBA FetchAndFilterData summary: UNBILLED = no live bill this
+         cycle (not in BILLED_MAP), PAID = last payment date lands in the current
+         calendar month, UNPAID = billed but not paid this month. -->
+    <div id="def-billsum" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;"></div>
+
     <div class="btn-group" style="margin-bottom:20px; background:#F8FAFF; padding:12px; border-radius:12px; border:1px solid #E2E8F0;">
       <button class="btn btn-acc" onclick="expDefaultersX()" style="background:#1E293B;">⬇ EXPORT XLSX</button>
       <button class="btn btn-out" onclick="expDefaulterAtr()" style="border-color:#4F46E5; color:#4F46E5;">📋 ATR REPORT</button>
@@ -2411,14 +2417,22 @@ function expCommercialX(){
   if(!_comRows.length) return alert('No data.');
   var groupField = commercialDrillState().groupField;
   var groupLabel = commercialGroupOptions().filter(function(o){return o.value===groupField;})[0].label;
+  // Export every column as a real NUMBER at full precision — never a pre-rounded
+  // .toFixed() string. Pre-rounding to 2dp and letting Excel re-derive the ratio
+  // columns (billing eff, collection eff, through rate, ABR…) from those rounded
+  // cells is what made the sheet disagree with the app by ~0.01 on the last digit:
+  // the app divides full-precision internals then rounds once; Excel was rounding
+  // twice. xn() keeps ~6dp to kill float noise (573.7712000001) without changing
+  // any 2dp display. null -> '' so empty INPUT ENERGY stays blank, not 0.
+  var xn = function(v){ return (v===null||v===undefined||!isFinite(v)) ? '' : Math.round(v*1e6)/1e6; };
   var data = _comRows.map(function(r){
     var o = {}; o[groupLabel]=r.group;
-    o['BILLABLE CONSUMER']=r.B; o['BILLED CONSUMER']=r.C; o['CONTRACTED LOAD (KW)']=r.D.toFixed(2);
-    o['CURRENT ASSESSMENT WITH SUBSIDY (LACS)']=r.E.toFixed(2); o['SUBSIDY (LACS)']=r.F.toFixed(2);
-    o['CURRENT ASSESSMENT WITHOUT SUBSIDY (LACS)']=r.G.toFixed(2); o['REALIZATION (LACS)']=r.H.toFixed(2);
-    o['TURN UP NOS']=r.I; o['TOTAL INPUT ENERGY (MU)']=(r.J===null?'':r.J); o['BILLED ENERGY (MU)']=r.M.toFixed(2);
-    o['BILLING EFF %']=fmtKpi(r.N); o['COLLECTION EFFICIENCY %']=fmtKpi(r.O); o['AT&C LOSSES %']=fmtKpi(r.P);
-    o['THROUGH RATE']=fmtKpi(r.Q); o['TURN UP RATIO %']=fmtKpi(r.R); o['LINE LOSS %']=fmtKpi(r.S); o['ABR']=fmtKpi(r.T);
+    o['BILLABLE CONSUMER']=r.B; o['BILLED CONSUMER']=r.C; o['CONTRACTED LOAD (KW)']=xn(r.D);
+    o['CURRENT ASSESSMENT WITH SUBSIDY (LACS)']=xn(r.E); o['SUBSIDY (LACS)']=xn(r.F);
+    o['CURRENT ASSESSMENT WITHOUT SUBSIDY (LACS)']=xn(r.G); o['REALIZATION (LACS)']=xn(r.H);
+    o['TURN UP NOS']=r.I; o['TOTAL INPUT ENERGY (MU)']=xn(r.J); o['BILLED ENERGY (MU)']=xn(r.M);
+    o['BILLING EFF %']=xn(r.N); o['COLLECTION EFFICIENCY %']=xn(r.O); o['AT&C LOSSES %']=xn(r.P);
+    o['THROUGH RATE']=xn(r.Q); o['TURN UP RATIO %']=xn(r.R); o['LINE LOSS %']=xn(r.S); o['ABR']=xn(r.T);
     return o;
   });
   var ws=XLSX.utils.json_to_sheet(data);
@@ -4168,6 +4182,44 @@ function buildDefAllFromUnbilledData(){
   enrichDefAllWithSdo();
 }
 
+// Billed/Unbilled/Paid/Unpaid class for one defaulter row — mirrors the VBA
+// classification: no live bill (not in BILLED_MAP) => UNBILLED; billed and the
+// last payment date is in the current calendar month => PAID; billed otherwise
+// => UNPAID.
+function defBillClass(r){
+  var key = ac(r.ACCT_ID);
+  if(!BILLED_MAP[key]) return 'UNBILLED';
+  var d = parseDate(r.PAY_DATE);
+  if(d){
+    var now = new Date();
+    if(d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth()) return 'PAID';
+  }
+  return 'UNPAID';
+}
+
+function renderDefBillSummary(rows){
+  var el = gel('def-billsum'); if(!el) return;
+  var c = {BILLED:0, UNBILLED:0, PAID:0, UNPAID:0};
+  rows.forEach(function(r){
+    var k = defBillClass(r);
+    if(k==='UNBILLED'){ c.UNBILLED++; return; }
+    c.BILLED++;
+    if(k==='PAID') c.PAID++; else c.UNPAID++;
+  });
+  var chip = function(label, val, color, bg, bd){
+    return '<div style="flex:1;min-width:140px;background:'+bg+';border:1.5px solid '+bd+';border-radius:12px;padding:12px 14px;">'+
+      '<div style="font-family:var(--fh);font-size:22px;font-weight:800;color:'+color+';">'+val.toLocaleString()+'</div>'+
+      '<div style="font-size:10px;font-weight:800;letter-spacing:0.5px;text-transform:uppercase;color:'+color+';">'+label+'</div>'+
+    '</div>';
+  };
+  el.innerHTML =
+    chip('Total', rows.length, '#334155', '#F8FAFC', '#E2E8F0')+
+    chip('Billed', c.BILLED, '#4F46E5', '#EEF2FF', '#C7D2FE')+
+    chip('Unbilled', c.UNBILLED, '#D97706', '#FFFBEB', '#FDE68A')+
+    chip('Paid (this month)', c.PAID, '#059669', '#ECFDF5', '#A7F3D0')+
+    chip('Unpaid', c.UNPAID, '#DC2626', '#FEF2F2', '#FECACA');
+}
+
 function runDefaulterFilter(){
   if(!gel('def-tbody')){buildDefaulterPanel();return;}
   if(!DEF_ALL.length) {
@@ -4232,6 +4284,7 @@ function runDefaulterFilter(){
   });
 
   DEF_DATA = all;
+  renderDefBillSummary(all);
   var totalOut = all.reduce(function(s,r){return s+r.OUTSTANDING;},0);
   setText('def-count', all.length.toLocaleString());
   setText('def-total-out', '₹'+Math.round(totalOut).toLocaleString());
