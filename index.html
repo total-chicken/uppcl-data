@@ -3798,6 +3798,7 @@ function onMsChange(type, cb){
   else { var i=sel.indexOf(cb.value); if(i>=0) sel.splice(i,1); }
   if(type==='remark') updateRemarkBtn(); else updateMsBtn(type);
   if(type==='sub') refreshFeedOptions();
+  if(type==='sdo') refreshSubOptions();
   runDefaulterFilter();
 }
 
@@ -3827,7 +3828,7 @@ function onBillBasisCeilChange(cb){
 function clearMs(type){
   if(type==='sub'){ _defSelSubs=[]; buildMsOptions('sub', getAllSubValues()); }
   else if(type==='feed'){ _defSelFeeds=[]; buildMsOptions('feed', getAllFeedValues()); }
-  else if(type==='sdo'){ _defSelSdos=[]; buildMsOptions('sdo', getAllSdoValues()); }
+  else if(type==='sdo'){ _defSelSdos=[]; buildMsOptions('sdo', getAllSdoValues()); refreshSubOptions(); }
   else if(type==='remark'){
     _defSelRemarks=[]; _defBillBasisCeil=false;
     var ceilCb = gel('def-bbasis-ceil'); if(ceilCb) ceilCb.checked=false;
@@ -3843,12 +3844,17 @@ function clearMs(type){
 }
 
 function getAllSubValues(){
-  return [...new Set(DEF_ALL.map(function(r){return r.SUBSTATION;}).filter(Boolean))].sort();
+  // Cascading: when one or more SDOs are picked, only their substations show.
+  var sdos = _defSelSdos;
+  return [...new Set(DEF_ALL.filter(function(r){
+    return !sdos.length || sdos.indexOf(r.SDO_CODE)>=0;
+  }).map(function(r){return r.SUBSTATION;}).filter(Boolean))].sort();
 }
 function getAllFeedValues(){
-  var subs = _defSelSubs;
+  var subs = _defSelSubs, sdos = _defSelSdos;
   return [...new Set(DEF_ALL.filter(function(r){
-    return !subs.length || subs.indexOf(r.SUBSTATION)>=0;
+    return (!sdos.length || sdos.indexOf(r.SDO_CODE)>=0) &&
+           (!subs.length || subs.indexOf(r.SUBSTATION)>=0);
   }).map(function(r){return r.FEEDER;}).filter(Boolean))].sort();
 }
 function getAllSupplyValues(){
@@ -3865,6 +3871,16 @@ function refreshFeedOptions(){
   _defSelFeeds = [];
   buildMsOptions('feed', getAllFeedValues());
   updateMsBtn('feed');
+}
+
+// SDO changed -> rebuild the substation dropdown to that SDO's substations,
+// drop any now-invalid substation picks, then cascade down to feeders.
+function refreshSubOptions(){
+  var valid = getAllSubValues();
+  _defSelSubs = _defSelSubs.filter(function(s){ return valid.indexOf(s)>=0; });
+  buildMsOptions('sub', valid);
+  updateMsBtn('sub');
+  refreshFeedOptions();
 }
 
 // ─── DEFAULTERS ───────────────────────────────────────────────────────────────
@@ -4861,10 +4877,13 @@ function generateDefaulterSummaryPdf(){
     return st ? ('ST '+st) : 'UNCATEGORIZED';
   }
   function mrRemarkOf(r){
-    var rem = String(r.MR_REMARK||'').trim();
-    if(rem) return rem;
+    // Bill-basis CEIL is itself the classification the user filters on, so a
+    // CEIL row is always counted under CEIL — even when it also carries an MR
+    // remark (otherwise CEIL rows scatter across remark buckets and the CEIL
+    // filter shows no CEIL line).
     if(String(r.BILL_BASIS||'').trim().toUpperCase() === 'CEIL') return 'CEIL (BILL BASIS)';
-    return '(blank)';
+    var rem = String(r.MR_REMARK||'').trim();
+    return rem || '(blank)';
   }
 
   // Human-readable description of the filters currently applied, so the PDF
@@ -5009,20 +5028,6 @@ function generateDefaulterSummaryPdf(){
   if(fOut)    sectionTable('OUTSTANDING-AMOUNT-WISE', 'Outstanding band', function(r){ return outBandOf(r.OUTSTANDING); });
   if(fSub)    sectionTable('SUBSTATION-WISE', 'Substation', function(r){ return r.SUBSTATION || '-'; });
   if(fRemark) sectionTable('MR-REMARK-WISE', 'MR remark', mrRemarkOf);
-
-  // ── Appendix: top defaulters overall ──
-  var top = rows.slice().sort(function(a,b){return b.OUTSTANDING-a.OUTSTANDING;}).slice(0,20);
-  doc.addPage(); y=40;
-  doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(30,27,75);
-  doc.text('TOP '+top.length+' HIGHEST-OUTSTANDING DEFAULTERS (ALL CATEGORIES)', margin, y);
-  y += 12;
-  doc.autoTable({
-    startY:y, margin:{left:margin,right:margin},
-    head:[['Acct ID','Name','Mobile','SDO','Outstanding','ATR Status']],
-    body:top.map(function(r){return [String(r.ACCT_ID), r.NAME, r.MOBILE, r.SDO_CODE, inr(r.OUTSTANDING), r.ATR_STATUS];}),
-    theme:'grid', styles:{fontSize:8,cellPadding:5}, headStyles:{fillColor:[30,41,59],textColor:255},
-    columnStyles:{4:{halign:'right'}}
-  });
 
   // Footer with page numbers
   var pageCount = doc.internal.getNumberOfPages();
