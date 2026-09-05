@@ -19,7 +19,13 @@
       "username": "sdo_ver",
       "password": "ad951ef690851c10cb79bd107c7b1d656ce96fc6e5eea2b2a86a33a5c6ceb19fd9f154",
       "role": "admin",
-      "createdBy": "superadmin"
+      "createdBy": "superadmin",
+      "discoms": [
+        "DV"
+      ],
+      "divisions": [
+        "DIV211212"
+      ]
     },
     {
       "username": "div_mau",
