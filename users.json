@@ -170,7 +170,14 @@
       "username": "vinay",
       "password": "8a1b29c8c2c341c84c90711263cd66fc25a22a7d17eb9e404ad9f7ba55e1f9b7fa13e8b3e5",
       "role": "user",
-      "createdBy": "superadmin"
+      "createdBy": "superadmin",
+      "discoms": [
+        "DV"
+      ],
+      "divisions": [
+        "DIV211212",
+        "DIV211214"
+      ]
     }
   ],
   "shared_gh_pat": "[#]ghp_[#]J811eOkl8fZ0ZryU[#]qKdToFfOxR8iDb3N9YfF[#]"
