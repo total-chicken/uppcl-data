@@ -183,7 +183,13 @@
       "username": "ravi.yadav8",
       "password": "2e17b7519e901c5c47f441899f6a367a6ee90d3f3f4e2baee0abdbcd741cfb95c204c38e",
       "role": "admin",
-      "createdBy": "superadmin"
+      "createdBy": "superadmin",
+      "discoms": [
+        "PV"
+      ],
+      "divisions": [
+        "DIV170834"
+      ]
     }
   ],
   "shared_gh_pat": "[#]ghp_[#]J811eOkl8fZ0ZryU[#]qKdToFfOxR8iDb3N9YfF[#]"
