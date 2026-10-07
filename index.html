@@ -1120,15 +1120,24 @@ function ghApi(path,opts){
     headers:{'Authorization':'token '+getGhPat(),'Accept':'application/vnd.github+json'}
   },opts||{}));
 }
+function safeJson(r){
+  return r.text().then(function(t){
+    if(!t) return null;
+    try { return JSON.parse(t); } catch(e){ return null; }
+  });
+}
 function ghPutFile(path,content,msg){
-  return ghApi(path).then(function(r){return r.ok?r.json():null;}).then(function(existing){
+  return ghApi(path).then(function(r){return r.ok?safeJson(r):null;}).then(function(existing){
     var b64=btoa(unescape(encodeURIComponent(content)));
     var body={message:msg,content:b64,branch:GH_BRANCH};
     if(existing&&existing.sha) body.sha=existing.sha;
     return ghApi(path,{method:'PUT',body:JSON.stringify(body)});
   }).then(function(r){
-    if(!r.ok) return r.json().then(function(e){throw new Error(path+': '+(e.message||r.status));});
-    return r.json();
+    if(!r.ok) return safeJson(r).then(function(e){throw new Error(path+': '+((e&&e.message)||r.status));});
+    return safeJson(r).then(function(d){
+      if(!d) throw new Error(path+': GitHub returned an empty response (status '+r.status+'). It may still have saved — please refresh and verify.');
+      return d;
+    });
   });
 }
 function csvEscape(v){
