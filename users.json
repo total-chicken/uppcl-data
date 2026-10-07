@@ -190,6 +190,18 @@
       "divisions": [
         "DIV170834"
       ]
+    },
+    {
+      "username": "ee_jhs",
+      "password": "c8e0db39dbdd5693802f5afc7d129f1390f528408f5b8cc6c644251272e7b93f69779b",
+      "role": "admin",
+      "createdBy": "superadmin",
+      "discoms": [
+        "DV"
+      ],
+      "divisions": [
+        "DIV233633"
+      ]
     }
   ],
   "shared_gh_pat": "[#]gith[#]ub_pat_11AX2BUQY[#]0JgWqJ97Uby77_g8lKskbMb1nVAbwKS5OsOz7Hwq8cNCcvZ9O8Nvkul50Q72CIKDVVf1aqfoP[#]"
