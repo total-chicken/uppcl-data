@@ -2209,19 +2209,19 @@
       ],
       "billed": [
         "PV/DIV170834/billed/chunk_a.csv",
-        "PV/DIV170834/billed/chunk_b.csv"
+        "PV/DIV170834/billed/chunk_b.csv",
+        "PV/DIV170834/billed/chunk_c.csv"
       ],
       "unbilled": [
         "PV/DIV170834/unbilled/chunk_a.csv",
-        "PV/DIV170834/unbilled/chunk_b.csv",
-        "PV/DIV170834/unbilled/chunk_c.csv"
+        "PV/DIV170834/unbilled/chunk_b.csv"
       ],
       "sync_status": {
-        "master_period": "AUG_2026",
-        "billed_date": "08092026",
-        "unbilled_date": "08092026"
+        "master_period": "SEP_2026",
+        "billed_date": "10102026",
+        "unbilled_date": "10102026"
       },
-      "updated": "2026-09-08T08:13:53.711464Z"
+      "updated": "2026-10-10T11:48:08.411078Z"
     },
     "DIV180351": {
       "master": [],
@@ -3101,5 +3101,5 @@
       "unbilled": []
     }
   },
-  "updated": "2026-10-09T12:15:08.452026Z"
+  "updated": "2026-10-10T11:48:09.591373Z"
 }
